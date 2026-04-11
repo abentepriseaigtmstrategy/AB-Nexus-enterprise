@@ -1,0 +1,2023 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mclarens | Nexus Enterprise '26 — HRMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        dark: { 900: '#06060a', 800: '#0d0d14', 700: '#161620', border: '#252530' },
+                        brand: { 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #06060a; color: #f1f5f9; overflow: hidden; height: 100vh; }
+        .glass { background: rgba(13,13,20,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.05); }
+        .glass-card { background: rgba(22,22,32,0.6); border: 1px solid rgba(255,255,255,0.06); }
+        .nav-item-active { background: linear-gradient(90deg, rgba(139,92,246,0.1) 0%, transparent 100%); border-left: 3px solid #8b5cf6; color: #a78bfa !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #252530; border-radius: 10px; }
+        .module-fade-in { animation: fadeIn 0.3s cubic-bezier(0.4,0,0.2,1); }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        #modalOverlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: none; }
+        .status-pill { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; text-transform: uppercase; border: 1px solid currentColor; }
+        .kanban-col { min-height: 200px; }
+        .nav-sub-label { font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #374151; padding: 12px 12px 6px; }
+        .sidebar-collapsed { display: none; }
+        .prog-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .prog-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.5)} }
+        .live-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+        input[type=range] { -webkit-appearance:none; height:4px; border-radius:2px; background:rgba(255,255,255,0.1); outline:none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#8b5cf6; cursor:pointer; }
+        .tab-active { border-bottom: 2px solid #8b5cf6; color: #a78bfa !important; }
+        .chip { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; }
+        .nav-section-hr { border-color: rgba(255,255,255,0.04); margin: 8px 12px; }
+        @media (max-width:768px) { body { overflow:auto; height:auto; } }
+    </style>
+</head>
+<body class="antialiased flex">
+
+<!-- Toast -->
+<div id="toast-container" class="fixed top-6 right-6 z-[120] space-y-3 pointer-events-none"></div>
+
+<!-- Modal -->
+<div id="modalOverlay" class="fixed inset-0 z-[110] flex items-start justify-center p-4 overflow-y-auto">
+    <div class="glass w-full max-w-4xl rounded-[2rem] p-8 shadow-2xl border border-white/10 relative my-8">
+        <button onclick="NexusApp.closeModal()" class="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors z-10">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+        <div id="modalContent" class="module-fade-in"></div>
+    </div>
+</div>
+
+<!-- Sidebar -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 glass border-r border-dark-border transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
+    <div class="h-16 flex items-center px-6 border-b border-dark-border/50 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center shadow-lg shadow-brand-500/20">
+                <i data-lucide="shield-check" class="text-white w-5 h-5"></i>
+            </div>
+            <span class="text-lg font-black tracking-tight text-white uppercase">Nexus <span class="text-brand-400 font-light">'26</span></span>
+        </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar space-y-0.5">
+        <div class="nav-sub-label">Core Console</div>
+        <button onclick="NexusApp.switchModule('dashboard')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all nav-item-active" data-mod="dashboard">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i><span class="text-sm font-medium">Insights</span>
+        </button>
+
+        <div class="nav-sub-label mt-3">Workflow</div>
+        <button onclick="NexusApp.switchModule('assignments')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="assignments">
+            <i data-lucide="briefcase" class="w-4 h-4"></i><span class="text-sm font-medium">Assignments</span>
+        </button>
+        <button onclick="NexusApp.switchModule('invoices')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="invoices">
+            <i data-lucide="banknote" class="w-4 h-4"></i><span class="text-sm font-medium">Invoicing</span>
+        </button>
+
+        <hr class="nav-section-hr">
+        <div class="nav-sub-label mt-1">— HRMS Portal</div>
+
+        <!-- Employee -->
+        <div class="nav-sub-label text-gray-700">Employee</div>
+        <button onclick="NexusApp.switchModule('ess')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="ess">
+            <i data-lucide="user-circle" class="w-4 h-4"></i><span class="text-sm font-medium">Self Service</span>
+            <span class="ml-auto text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-md font-bold">ESS</span>
+        </button>
+        <button onclick="NexusApp.switchModule('eis')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="eis">
+            <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm font-medium">Employee Info</span>
+        </button>
+        <button onclick="NexusApp.switchModule('lifecycle')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="lifecycle">
+            <i data-lucide="git-branch" class="w-4 h-4"></i><span class="text-sm font-medium">Lifecycle</span>
+        </button>
+
+        <!-- Time & Work -->
+        <div class="nav-sub-label text-gray-700 mt-1">Time & Work</div>
+        <button onclick="NexusApp.switchModule('attendance')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="attendance">
+            <i data-lucide="clock" class="w-4 h-4"></i><span class="text-sm font-medium">Attendance</span>
+            <span id="live-att" class="ml-auto w-2 h-2 rounded-full bg-green-400 live-dot"></span>
+        </button>
+        <button onclick="NexusApp.switchModule('leave')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="leave">
+            <i data-lucide="calendar-days" class="w-4 h-4"></i><span class="text-sm font-medium">Leave</span>
+            <span class="ml-auto text-[9px] bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded-md font-bold">3</span>
+        </button>
+        <button onclick="NexusApp.switchModule('tasks')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="tasks">
+            <i data-lucide="kanban-square" class="w-4 h-4"></i><span class="text-sm font-medium">Tasks</span>
+        </button>
+        <button onclick="NexusApp.switchModule('recruitment')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="recruitment">
+            <i data-lucide="user-plus" class="w-4 h-4"></i><span class="text-sm font-medium">Recruitment</span>
+        </button>
+
+        <!-- Performance -->
+        <div class="nav-sub-label text-gray-700 mt-1">People Ops</div>
+        <button onclick="NexusApp.switchModule('performance')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="performance">
+            <i data-lucide="target" class="w-4 h-4"></i><span class="text-sm font-medium">Performance</span>
+        </button>
+        <button onclick="NexusApp.switchModule('grievance')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="grievance">
+            <i data-lucide="message-square-warning" class="w-4 h-4"></i><span class="text-sm font-medium">Grievance</span>
+            <span class="ml-auto text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md font-bold">2</span>
+        </button>
+
+        <!-- Finance -->
+        <div class="nav-sub-label text-gray-700 mt-1">Finance</div>
+        <button onclick="NexusApp.switchModule('payroll')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="payroll">
+            <i data-lucide="indian-rupee" class="w-4 h-4"></i><span class="text-sm font-medium">Payroll</span>
+        </button>
+        <button onclick="NexusApp.switchModule('expense')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="expense">
+            <i data-lucide="receipt" class="w-4 h-4"></i><span class="text-sm font-medium">Expenses</span>
+        </button>
+        <button onclick="NexusApp.switchModule('loans')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="loans">
+            <i data-lucide="landmark" class="w-4 h-4"></i><span class="text-sm font-medium">Loans</span>
+        </button>
+        <button onclick="NexusApp.switchModule('claims')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="claims">
+            <i data-lucide="file-check" class="w-4 h-4"></i><span class="text-sm font-medium">Claims</span>
+        </button>
+        <button onclick="NexusApp.switchModule('documents')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white transition-all" data-mod="documents">
+            <i data-lucide="folder-open" class="w-4 h-4"></i><span class="text-sm font-medium">Documents</span>
+        </button>
+    </nav>
+
+    <div class="p-4 border-t border-dark-border/50">
+        <div class="flex items-center gap-3 p-3 rounded-2xl bg-dark-700/30 border border-white/5 cursor-pointer hover:border-brand-500/30 transition-all" onclick="NexusApp.switchModule('ess')">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg text-sm">AS</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold truncate text-white">Amit Sharma</p>
+                <p class="text-[10px] text-gray-500 truncate">Sr. Surveyor · Mumbai HQ</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-3 h-3 text-gray-600"></i>
+        </div>
+    </div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col lg:ml-64 h-screen overflow-hidden">
+    <header class="h-16 glass border-b border-dark-border/50 flex items-center justify-between px-6 shrink-0 z-40">
+        <div class="flex items-center gap-4">
+            <button id="toggleSidebar" class="lg:hidden text-gray-400 p-2 hover:text-white"><i data-lucide="menu" class="w-5 h-5"></i></button>
+            <div class="flex items-center gap-2 text-xs">
+                <span class="text-gray-500 font-medium">MCLARENS</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-gray-700"></i>
+                <span class="text-gray-500">HRMS</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-gray-700"></i>
+                <span id="breadcrumb" class="text-brand-400 font-bold uppercase tracking-widest">Dashboard</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center bg-dark-800/80 border border-white/5 rounded-2xl px-4 py-2 gap-2 focus-within:border-brand-500/50 transition-all">
+                <i data-lucide="search" class="w-4 h-4 text-gray-500"></i>
+                <input type="text" id="globalSearch" placeholder="Search HRMS..." class="bg-transparent text-sm outline-none w-48 text-white placeholder:text-gray-600">
+            </div>
+            <button onclick="NexusApp.switchModule('attendance')" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-green-400 hover:bg-white/5 rounded-xl transition-all relative" title="Clock In/Out">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span id="clock-indicator" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            <button onclick="NexusApp.showNotifications()" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-xl relative transition-all">
+                <i data-lucide="bell" class="w-4 h-4"></i>
+                <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-brand-500 rounded-full ring-2 ring-[#06060a]"></span>
+            </button>
+            <a href="surveyor-dashboard.html" class="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-brand-500/30 text-[10px] font-bold text-gray-400 hover:text-brand-400 transition-all">⛯ SurveyorOS</a>
+            <button id="userAvatarBtn" onclick="doLogout()" class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-lg shadow-brand-500/20" title="Logout">AS</button>
+        </div>
+    </header>
+
+    <div id="moduleContent" class="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar"></div>
+</main>
+
+<script>
+const NexusApp = {
+    state: {
+        currentModule: 'dashboard',
+        clockedIn: false,
+        clockInTime: null,
+        selectedEmployee: null,
+        filters: { search: '' }
+    },
+
+    db: {
+        assignments: [
+            { id:'MCL-001', policy:'POL-7722', insured:'Reliance Retail', surveyor:'Amit Sharma', status:'On-Site', date:'2026-04-01' },
+            { id:'MCL-002', policy:'POL-8831', insured:'Amazon Logistics', surveyor:'Priya Varma', status:'Pending', date:'2026-04-02' },
+            { id:'MCL-003', policy:'POL-9940', insured:'TATA Motors', surveyor:'Vikram Rao', status:'Completed', date:'2026-03-28' }
+        ],
+        invoices: [
+            { id:'INV-5001', client:'United India', amount:'₹ 45,200', due:'2026-04-15', status:'Unpaid' },
+            { id:'INV-5002', client:'HDFC Ergo', amount:'₹ 12,800', due:'2026-04-10', status:'Paid' }
+        ],
+        employees: [
+            { id:'EMP-101', name:'Amit Sharma', role:'Sr. Surveyor', dept:'Operations', location:'Mumbai HQ', status:'Active', doj:'2021-03-15', ctc:'₹ 18 LPA', manager:'Ravi Mehta', email:'amit.s@mclarens.in', mobile:'+91 98765 43210' },
+            { id:'EMP-102', name:'Priya Varma', role:'Admin Manager', dept:'HR & Admin', location:'Delhi', status:'Active', doj:'2020-07-01', ctc:'₹ 14 LPA', manager:'Nisha Joshi', email:'priya.v@mclarens.in', mobile:'+91 98776 55432' },
+            { id:'EMP-103', name:'Vikram Rao', role:'Sr. Surveyor', dept:'Operations', location:'Chennai', status:'Active', doj:'2019-11-10', ctc:'₹ 16 LPA', manager:'Ravi Mehta', email:'vikram.r@mclarens.in', mobile:'+91 87654 32100' },
+            { id:'EMP-104', name:'Sunita Pillai', role:'Finance Analyst', dept:'Finance', location:'Bangalore', status:'Active', doj:'2022-01-20', ctc:'₹ 12 LPA', manager:'Arun Shetty', email:'sunita.p@mclarens.in', mobile:'+91 76543 21098' },
+            { id:'EMP-105', name:'Rahul Bose', role:'Junior Surveyor', dept:'Operations', location:'Mumbai HQ', status:'Probation', doj:'2026-01-10', ctc:'₹ 7 LPA', manager:'Amit Sharma', email:'rahul.b@mclarens.in', mobile:'+91 65432 10987' },
+            { id:'EMP-106', name:'Meena Krishnan', role:'HR Executive', dept:'HR & Admin', location:'Mumbai HQ', status:'Active', doj:'2023-06-05', ctc:'₹ 9 LPA', manager:'Priya Varma', email:'meena.k@mclarens.in', mobile:'+91 54321 09876' }
+        ],
+        attendance: [
+            { empId:'EMP-101', name:'Amit Sharma', date:'2026-04-03', checkIn:'09:02', checkOut:'', status:'Present', hours:'Ongoing', loc:'Mumbai HQ' },
+            { empId:'EMP-102', name:'Priya Varma', date:'2026-04-03', checkIn:'08:55', checkOut:'18:10', status:'Present', hours:'9h 15m', loc:'Delhi' },
+            { empId:'EMP-103', name:'Vikram Rao', date:'2026-04-03', checkIn:'09:30', checkOut:'', status:'Present', hours:'Ongoing', loc:'Chennai' },
+            { empId:'EMP-104', name:'Sunita Pillai', date:'2026-04-03', checkIn:'', checkOut:'', status:'Leave', hours:'—', loc:'Bangalore' },
+            { empId:'EMP-105', name:'Rahul Bose', date:'2026-04-03', checkIn:'09:15', checkOut:'', status:'Present', hours:'Ongoing', loc:'Mumbai HQ' },
+            { empId:'EMP-106', name:'Meena Krishnan', date:'2026-04-03', checkIn:'', checkOut:'', status:'Absent', hours:'—', loc:'Mumbai HQ' }
+        ],
+        leave: [
+            { id:'LV-2201', emp:'Amit Sharma', empId:'EMP-101', type:'Casual Leave', from:'2026-04-10', to:'2026-04-11', days:2, reason:'Family function', status:'Approved', approver:'Ravi Mehta' },
+            { id:'LV-2202', emp:'Sunita Pillai', empId:'EMP-104', type:'Sick Leave', from:'2026-04-03', to:'2026-04-03', days:1, reason:'Fever', status:'Approved', approver:'Arun Shetty' },
+            { id:'LV-2203', emp:'Meena Krishnan', empId:'EMP-106', type:'Casual Leave', from:'2026-04-07', to:'2026-04-08', days:2, reason:'Personal work', status:'Pending', approver:'Priya Varma' },
+            { id:'LV-2204', emp:'Rahul Bose', empId:'EMP-105', type:'Annual Leave', from:'2026-04-20', to:'2026-04-25', days:5, reason:'Vacation', status:'Pending', approver:'Amit Sharma' }
+        ],
+        leaveBalances: {
+            'EMP-101': { casual:10, sick:12, annual:15, earned:6, lop:0 },
+            'EMP-102': { casual:8, sick:12, annual:18, earned:10, lop:0 },
+            'EMP-103': { casual:7, sick:11, annual:12, earned:5, lop:0 },
+            'EMP-104': { casual:9, sick:11, annual:14, earned:8, lop:1 },
+            'EMP-105': { casual:12, sick:12, annual:10, earned:0, lop:0 },
+            'EMP-106': { casual:10, sick:12, annual:12, earned:4, lop:0 }
+        },
+        performance: [
+            { id:'PER-001', emp:'Amit Sharma', empId:'EMP-101', cycle:'Q1 2026', kpiScore:88, goalsAchieved:'7/8', rating:'Exceeds Expectations', status:'Reviewed', reviewer:'Ravi Mehta' },
+            { id:'PER-002', emp:'Priya Varma', empId:'EMP-102', cycle:'Q1 2026', kpiScore:92, goalsAchieved:'9/9', rating:'Outstanding', status:'Reviewed', reviewer:'Nisha Joshi' },
+            { id:'PER-003', emp:'Vikram Rao', empId:'EMP-103', cycle:'Q1 2026', kpiScore:74, goalsAchieved:'6/9', rating:'Meets Expectations', status:'In Review', reviewer:'Ravi Mehta' },
+            { id:'PER-004', emp:'Rahul Bose', empId:'EMP-105', cycle:'Q1 2026', kpiScore:61, goalsAchieved:'4/7', rating:'Needs Improvement', status:'Pending', reviewer:'Amit Sharma' }
+        ],
+        grievances: [
+            { id:'GRV-001', emp:'Meena Krishnan', empId:'EMP-106', category:'Harassment', subject:'Unprofessional conduct by peer', date:'2026-03-25', priority:'High', status:'Open', assignedTo:'Priya Varma', anonymous:false },
+            { id:'GRV-002', emp:'Anonymous', empId:'', category:'Workplace Safety', subject:'Fire exit blocked in Mumbai office', date:'2026-03-30', priority:'Critical', status:'In Progress', assignedTo:'Priya Varma', anonymous:true }
+        ],
+        recruitment: [
+            { id:'JOB-001', role:'Marine Surveyor', dept:'Operations', location:'Mumbai', openings:2, status:'Active', applicants:14, stage:'Interview', postedDate:'2026-03-01' },
+            { id:'JOB-002', role:'Finance Executive', dept:'Finance', location:'Bangalore', openings:1, status:'Active', applicants:8, stage:'Shortlisted', postedDate:'2026-03-15' },
+            { id:'JOB-003', role:'HR Business Partner', dept:'HR & Admin', location:'Delhi', openings:1, status:'Closed', applicants:21, stage:'Offer Extended', postedDate:'2026-02-10' }
+        ],
+        candidates: [
+            { id:'CND-001', name:'Rakesh Nair', role:'Marine Surveyor', job:'JOB-001', exp:'5 yrs', stage:'Technical Interview', score:82, status:'Active' },
+            { id:'CND-002', name:'Deepa Menon', role:'Marine Surveyor', job:'JOB-001', exp:'7 yrs', stage:'HR Round', score:89, status:'Active' },
+            { id:'CND-003', name:'Arjun Das', role:'Finance Executive', job:'JOB-002', exp:'3 yrs', stage:'Shortlisted', score:76, status:'Active' }
+        ],
+        tasks: [
+            { id:'TSK-001', title:'Complete MCL-001 Survey Report', assignee:'EMP-101', priority:'High', due:'2026-04-05', module:'assignments', linkedId:'MCL-001', status:'In Progress' },
+            { id:'TSK-002', title:'Process April Payroll', assignee:'EMP-102', priority:'Critical', due:'2026-04-04', module:'payroll', linkedId:'PAY-APR26', status:'Todo' },
+            { id:'TSK-003', title:'Review Grievance GRV-001', assignee:'EMP-102', priority:'High', due:'2026-04-06', module:'grievance', linkedId:'GRV-001', status:'In Progress' },
+            { id:'TSK-004', title:'Finalize Q1 Appraisal for Vikram', assignee:'EMP-101', priority:'Medium', due:'2026-04-08', module:'performance', linkedId:'PER-003', status:'Todo' },
+            { id:'TSK-005', title:'Onboarding docs for Rahul Bose', assignee:'EMP-106', priority:'Low', due:'2026-04-10', module:'lifecycle', linkedId:'EMP-105', status:'Done' },
+            { id:'TSK-006', title:'Shortlist JOB-002 candidates', assignee:'EMP-106', priority:'Medium', due:'2026-04-07', module:'recruitment', linkedId:'JOB-002', status:'Review' }
+        ],
+        payroll: [
+            { id:'PAY-101-APR', empId:'EMP-101', emp:'Amit Sharma', month:'April 2026', basic:90000, hra:36000, ta:8000, lop:0, pf:10800, tax:8500, gross:134000, net:114700, status:'Processing' },
+            { id:'PAY-102-APR', empId:'EMP-102', emp:'Priya Varma', month:'April 2026', basic:70000, hra:28000, ta:7000, lop:0, pf:8400, tax:6000, gross:105000, net:90600, status:'Processing' },
+            { id:'PAY-103-APR', empId:'EMP-103', emp:'Vikram Rao', month:'April 2026', basic:80000, hra:32000, ta:8000, lop:0, pf:9600, tax:7200, gross:120000, net:103200, status:'Processing' },
+            { id:'PAY-104-APR', empId:'EMP-104', emp:'Sunita Pillai', month:'April 2026', basic:60000, hra:24000, ta:6000, lop:3000, pf:7200, tax:5000, gross:90000, net:74800, status:'Processing' },
+            { id:'PAY-101-MAR', empId:'EMP-101', emp:'Amit Sharma', month:'March 2026', basic:90000, hra:36000, ta:8000, lop:0, pf:10800, tax:8500, gross:134000, net:114700, status:'Paid' },
+            { id:'PAY-102-MAR', empId:'EMP-102', emp:'Priya Varma', month:'March 2026', basic:70000, hra:28000, ta:7000, lop:0, pf:8400, tax:6000, gross:105000, net:90600, status:'Paid' }
+        ],
+        expenses: [
+            { id:'EXP-001', empId:'EMP-101', emp:'Amit Sharma', category:'Travel', amount:4250, date:'2026-03-28', desc:'Mumbai to Pune site visit', status:'Approved', claimId:'CLM-301' },
+            { id:'EXP-002', empId:'EMP-101', emp:'Amit Sharma', category:'Accommodation', amount:2800, date:'2026-03-29', desc:'Hotel stay — Pune survey', status:'Approved', claimId:'CLM-301' },
+            { id:'EXP-003', empId:'EMP-103', emp:'Vikram Rao', category:'Travel', amount:6100, date:'2026-04-01', desc:'Chennai to Madurai — MCL-003', status:'Pending', claimId:'' },
+            { id:'EXP-004', empId:'EMP-105', emp:'Rahul Bose', category:'Stationery', amount:850, date:'2026-04-02', desc:'Office supplies', status:'Rejected', claimId:'' }
+        ],
+        loans: [
+            { id:'LN-001', empId:'EMP-101', emp:'Amit Sharma', type:'Personal Loan', principal:200000, outstanding:140000, emi:8500, tenure:'24 months', disbursed:'2025-06-01', nextEMI:'2026-05-01', status:'Active' },
+            { id:'LN-002', empId:'EMP-103', emp:'Vikram Rao', type:'Emergency Loan', principal:50000, outstanding:0, emi:0, tenure:'12 months', disbursed:'2025-01-01', nextEMI:'—', status:'Closed' },
+            { id:'LN-003', empId:'EMP-104', emp:'Sunita Pillai', type:'Education Loan', principal:150000, outstanding:110000, emi:6500, tenure:'36 months', disbursed:'2025-09-01', nextEMI:'2026-05-01', status:'Active' }
+        ],
+        claims: [
+            { id:'CLM-301', empId:'EMP-101', emp:'Amit Sharma', type:'Travel Reimbursement', amount:7050, expenseIds:['EXP-001','EXP-002'], submittedOn:'2026-04-01', status:'Approved', settledOn:'2026-04-03' },
+            { id:'CLM-302', empId:'EMP-104', emp:'Sunita Pillai', type:'Medical', amount:12500, expenseIds:[], submittedOn:'2026-03-25', status:'In Review', settledOn:'' },
+            { id:'CLM-303', empId:'EMP-103', emp:'Vikram Rao', type:'Travel Reimbursement', amount:6100, expenseIds:['EXP-003'], submittedOn:'2026-04-02', status:'Pending', settledOn:'' }
+        ],
+        documents: [
+            { id:'DOC-001', empId:'EMP-101', emp:'Amit Sharma', type:'Offer Letter', filename:'offer_letter_amit.pdf', uploadedOn:'2021-03-10', size:'120 KB', status:'Verified' },
+            { id:'DOC-002', empId:'EMP-101', emp:'Amit Sharma', type:'ID Proof', filename:'aadhaar_amit.pdf', uploadedOn:'2021-03-10', size:'85 KB', status:'Verified' },
+            { id:'DOC-003', empId:'EMP-105', emp:'Rahul Bose', type:'Offer Letter', filename:'offer_letter_rahul.pdf', uploadedOn:'2026-01-05', size:'118 KB', status:'Verified' },
+            { id:'DOC-004', empId:'EMP-105', emp:'Rahul Bose', type:'Educational Certificate', filename:'degree_rahul.pdf', uploadedOn:'2026-01-08', size:'2.4 MB', status:'Pending Verification' },
+            { id:'DOC-005', empId:'EMP-103', emp:'Vikram Rao', type:'Surveyor License', filename:'license_vikram.pdf', uploadedOn:'2024-11-01', size:'340 KB', status:'Verified', expiry:'2027-10-31' }
+        ],
+        lifecycle: [
+            { empId:'EMP-101', name:'Amit Sharma', stage:'Active', phase:'Mid Career', doj:'2021-03-15', probationEnd:'2021-09-15', confirmed:true, exitDate:'', lastPromo:'2023-06-01', events:['Hired','Confirmed','Promoted to Sr. Surveyor'] },
+            { empId:'EMP-105', name:'Rahul Bose', stage:'Probation', phase:'Onboarding', doj:'2026-01-10', probationEnd:'2026-07-10', confirmed:false, exitDate:'', lastPromo:'', events:['Hired','Onboarding Docs Submitted','Training In Progress'] },
+            { empId:'EMP-103', name:'Vikram Rao', stage:'Active', phase:'Senior', doj:'2019-11-10', probationEnd:'2020-05-10', confirmed:true, exitDate:'', lastPromo:'2022-01-01', events:['Hired','Confirmed','Promoted to Sr. Surveyor','Long Service Award'] }
+        ]
+    },
+
+    // ─── INIT ─────────────────────────────────────────────────────────────────
+    init() {
+        this.switchModule('dashboard');
+        document.getElementById('toggleSidebar').onclick = () => document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('globalSearch').oninput = (e) => {
+            this.state.filters.search = e.target.value.toLowerCase();
+            this.renderContent();
+        };
+        this.updateClockIndicator();
+        
+        // Wait for Lucide to be available
+        const initIcons = () => {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            } else {
+                setTimeout(initIcons, 100);
+            }
+        };
+        initIcons();
+    },
+
+    updateClockIndicator() {
+        const el = document.getElementById('clock-indicator');
+        if (el) el.className = `absolute top-2 right-2 w-2 h-2 rounded-full ${this.state.clockedIn ? 'bg-green-400' : 'bg-red-500'}`;
+    },
+
+    switchModule(modId, ctx) {
+        this.state.currentModule = modId;
+        if (ctx) this.state.ctx = ctx;
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('nav-item-active', el.dataset.mod === modId));
+        const labels = { dashboard:'Insights', ess:'Self Service', eis:'Employee Info', lifecycle:'Lifecycle', attendance:'Attendance', leave:'Leave', tasks:'Tasks', recruitment:'Recruitment', performance:'Performance', grievance:'Grievance', payroll:'Payroll', expense:'Expenses', loans:'Loans', claims:'Claims', documents:'Documents', assignments:'Assignments', invoices:'Invoicing' };
+        document.getElementById('breadcrumb').innerText = labels[modId] || modId;
+        this.renderContent();
+        if (window.innerWidth < 1024) document.getElementById('sidebar').classList.add('-translate-x-full');
+    },
+
+    renderContent() {
+        const container = document.getElementById('moduleContent');
+        container.innerHTML = '';
+        container.classList.remove('module-fade-in');
+        void container.offsetWidth;
+        container.classList.add('module-fade-in');
+
+        const renders = {
+            dashboard: () => this.ui_dashboard(container),
+            ess: () => this.ui_ess(container),
+            eis: () => this.ui_eis(container),
+            lifecycle: () => this.ui_lifecycle(container),
+            attendance: () => this.ui_attendance(container),
+            leave: () => this.ui_leave(container),
+            tasks: () => this.ui_tasks(container),
+            recruitment: () => this.ui_recruitment(container),
+            performance: () => this.ui_performance(container),
+            grievance: () => this.ui_grievance(container),
+            payroll: () => this.ui_payroll(container),
+            expense: () => this.ui_expense(container),
+            loans: () => this.ui_loans(container),
+            claims: () => this.ui_claims(container),
+            documents: () => this.ui_documents(container),
+            assignments: () => this.ui_tableView(container, 'assignments'),
+            invoices: () => this.ui_tableView(container, 'invoices')
+        };
+        (renders[this.state.currentModule] || (() => this.ui_placeholder(container, this.state.currentModule)))();
+        
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
+        }
+    },
+
+    // ─── STAT CARD ────────────────────────────────────────────────────────────
+    stat(title, value, icon, color, link) {
+        const click = link ? `onclick="NexusApp.switchModule('${link}')" style="cursor:pointer"` : '';
+        return `<div class="glass p-6 rounded-[1.5rem] border-white/5 hover:border-brand-500/20 transition-all group shadow-xl" ${click}>
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 rounded-xl bg-white/5"><i data-lucide="${icon}" class="w-4 h-4 ${color}"></i></div>
+                ${link ? `<i data-lucide="arrow-up-right" class="w-3 h-3 text-gray-700 group-hover:text-brand-400 transition-colors"></i>` : ''}
+            </div>
+            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">${title}</p>
+            <h4 class="text-2xl font-black tracking-tighter text-white">${value}</h4>
+        </div>`;
+    },
+
+    badge(status) {
+        const map = {
+            'Active':'text-green-400','Present':'text-green-400','Approved':'text-green-400','Paid':'text-green-400','Verified':'text-green-400','Closed':'text-gray-500','Completed':'text-gray-500','Rejected':'text-red-400','Critical':'text-red-400','Absent':'text-red-400','Open':'text-red-400',
+            'Pending':'text-yellow-400','Probation':'text-yellow-400','Pending Verification':'text-yellow-400','In Review':'text-yellow-400','In Progress':'text-brand-400','Leave':'text-blue-400','Processing':'text-brand-400','Draft':'text-brand-400','Todo':'text-gray-500','Done':'text-green-400','Review':'text-yellow-400','Outstanding':'text-emerald-400','Exceeds Expectations':'text-teal-400','Meets Expectations':'text-blue-400','Needs Improvement':'text-orange-400'
+        };
+        const c = map[status] || 'text-gray-400';
+        return `<span class="status-pill ${c}">${status}</span>`;
+    },
+
+    sectionHeader(title, subtitle, btnLabel, btnAction) {
+        return `<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+                <h2 class="text-2xl font-black tracking-tight text-white">${title}</h2>
+                <p class="text-xs text-gray-500 mt-1">${subtitle}</p>
+            </div>
+            ${btnLabel ? `<button onclick="${btnAction}" class="bg-brand-500 hover:bg-brand-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-500/30 transition-all flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>${btnLabel}</button>` : ''}
+        </div>`;
+    },
+
+    quickLink(icon, label, mod) {
+        return `<button onclick="NexusApp.switchModule('${mod}')" class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-brand-500/30 hover:bg-brand-500/5 transition-all group">
+            <i data-lucide="${icon}" class="w-5 h-5 text-gray-500 group-hover:text-brand-400 transition-colors"></i>
+            <span class="text-[10px] font-bold text-gray-600 group-hover:text-brand-400 uppercase tracking-wider transition-colors">${label}</span>
+        </button>`;
+    },
+
+    // ─── DASHBOARD ────────────────────────────────────────────────────────────
+    ui_dashboard(container) {
+        const att = this.db.attendance.filter(a => a.status === 'Present').length;
+        const pendingLeave = this.db.leave.filter(l => l.status === 'Pending').length;
+        const openGrv = this.db.grievances.filter(g => g.status === 'Open' || g.status === 'In Progress').length;
+        const pendingClaims = this.db.claims.filter(c => c.status === 'Pending' || c.status === 'In Review').length;
+        container.innerHTML = `
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Active Employees', this.db.employees.filter(e=>e.status==='Active').length, 'users', 'text-brand-400', 'eis')}
+                ${this.stat('Present Today', att, 'clock', 'text-green-400', 'attendance')}
+                ${this.stat('Leave Pending', pendingLeave, 'calendar-days', 'text-yellow-400', 'leave')}
+                ${this.stat('Open Grievances', openGrv, 'message-square-warning', 'text-red-400', 'grievance')}
+                ${this.stat('Payroll — Apr', '₹ 5.2L', 'indian-rupee', 'text-indigo-400', 'payroll')}
+                ${this.stat('Active Tasks', this.db.tasks.filter(t=>t.status!=='Done').length, 'kanban-square', 'text-teal-400', 'tasks')}
+                ${this.stat('Pending Claims', pendingClaims, 'file-check', 'text-orange-400', 'claims')}
+                ${this.stat('Open Roles', this.db.recruitment.filter(r=>r.status==='Active').length, 'user-plus', 'text-pink-400', 'recruitment')}
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="xl:col-span-2 glass rounded-[2rem] p-8 border-white/5 shadow-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500">Headcount Attendance — This Week</h3>
+                        <button onclick="NexusApp.switchModule('attendance')" class="text-[10px] text-brand-400 hover:text-brand-300 font-bold uppercase tracking-wider">View All →</button>
+                    </div>
+                    <div class="h-[220px]"><canvas id="mainChart"></canvas></div>
+                </div>
+                <div class="flex flex-col gap-4">
+                    <div class="glass rounded-[2rem] p-6 border-white/5">
+                        <h3 class="text-[10px] font-black uppercase tracking-widest text-gray-600 mb-4 flex items-center gap-2"><i data-lucide="activity" class="w-3 h-3"></i> Live Activity</h3>
+                        <div class="space-y-3">
+                            ${[
+                                {icon:'clock',text:'Amit Sharma clocked in',time:'09:02',c:'text-green-400'},
+                                {icon:'calendar-days',text:'Leave approved — Sunita Pillai',time:'08:45',c:'text-blue-400'},
+                                {icon:'file-check',text:'CLM-301 settled ₹7,050',time:'08:30',c:'text-teal-400'},
+                                {icon:'message-square-warning',text:'New grievance filed',time:'08:15',c:'text-red-400'},
+                                {icon:'user-plus',text:'Interview — Deepa Menon (HR)',time:'Yesterday',c:'text-yellow-400'}
+                            ].map(a=>`<div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-all">
+                                <i data-lucide="${a.icon}" class="w-3.5 h-3.5 ${a.c} shrink-0"></i>
+                                <div class="flex-1 min-w-0"><p class="text-xs text-gray-300 truncate">${a.text}</p></div>
+                                <span class="text-[10px] text-gray-600 shrink-0">${a.time}</span>
+                            </div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="glass rounded-[2rem] p-6 border-white/5">
+                        <h3 class="text-[10px] font-black uppercase tracking-widest text-gray-600 mb-4">Pending Actions</h3>
+                        ${[
+                            {label:`${pendingLeave} Leave approvals`, mod:'leave', c:'text-yellow-400'},
+                            {label:`${openGrv} Grievances open`, mod:'grievance', c:'text-red-400'},
+                            {label:'April Payroll pending run', mod:'payroll', c:'text-brand-400'},
+                            {label:`${this.db.tasks.filter(t=>t.priority==='Critical'&&t.status!=='Done').length} Critical tasks`, mod:'tasks', c:'text-orange-400'}
+                        ].map(a=>`<button onclick="NexusApp.switchModule('${a.mod}')" class="w-full flex items-center justify-between p-3 rounded-xl bg-white/[0.02] hover:border-white/10 border border-transparent hover:bg-white/[0.04] transition-all mb-2">
+                            <span class="text-xs ${a.c} font-medium">${a.label}</span>
+                            <i data-lucide="chevron-right" class="w-3 h-3 text-gray-600"></i>
+                        </button>`).join('')}
+                    </div>
+                </div>
+            </div>`;
+        this.initChart();
+    },
+
+    initChart() {
+        const canvas = document.getElementById('mainChart');
+        if (!canvas) return;
+        new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+                datasets: [{label:'Present',data:[5,6,5,6,5,2,0],backgroundColor:'rgba(139,92,246,0.6)',borderRadius:6},{label:'Leave',data:[1,0,1,0,1,0,0],backgroundColor:'rgba(234,179,8,0.4)',borderRadius:6}]
+            },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#6b7280',font:{size:10,weight:'700'},boxWidth:10}}}, scales:{y:{display:false},x:{grid:{display:false},ticks:{color:'#4b5563',font:{size:10,weight:'700'}}}} }
+        });
+    },
+
+    // ─── ESS ──────────────────────────────────────────────────────────────────
+    ui_ess(container) {
+        const me = this.db.employees[0];
+        const myLeave = this.db.leaveBalances['EMP-101'];
+        const myTasks = this.db.tasks.filter(t=>t.assignee==='EMP-101' && t.status!=='Done');
+        const myPay = this.db.payroll.find(p=>p.empId==='EMP-101'&&p.status==='Paid');
+        container.innerHTML = `
+            <div class="flex items-center gap-6 mb-8 p-6 glass rounded-[2rem] border-white/5">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center font-black text-white text-xl shadow-xl shadow-brand-500/30">AS</div>
+                <div class="flex-1">
+                    <h2 class="text-xl font-black text-white">${me.name}</h2>
+                    <p class="text-sm text-gray-400">${me.role} · ${me.dept}</p>
+                    <div class="flex gap-3 mt-2 flex-wrap">
+                        <span class="chip bg-brand-500/10 text-brand-400">${me.location}</span>
+                        <span class="chip bg-green-500/10 text-green-400">${me.status}</span>
+                        <span class="chip bg-white/5 text-gray-400">DOJ: ${me.doj}</span>
+                    </div>
+                </div>
+                <button onclick="NexusApp.openEmpProfile('EMP-101')" class="hidden sm:flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-500/30 text-xs font-bold text-gray-400 hover:text-brand-400 transition-all">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Profile
+                </button>
+            </div>
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-8">
+                ${this.quickLink('calendar-days','Apply Leave','leave')}
+                ${this.quickLink('clock','Attendance','attendance')}
+                ${this.quickLink('indian-rupee','Payslip','payroll')}
+                ${this.quickLink('receipt','Expenses','expense')}
+                ${this.quickLink('file-check','Claims','claims')}
+                ${this.quickLink('landmark','Loans','loans')}
+                ${this.quickLink('folder-open','Documents','documents')}
+                ${this.quickLink('target','Performance','performance')}
+                ${this.quickLink('kanban-square','My Tasks','tasks')}
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Leave Balance -->
+                <div class="glass rounded-[2rem] p-6 border-white/5">
+                    <div class="flex justify-between items-center mb-5">
+                        <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Leave Balance</h3>
+                        <button onclick="NexusApp.switchModule('leave')" class="text-[10px] text-brand-400 font-bold hover:text-brand-300">Apply →</button>
+                    </div>
+                    ${[['Casual','casual',12],['Sick','sick',12],['Annual','annual',20],['Earned','earned',10]].map(([l,k,max])=>`
+                        <div class="mb-3">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-xs text-gray-400">${l}</span>
+                                <span class="text-xs font-bold text-white">${myLeave[k]}/${max}</span>
+                            </div>
+                            <div class="prog-bar"><div class="prog-fill bg-brand-500" style="width:${(myLeave[k]/max)*100}%"></div></div>
+                        </div>`).join('')}
+                    ${myLeave.lop > 0 ? `<div class="mt-3 p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400"><i data-lucide="alert-circle" class="w-3 h-3 inline mr-1"></i>LOP: ${myLeave.lop} day(s) this month</div>` : ''}
+                </div>
+                <!-- My Tasks -->
+                <div class="glass rounded-[2rem] p-6 border-white/5">
+                    <div class="flex justify-between items-center mb-5">
+                        <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">My Tasks (${myTasks.length})</h3>
+                        <button onclick="NexusApp.switchModule('tasks')" class="text-[10px] text-brand-400 font-bold hover:text-brand-300">View All →</button>
+                    </div>
+                    <div class="space-y-2">
+                        ${myTasks.map(t=>`<div onclick="NexusApp.openTaskDetail('${t.id}')" class="p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-brand-500/30 transition-all cursor-pointer">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-xs font-medium text-gray-300 leading-snug">${t.title}</p>
+                                ${this.badge(t.priority === 'Critical' ? 'Critical' : t.status)}
+                            </div>
+                            <p class="text-[10px] text-gray-600 mt-1">Due: ${t.due}</p>
+                        </div>`).join('')}
+                    </div>
+                </div>
+                <!-- Quick Pay + Loan -->
+                <div class="flex flex-col gap-4">
+                    ${myPay ? `<div class="glass rounded-[2rem] p-6 border-white/5">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Last Payslip</h3>
+                            <button onclick="NexusApp.downloadPayslip('${myPay.id}')" class="text-[10px] text-brand-400 font-bold hover:text-brand-300">Download →</button>
+                        </div>
+                        <p class="text-xs text-gray-500">${myPay.month}</p>
+                        <p class="text-3xl font-black text-white mt-1">₹${myPay.net.toLocaleString()}</p>
+                        <div class="flex gap-4 mt-3 text-[10px] text-gray-500">
+                            <span>Gross: ₹${myPay.gross.toLocaleString()}</span>
+                            <span>PF: ₹${myPay.pf.toLocaleString()}</span>
+                            <span>Tax: ₹${myPay.tax.toLocaleString()}</span>
+                        </div>
+                    </div>` : ''}
+                    <div class="glass rounded-[2rem] p-6 border-white/5">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Active Loan</h3>
+                            <button onclick="NexusApp.switchModule('loans')" class="text-[10px] text-brand-400 font-bold hover:text-brand-300">Details →</button>
+                        </div>
+                        ${(() => { const ln = this.db.loans.find(l=>l.empId==='EMP-101'&&l.status==='Active');
+                            return ln ? `<p class="text-xs text-gray-500">${ln.type}</p>
+                            <p class="text-2xl font-black text-white mt-1">₹${ln.outstanding.toLocaleString()} <span class="text-sm text-gray-500 font-normal">outstanding</span></p>
+                            <p class="text-[10px] text-yellow-400 mt-2">Next EMI: ${ln.nextEMI} · ₹${ln.emi.toLocaleString()}</p>` : `<p class="text-xs text-gray-600">No active loans</p>`;
+                        })()}
+                    </div>
+                </div>
+            </div>`;
+    },
+
+    // ─── EMPLOYEE INFO SYSTEM ─────────────────────────────────────────────────
+    ui_eis(container) {
+        container.innerHTML = `
+            ${this.sectionHeader('Employee Directory', `${this.db.employees.length} employees across all locations`, 'Add Employee', "NexusApp.openNewEmpForm()")}
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                ${this.db.employees.map(e=>`
+                    <div onclick="NexusApp.openEmpProfile('${e.id}')" class="glass rounded-[2rem] p-6 border-white/5 hover:border-brand-500/30 transition-all cursor-pointer group shadow-xl">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/60 to-indigo-600/60 flex items-center justify-center font-black text-white shadow-lg">${e.name.split(' ').map(n=>n[0]).join('')}</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-white group-hover:text-brand-400 transition-colors">${e.name}</p>
+                                <p class="text-xs text-gray-500">${e.role}</p>
+                            </div>
+                            ${this.badge(e.status)}
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[10px]">
+                            <div class="bg-white/[0.02] rounded-xl p-2"><p class="text-gray-600">Department</p><p class="text-gray-300 font-medium mt-0.5">${e.dept}</p></div>
+                            <div class="bg-white/[0.02] rounded-xl p-2"><p class="text-gray-600">Location</p><p class="text-gray-300 font-medium mt-0.5">${e.location}</p></div>
+                            <div class="bg-white/[0.02] rounded-xl p-2"><p class="text-gray-600">DOJ</p><p class="text-gray-300 font-medium mt-0.5">${e.doj}</p></div>
+                            <div class="bg-white/[0.02] rounded-xl p-2"><p class="text-gray-600">Manager</p><p class="text-gray-300 font-medium mt-0.5">${e.manager}</p></div>
+                        </div>
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="event.stopPropagation();NexusApp.switchModule('attendance')" class="flex-1 text-[10px] py-2 rounded-xl bg-white/5 border border-white/5 hover:border-green-500/30 text-gray-500 hover:text-green-400 transition-all font-bold">Attendance</button>
+                            <button onclick="event.stopPropagation();NexusApp.switchModule('performance')" class="flex-1 text-[10px] py-2 rounded-xl bg-white/5 border border-white/5 hover:border-brand-500/30 text-gray-500 hover:text-brand-400 transition-all font-bold">Performance</button>
+                            <button onclick="event.stopPropagation();NexusApp.switchModule('payroll')" class="flex-1 text-[10px] py-2 rounded-xl bg-white/5 border border-white/5 hover:border-yellow-500/30 text-gray-500 hover:text-yellow-400 transition-all font-bold">Payroll</button>
+                        </div>
+                    </div>`).join('')}
+            </div>`;
+    },
+
+    // ─── ATTENDANCE ───────────────────────────────────────────────────────────
+    ui_attendance(container) {
+        const present = this.db.attendance.filter(a=>a.status==='Present').length;
+        container.innerHTML = `
+            ${this.sectionHeader('Time & Attendance', `Today · ${new Date().toDateString()}`, '', '')}
+            <!-- Clock In Widget -->
+            <div class="glass rounded-[2rem] p-8 border-white/5 mb-6 flex flex-col sm:flex-row items-center gap-8 shadow-2xl">
+                <div class="text-center">
+                    <div id="live-clock" class="text-5xl font-black text-white tracking-tighter"></div>
+                    <p class="text-xs text-gray-500 mt-2 uppercase tracking-widest">${new Date().toDateString()}</p>
+                </div>
+                <div class="flex-1 w-full">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-2 h-2 rounded-full ${this.state.clockedIn ? 'bg-green-400 live-dot' : 'bg-red-500'}"></div>
+                        <span class="text-sm font-bold ${this.state.clockedIn ? 'text-green-400' : 'text-red-400'}">${this.state.clockedIn ? `Clocked In · ${this.state.clockInTime}` : 'Not Clocked In'}</span>
+                    </div>
+                    <button onclick="NexusApp.toggleClock()" class="w-full sm:w-auto px-10 py-4 rounded-2xl ${this.state.clockedIn ? 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30' : 'bg-green-500/20 border-green-500/30 text-green-400 hover:bg-green-500/30'} border text-sm font-black uppercase tracking-widest transition-all shadow-xl">
+                        ${this.state.clockedIn ? '⏹ Clock Out' : '▶ Clock In'}
+                    </button>
+                    ${this.state.clockedIn ? `<p class="text-xs text-gray-500 mt-2">Duration: <span id="elapsed" class="text-brand-400 font-bold">calculating...</span></p>` : ''}
+                </div>
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div><p class="text-2xl font-black text-white">${present}</p><p class="text-[10px] text-gray-500 uppercase tracking-wider">Present</p></div>
+                    <div><p class="text-2xl font-black text-yellow-400">${this.db.attendance.filter(a=>a.status==='Leave').length}</p><p class="text-[10px] text-gray-500 uppercase tracking-wider">On Leave</p></div>
+                    <div><p class="text-2xl font-black text-red-400">${this.db.attendance.filter(a=>a.status==='Absent').length}</p><p class="text-[10px] text-gray-500 uppercase tracking-wider">Absent</p></div>
+                </div>
+            </div>
+            <!-- Today's Log -->
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-xl">
+                <div class="flex justify-between items-center px-8 py-5 border-b border-white/5">
+                    <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Today's Attendance Log</h3>
+                    <button onclick="NexusApp.switchModule('leave')" class="text-[10px] text-brand-400 font-bold hover:text-brand-300">Apply Leave →</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 border-b border-white/5">
+                            <tr>${['Employee','Check In','Check Out','Hours','Location','Status'].map(c=>`<th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">${c}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            ${this.db.attendance.map(a=>`<tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="px-6 py-4"><span class="font-medium text-gray-200">${a.name}</span></td>
+                                <td class="px-6 py-4 font-mono text-sm ${a.checkIn ? 'text-green-400' : 'text-gray-600'}">${a.checkIn || '—'}</td>
+                                <td class="px-6 py-4 font-mono text-sm text-gray-400">${a.checkOut || '—'}</td>
+                                <td class="px-6 py-4 text-xs text-gray-400">${a.hours}</td>
+                                <td class="px-6 py-4 text-xs text-gray-500">${a.loc}</td>
+                                <td class="px-6 py-4">${this.badge(a.status)}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+        this.startLiveClock();
+        if (this.state.clockedIn) this.startElapsed();
+    },
+
+    toggleClock() {
+        this.state.clockedIn = !this.state.clockedIn;
+        if (this.state.clockedIn) {
+            this.state.clockInTime = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+            this.state.clockInTs = Date.now();
+            this.notify('Clocked In successfully!', 'success');
+        } else {
+            this.notify('Clocked Out. Have a great day!', 'success');
+        }
+        this.updateClockIndicator();
+        this.renderContent();
+    },
+
+    startLiveClock() {
+        const el = document.getElementById('live-clock');
+        if (!el) return;
+        const tick = () => { if(el) el.textContent = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}); };
+        tick();
+        this._clockInt = setInterval(tick, 1000);
+    },
+
+    startElapsed() {
+        const el = document.getElementById('elapsed');
+        if (!el || !this.state.clockInTs) return;
+        const tick = () => {
+            if (!el) return;
+            const secs = Math.floor((Date.now() - this.state.clockInTs)/1000);
+            const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+            el.textContent = `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+        };
+        tick();
+        setInterval(tick, 1000);
+    },
+
+    // ─── LEAVE ────────────────────────────────────────────────────────────────
+    ui_leave(container) {
+        const pending = this.db.leave.filter(l=>l.status==='Pending');
+        container.innerHTML = `
+            ${this.sectionHeader('Leave Management', 'Request, track and approve leaves', 'Apply Leave', "NexusApp.openLeaveForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Pending Approvals', pending.length, 'clock', 'text-yellow-400', '')}
+                ${this.stat('Approved This Month', this.db.leave.filter(l=>l.status==='Approved').length, 'check-circle', 'text-green-400', '')}
+                ${this.stat('Total Leave Days', this.db.leave.reduce((a,l)=>a+l.days,0), 'calendar', 'text-brand-400', '')}
+                ${this.stat('My Balance (Annual)', this.db.leaveBalances['EMP-101'].annual, 'user', 'text-indigo-400', '')}
+            </div>
+            ${pending.length ? `<div class="mb-6 p-5 glass rounded-[2rem] border border-yellow-500/20 bg-yellow-500/5">
+                <h3 class="text-xs font-black uppercase tracking-widest text-yellow-400 mb-4 flex items-center gap-2"><i data-lucide="alert-circle" class="w-3 h-3"></i> ${pending.length} Leaves Awaiting Approval</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    ${pending.map(l=>`<div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                        <div class="flex justify-between items-start mb-2"><p class="text-sm font-bold text-white">${l.emp}</p>${this.badge('Pending')}</div>
+                        <p class="text-xs text-gray-400">${l.type} · ${l.days} day(s) · ${l.from} to ${l.to}</p>
+                        <p class="text-xs text-gray-600 mt-1">${l.reason}</p>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="NexusApp.approveLeave('${l.id}')" class="flex-1 py-2 rounded-xl bg-green-500/20 border border-green-500/30 text-green-400 text-[11px] font-black hover:bg-green-500/30 transition-all">Approve</button>
+                            <button onclick="NexusApp.rejectLeave('${l.id}')" class="flex-1 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-[11px] font-black hover:bg-red-500/30 transition-all">Reject</button>
+                        </div>
+                    </div>`).join('')}
+                </div>
+            </div>` : ''}
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-xl">
+                <div class="px-8 py-5 border-b border-white/5"><h3 class="text-xs font-black uppercase tracking-widest text-gray-500">All Leave Requests</h3></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5"><tr>${['ID','Employee','Type','From','To','Days','Reason','Approver','Status'].map(c=>`<th class="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">${c}</th>`).join('')}</tr></thead>
+                        <tbody class="divide-y divide-white/5">
+                            ${this.db.leave.map(l=>`<tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="px-5 py-4 text-brand-400 font-bold text-xs">${l.id}</td>
+                                <td class="px-5 py-4 text-gray-200 font-medium">${l.emp}</td>
+                                <td class="px-5 py-4 text-gray-400 text-xs">${l.type}</td>
+                                <td class="px-5 py-4 text-gray-400 text-xs font-mono">${l.from}</td>
+                                <td class="px-5 py-4 text-gray-400 text-xs font-mono">${l.to}</td>
+                                <td class="px-5 py-4 text-white font-bold text-xs">${l.days}</td>
+                                <td class="px-5 py-4 text-gray-500 text-xs max-w-[150px] truncate">${l.reason}</td>
+                                <td class="px-5 py-4 text-gray-500 text-xs">${l.approver}</td>
+                                <td class="px-5 py-4">${this.badge(l.status)}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    },
+
+    approveLeave(id) {
+        const l = this.db.leave.find(x=>x.id===id);
+        if(l){ l.status='Approved'; this.notify(`Leave ${id} approved!`,'success'); this.renderContent(); }
+    },
+    rejectLeave(id) {
+        const l = this.db.leave.find(x=>x.id===id);
+        if(l){ l.status='Rejected'; this.notify(`Leave ${id} rejected.`,'info'); this.renderContent(); }
+    },
+
+    // ─── TASKS (KANBAN) ───────────────────────────────────────────────────────
+    ui_tasks(container) {
+        const cols = ['Todo','In Progress','Review','Done'];
+        const colColors = {Todo:'text-gray-400',  'In Progress':'text-brand-400', Review:'text-yellow-400', Done:'text-green-400'};
+        container.innerHTML = `
+            ${this.sectionHeader('Task Management', 'Kanban board — linked to all modules', 'New Task', "NexusApp.openNewTask()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${cols.map(c=>{const n=this.db.tasks.filter(t=>t.status===c).length;return this.stat(c,n,'kanban-square',colColors[c],'');}).join('')}
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                ${cols.map(col=>{
+                    const tasks = this.db.tasks.filter(t=>t.status===col);
+                    const priColors = {Critical:'border-red-500/40 bg-red-500/5',High:'border-yellow-500/30 bg-yellow-500/5',Medium:'border-brand-500/20',Low:'border-white/5'};
+                    return `<div class="kanban-col flex flex-col gap-3">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-2 h-2 rounded-full ${col==='Done'?'bg-green-400':col==='In Progress'?'bg-brand-400':col==='Review'?'bg-yellow-400':'bg-gray-500'}"></div>
+                            <h3 class="text-xs font-black uppercase tracking-widest ${colColors[col]}">${col}</h3>
+                            <span class="ml-auto text-[10px] text-gray-600 font-bold">${tasks.length}</span>
+                        </div>
+                        ${tasks.map(t=>`<div onclick="NexusApp.openTaskDetail('${t.id}')" class="glass rounded-2xl p-4 border ${priColors[t.priority]||'border-white/5'} hover:border-brand-500/40 transition-all cursor-pointer group">
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <p class="text-xs font-medium text-gray-300 leading-snug group-hover:text-white transition-colors">${t.title}</p>
+                            </div>
+                            <div class="flex items-center justify-between mt-3">
+                                <span class="chip bg-white/5 text-gray-500 text-[9px]">${t.priority}</span>
+                                <div class="flex items-center gap-1">
+                                    <i data-lucide="link" class="w-3 h-3 text-gray-700"></i>
+                                    <span class="text-[9px] text-gray-700">${t.module}</span>
+                                </div>
+                            </div>
+                            <p class="text-[9px] text-gray-600 mt-2">Due: ${t.due}</p>
+                        </div>`).join('')}
+                    </div>`;
+                }).join('')}
+            </div>`;
+    },
+
+    // ─── PERFORMANCE ──────────────────────────────────────────────────────────
+    ui_performance(container) {
+        container.innerHTML = `
+            ${this.sectionHeader('Performance Management', 'Q1 2026 Appraisal Cycle', 'New Review', "NexusApp.openModal('Start new performance review?')")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Avg KPI Score', Math.round(this.db.performance.reduce((a,p)=>a+p.kpiScore,0)/this.db.performance.length)+'%', 'target', 'text-brand-400', '')}
+                ${this.stat('Reviews Done', this.db.performance.filter(p=>p.status==='Reviewed').length, 'check-circle', 'text-green-400', '')}
+                ${this.stat('Pending Reviews', this.db.performance.filter(p=>p.status!=='Reviewed').length, 'clock', 'text-yellow-400', '')}
+                ${this.stat('Needs Improvement', this.db.performance.filter(p=>p.rating==='Needs Improvement').length, 'alert-triangle', 'text-red-400', 'recruitment')}
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                ${this.db.performance.map(p=>{
+                    const emp = this.db.employees.find(e=>e.id===p.empId);
+                    const scoreColor = p.kpiScore>=85?'text-green-400':p.kpiScore>=70?'text-brand-400':'text-orange-400';
+                    const fillColor = p.kpiScore>=85?'bg-green-400':p.kpiScore>=70?'bg-brand-500':'bg-orange-400';
+                    return `<div onclick="NexusApp.openPerfDetail('${p.id}')" class="glass rounded-[2rem] p-6 border-white/5 hover:border-brand-500/30 transition-all cursor-pointer group">
+                        <div class="flex items-center gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/40 to-indigo-600/40 flex items-center justify-center font-black text-white">${p.emp.split(' ').map(n=>n[0]).join('')}</div>
+                            <div class="flex-1">
+                                <p class="text-sm font-bold text-white group-hover:text-brand-400 transition-colors">${p.emp}</p>
+                                <p class="text-xs text-gray-500">${emp?emp.role:''} · ${p.cycle}</p>
+                            </div>
+                            ${this.badge(p.status)}
+                        </div>
+                        <div class="mb-4">
+                            <div class="flex justify-between mb-2"><span class="text-xs text-gray-500">KPI Score</span><span class="text-sm font-black ${scoreColor}">${p.kpiScore}%</span></div>
+                            <div class="prog-bar"><div class="prog-fill ${fillColor}" style="width:${p.kpiScore}%"></div></div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-[10px] text-gray-600">Goals Achieved</p>
+                                <p class="text-sm font-bold text-white">${p.goalsAchieved}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-gray-600">Rating</p>
+                                <p class="text-xs font-bold ${scoreColor}">${p.rating}</p>
+                            </div>
+                        </div>
+                        ${p.rating==='Needs Improvement'?`<div onclick="event.stopPropagation();NexusApp.switchModule('recruitment')" class="mt-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-[10px] text-orange-400 hover:bg-orange-500/15 transition-all cursor-pointer flex items-center gap-2">
+                            <i data-lucide="alert-circle" class="w-3 h-3"></i> Performance gap — consider backfill hiring
+                        </div>`:''}
+                    </div>`;
+                }).join('')}
+            </div>`;
+    },
+
+    // ─── GRIEVANCE ────────────────────────────────────────────────────────────
+    ui_grievance(container) {
+        container.innerHTML = `
+            ${this.sectionHeader('Grievance Management', 'Confidential HR case tracking', 'File Grievance', "NexusApp.openGrievanceForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Total Cases', this.db.grievances.length, 'message-square-warning', 'text-brand-400', '')}
+                ${this.stat('Open', this.db.grievances.filter(g=>g.status==='Open').length, 'alert-circle', 'text-red-400', '')}
+                ${this.stat('In Progress', this.db.grievances.filter(g=>g.status==='In Progress').length, 'loader', 'text-yellow-400', '')}
+                ${this.stat('Critical Priority', this.db.grievances.filter(g=>g.priority==='Critical').length, 'zap', 'text-red-400', '')}
+            </div>
+            <div class="flex flex-col gap-4">
+                ${this.db.grievances.map(g=>`<div onclick="NexusApp.openGrievanceDetail('${g.id}')" class="glass rounded-[2rem] p-6 border border-white/5 hover:border-brand-500/30 transition-all cursor-pointer group ${g.priority==='Critical'?'border-l-2 border-l-red-500':g.priority==='High'?'border-l-2 border-l-yellow-500':''}">
+                    <div class="flex items-start justify-between gap-4 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+                                <i data-lucide="${g.anonymous?'eye-off':'user'}" class="w-4 h-4 text-gray-500"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-white group-hover:text-brand-400 transition-colors">${g.subject}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">${g.id} · Filed by: ${g.anonymous?'<span class="text-gray-600">Anonymous</span>':g.emp} · ${g.date}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            ${this.badge(g.priority)}
+                            ${this.badge(g.status)}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex gap-2">
+                            <span class="chip bg-white/5 text-gray-500 text-[10px]">${g.category}</span>
+                            <span class="chip bg-white/5 text-gray-500 text-[10px]">Assigned: ${g.assignedTo}</span>
+                        </div>
+                        ${g.status==='Open'?`<button onclick="event.stopPropagation();NexusApp.escalateGrievance('${g.id}')" class="text-[10px] px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 font-bold transition-all">Escalate</button>`:''}
+                    </div>
+                </div>`).join('')}
+            </div>`;
+    },
+
+    escalateGrievance(id) { this.notify(`Grievance ${id} escalated to senior HR`, 'info'); },
+
+    // ─── RECRUITMENT ──────────────────────────────────────────────────────────
+    ui_recruitment(container) {
+        container.innerHTML = `
+            ${this.sectionHeader('Recruitment Management', 'Open positions and candidate pipeline', 'Post Job', "NexusApp.openJobPostForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Open Positions', this.db.recruitment.filter(r=>r.status==='Active').length*1, 'briefcase', 'text-brand-400', '')}
+                ${this.stat('Total Applicants', this.db.recruitment.reduce((a,r)=>a+r.applicants,0), 'users', 'text-teal-400', '')}
+                ${this.stat('Interviews This Week', 3, 'video', 'text-yellow-400', '')}
+                ${this.stat('Offers Extended', 1, 'file-check', 'text-green-400', '')}
+            </div>
+            <!-- Job Openings -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+                ${this.db.recruitment.map(j=>`<div onclick="NexusApp.openJobDetail('${j.id}')" class="glass rounded-[2rem] p-6 border-white/5 hover:border-brand-500/30 transition-all cursor-pointer group">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <p class="text-sm font-bold text-white group-hover:text-brand-400 transition-colors">${j.role}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${j.dept} · ${j.location}</p>
+                        </div>
+                        ${this.badge(j.status)}
+                    </div>
+                    <div class="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                        <span><span class="text-white font-bold">${j.openings}</span> opening(s)</span>
+                        <span><span class="text-white font-bold">${j.applicants}</span> applicants</span>
+                    </div>
+                    <div class="prog-bar mb-2"><div class="prog-fill bg-brand-500" style="width:${Math.min(j.applicants*5,100)}%"></div></div>
+                    <p class="text-[10px] text-gray-600">Stage: <span class="text-brand-400 font-bold">${j.stage}</span></p>
+                    <p class="text-[10px] text-gray-600 mt-1">Posted: ${j.postedDate}</p>
+                </div>`).join('')}
+            </div>
+            <!-- Candidate Pipeline -->
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-xl">
+                <div class="flex justify-between items-center px-8 py-5 border-b border-white/5">
+                    <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Active Candidates</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5"><tr>${['Candidate','Role','Experience','Stage','Score','Action'].map(c=>`<th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">${c}</th>`).join('')}</tr></thead>
+                        <tbody class="divide-y divide-white/5">
+                            ${this.db.candidates.map(c=>`<tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="px-6 py-4 font-medium text-gray-200">${c.name}</td>
+                                <td class="px-6 py-4 text-xs text-gray-400">${c.role}</td>
+                                <td class="px-6 py-4 text-xs text-gray-400">${c.exp}</td>
+                                <td class="px-6 py-4"><span class="chip bg-brand-500/10 text-brand-400 text-[10px]">${c.stage}</span></td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-black text-white">${c.score}</span>
+                                        <div class="prog-bar w-16"><div class="prog-fill ${c.score>=85?'bg-green-400':'bg-brand-500'}" style="width:${c.score}%"></div></div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <button onclick="NexusApp.convertToEmployee('${c.id}')" class="text-[10px] px-4 py-2 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 font-bold transition-all">+ Hire</button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    },
+
+    convertToEmployee(cndId) {
+        const c = this.db.candidates.find(x=>x.id===cndId);
+        if(c) this.notify(`${c.name} converted to Employee → Lifecycle initiated!`, 'success');
+        this.switchModule('lifecycle');
+    },
+
+    // ─── PAYROLL ──────────────────────────────────────────────────────────────
+    ui_payroll(container) {
+        const proc = this.db.payroll.filter(p=>p.status==='Processing');
+        const totalNet = proc.reduce((a,p)=>a+p.net,0);
+        container.innerHTML = `
+            ${this.sectionHeader('Payroll Management', 'April 2026 · Processing', 'Run Payroll', "NexusApp.runPayroll()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Processing', proc.length, 'loader', 'text-brand-400', '')}
+                ${this.stat('Net Payable (Apr)', '₹'+totalNet.toLocaleString(), 'indian-rupee', 'text-green-400', '')}
+                ${this.stat('Paid (Mar)', this.db.payroll.filter(p=>p.status==='Paid').length, 'check-circle', 'text-teal-400', '')}
+                ${this.stat('LOP Deductions', this.db.payroll.filter(p=>p.lop>0).length+' emp(s)', 'alert-circle', 'text-orange-400', 'attendance')}
+            </div>
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-xl mb-6">
+                <div class="px-8 py-5 border-b border-white/5 flex items-center justify-between">
+                    <h3 class="text-xs font-black uppercase tracking-widest text-gray-500">April 2026 Payroll Register</h3>
+                    <span class="chip bg-yellow-500/10 text-yellow-400 text-[10px]">Processing — Not Yet Released</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5"><tr>${['Employee','Basic','HRA','TA','LOP','PF','Tax','Gross','Net Pay','Action'].map(c=>`<th class="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">${c}</th>`).join('')}</tr></thead>
+                        <tbody class="divide-y divide-white/5">
+                            ${proc.map(p=>`<tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="px-5 py-4 font-medium text-gray-200">${p.emp}</td>
+                                ${[p.basic,p.hra,p.ta].map(v=>`<td class="px-5 py-4 text-xs text-gray-400 font-mono">₹${v.toLocaleString()}</td>`).join('')}
+                                <td class="px-5 py-4 text-xs ${p.lop>0?'text-red-400':'text-gray-600'} font-mono">${p.lop>0?'-₹'+p.lop.toLocaleString():'—'}</td>
+                                ${[p.pf,p.tax].map(v=>`<td class="px-5 py-4 text-xs text-red-400/70 font-mono">-₹${v.toLocaleString()}</td>`).join('')}
+                                <td class="px-5 py-4 text-xs text-gray-300 font-mono font-bold">₹${p.gross.toLocaleString()}</td>
+                                <td class="px-5 py-4 text-green-400 font-black font-mono">₹${p.net.toLocaleString()}</td>
+                                <td class="px-5 py-4">
+                                    <button onclick="NexusApp.downloadPayslip('${p.id}')" class="text-[10px] px-3 py-2 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 hover:bg-brand-500/20 font-bold transition-all">Payslip</button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-5 glass rounded-2xl border border-brand-500/20 bg-brand-500/5 text-xs text-gray-400 flex items-center gap-3">
+                <i data-lucide="info" class="w-4 h-4 text-brand-400 shrink-0"></i>
+                <span>Loan EMI deductions (EMP-101: ₹8,500 · EMP-104: ₹6,500) will be auto-applied before final release. <button onclick="NexusApp.switchModule('loans')" class="text-brand-400 hover:text-brand-300 font-bold underline">View Loan Schedule →</button></span>
+            </div>`;
+    },
+
+    runPayroll() {
+        this.db.payroll.filter(p=>p.status==='Processing').forEach(p=>p.status='Paid');
+        this.notify('April 2026 Payroll released successfully!', 'success');
+        this.renderContent();
+    },
+
+    downloadPayslip(payId) {
+        const p = this.db.payroll.find(x=>x.id===payId);
+        if(!p) {
+            this.notify('Payslip not found!', 'error');
+            return;
+        }
+        
+        // Create HTML content for download (saved as .html file instead of .pdf)
+        const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payslip - ${p.emp} - ${p.month}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .payslip-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .payslip-title {
+            font-size: 16px;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .employee-details {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .details-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+        .label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        .value {
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .earnings-deductions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            padding: 30px;
+            background: white;
+        }
+        .section {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .section-title {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #8b5cf6;
+            border-bottom: 2px solid #8b5cf6;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .row:last-child {
+            border-bottom: none;
+        }
+        .total-row {
+            background: #f8f9fa;
+            font-weight: bold;
+            border-top: 2px solid #e0e0e0;
+        }
+        .net-pay {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            margin: 0 30px 30px 30px;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+        }
+        .net-pay-label {
+            font-size: 14px;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+        .net-pay-amount {
+            font-size: 42px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #999;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .net-pay {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="payslip-container">
+        <div class="header">
+            <div class="company-name">MCLARENS NEXUS ENTERPRISE '26</div>
+            <div class="payslip-title">SALARY PAYSLIP</div>
+        </div>
+        
+        <div class="employee-details">
+            <div class="details-grid">
+                <div class="details-item"><span class="label">Employee Name:</span><span class="value">${p.emp}</span></div>
+                <div class="details-item"><span class="label">Employee ID:</span><span class="value">${p.empId}</span></div>
+                <div class="details-item"><span class="label">Month:</span><span class="value">${p.month}</span></div>
+                <div class="details-item"><span class="label">Pay Date:</span><span class="value">${new Date().toLocaleDateString('en-IN')}</span></div>
+                <div class="details-item"><span class="label">Payment Mode:</span><span class="value">Bank Transfer</span></div>
+                <div class="details-item"><span class="label">Currency:</span><span class="value">INR (Indian Rupee)</span></div>
+            </div>
+        </div>
+        
+        <div class="earnings-deductions">
+            <div class="section">
+                <div class="section-title">📈 Earnings</div>
+                <div class="row"><span>Basic Salary</span><span>₹${p.basic.toLocaleString('en-IN')}</span></div>
+                <div class="row"><span>House Rent Allowance (HRA)</span><span>₹${p.hra.toLocaleString('en-IN')}</span></div>
+                <div class="row"><span>Transport Allowance</span><span>₹${p.ta.toLocaleString('en-IN')}</span></div>
+                <div class="row total-row"><span>Gross Earnings</span><span>₹${p.gross.toLocaleString('en-IN')}</span></div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">📉 Deductions</div>
+                <div class="row"><span>Provident Fund (PF)</span><span>₹${p.pf.toLocaleString('en-IN')}</span></div>
+                <div class="row"><span>Professional Tax</span><span>₹200</span></div>
+                <div class="row"><span>Income Tax (TDS)</span><span>₹${p.tax.toLocaleString('en-IN')}</span></div>
+                ${p.lop > 0 ? `<div class="row"><span>Loss of Pay (LOP)</span><span class="value" style="color:#dc2626;">-₹${p.lop.toLocaleString('en-IN')}</span></div>` : ''}
+                <div class="row total-row"><span>Total Deductions</span><span>₹${(p.pf + p.tax + (p.lop || 0) + 200).toLocaleString('en-IN')}</span></div>
+            </div>
+        </div>
+        
+        <div class="net-pay">
+            <div class="net-pay-label">NET TAKE-HOME PAY</div>
+            <div class="net-pay-amount">₹${p.net.toLocaleString('en-IN')}</div>
+            <div style="font-size: 12px; margin-top: 10px; opacity: 0.9;">(Amount in Indian Rupees)</div>
+        </div>
+        
+        <div class="footer">
+            <p>This is a computer-generated payslip and does not require a signature.</p>
+            <p>For any discrepancies, please contact HR department within 15 days.</p>
+            <p style="margin-top: 10px;">Generated on: ${new Date().toLocaleString('en-IN')}</p>
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        // Create blob and trigger download as HTML (which opens in browser)
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Payslip_${p.emp.replace(/ /g, '_')}_${p.month.replace(/ /g, '_')}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.notify(`Payslip for ${p.emp} downloaded! Open in any browser.`, 'success');
+    },
+
+    // ─── EXPENSE ──────────────────────────────────────────────────────────────
+    ui_expense(container) {
+        container.innerHTML = `
+            ${this.sectionHeader('Expense Management', 'Submit and track reimbursements', 'Submit Expense', "NexusApp.openExpenseForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Pending', this.db.expenses.filter(e=>e.status==='Pending').length, 'clock', 'text-yellow-400', '')}
+                ${this.stat('Approved', this.db.expenses.filter(e=>e.status==='Approved').length, 'check-circle', 'text-green-400', '')}
+                ${this.stat('Total Amount', '₹'+this.db.expenses.reduce((a,e)=>a+e.amount,0).toLocaleString(), 'indian-rupee', 'text-brand-400', '')}
+                ${this.stat('Rejected', this.db.expenses.filter(e=>e.status==='Rejected').length, 'x-circle', 'text-red-400', '')}
+            </div>
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-xl">
+                <div class="px-8 py-5 border-b border-white/5"><h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Expense Register</h3></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5"><tr>${['ID','Employee','Category','Description','Amount','Date','Claim','Status'].map(c=>`<th class="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">${c}</th>`).join('')}</tr></thead>
+                        <tbody class="divide-y divide-white/5">
+                            ${this.db.expenses.map(e=>`<tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="px-5 py-4 text-brand-400 font-bold text-xs">${e.id}</td>
+                                <td class="px-5 py-4 text-gray-200 font-medium">${e.emp}</td>
+                                <td class="px-5 py-4"><span class="chip bg-white/5 text-gray-400 text-[10px]">${e.category}</span></td>
+                                <td class="px-5 py-4 text-gray-400 text-xs max-w-[150px] truncate">${e.desc}</td>
+                                <td class="px-5 py-4 font-bold text-white font-mono">₹${e.amount.toLocaleString()}</td>
+                                <td class="px-5 py-4 text-gray-500 text-xs font-mono">${e.date}</td>
+                                <td class="px-5 py-4">${e.claimId?`<button onclick="NexusApp.switchModule('claims')" class="text-[10px] text-teal-400 hover:text-teal-300 font-bold">${e.claimId}</button>`:'<span class="text-gray-600 text-xs">—</span>'}</td>
+                                <td class="px-5 py-4">${this.badge(e.status)}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    },
+
+    // ─── LOANS ────────────────────────────────────────────────────────────────
+    ui_loans(container) {
+        const active = this.db.loans.filter(l=>l.status==='Active');
+        container.innerHTML = `
+            ${this.sectionHeader('Loan Management', 'Employee loans and EMI tracking', 'Apply Loan', "NexusApp.openLoanForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Active Loans', active.length, 'landmark', 'text-brand-400', '')}
+                ${this.stat('Total Outstanding', '₹'+active.reduce((a,l)=>a+l.outstanding,0).toLocaleString(), 'indian-rupee', 'text-orange-400', '')}
+                ${this.stat('Monthly EMI Outflow', '₹'+active.reduce((a,l)=>a+l.emi,0).toLocaleString(), 'calendar', 'text-yellow-400', 'payroll')}
+                ${this.stat('Closed Loans', this.db.loans.filter(l=>l.status==='Closed').length, 'check-circle', 'text-green-400', '')}
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                ${this.db.loans.map(l=>{
+                    const pct = l.principal > 0 ? Math.round(((l.principal-l.outstanding)/l.principal)*100) : 100;
+                    return `<div class="glass rounded-[2rem] p-6 border-white/5 hover:border-brand-500/30 transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <p class="text-sm font-bold text-white">${l.emp}</p>
+                                <p class="text-xs text-gray-500">${l.id} · ${l.type}</p>
+                            </div>
+                            ${this.badge(l.status)}
+                        </div>
+                        <div class="grid grid-cols-3 gap-3 mb-4 text-center">
+                            <div class="bg-white/[0.02] rounded-xl p-3"><p class="text-[10px] text-gray-600">Principal</p><p class="text-sm font-black text-gray-300">₹${l.principal.toLocaleString()}</p></div>
+                            <div class="bg-white/[0.02] rounded-xl p-3"><p class="text-[10px] text-gray-600">Outstanding</p><p class="text-sm font-black text-orange-400">₹${l.outstanding.toLocaleString()}</p></div>
+                            <div class="bg-white/[0.02] rounded-xl p-3"><p class="text-[10px] text-gray-600">Monthly EMI</p><p class="text-sm font-black text-brand-400">${l.emi>0?'₹'+l.emi.toLocaleString():'Closed'}</p></div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="flex justify-between mb-1 text-[10px]"><span class="text-gray-600">Repayment Progress</span><span class="text-green-400 font-bold">${pct}%</span></div>
+                            <div class="prog-bar"><div class="prog-fill bg-green-400" style="width:${pct}%"></div></div>
+                        </div>
+                        ${l.status==='Active'?`<div class="flex items-center justify-between mt-4 text-xs text-gray-500">
+                            <span>Tenure: ${l.tenure}</span>
+                            <span>Next EMI: <span class="text-yellow-400 font-bold">${l.nextEMI}</span></span>
+                            <button onclick="NexusApp.switchModule('payroll')" class="text-brand-400 hover:text-brand-300 font-bold text-[10px]">View in Payroll →</button>
+                        </div>`:'<p class="text-xs text-green-400 mt-3 font-bold">✓ Fully Repaid</p>'}
+                    </div>`;
+                }).join('')}
+            </div>`;
+    },
+
+    // ─── CLAIMS ───────────────────────────────────────────────────────────────
+    ui_claims(container) {
+        container.innerHTML = `
+            ${this.sectionHeader('Claim Management', 'Reimbursements · Medical · Travel', 'New Claim', "NexusApp.openClaimForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Total Claims', this.db.claims.length, 'file-check', 'text-brand-400', '')}
+                ${this.stat('Approved', this.db.claims.filter(c=>c.status==='Approved').length, 'check-circle', 'text-green-400', '')}
+                ${this.stat('Pending / In Review', this.db.claims.filter(c=>c.status==='Pending'||c.status==='In Review').length, 'clock', 'text-yellow-400', '')}
+                ${this.stat('Total Amount', '₹'+this.db.claims.reduce((a,c)=>a+c.amount,0).toLocaleString(), 'indian-rupee', 'text-teal-400', '')}
+            </div>
+            <div class="flex flex-col gap-4">
+                ${this.db.claims.map(c=>{
+                    const exps = this.db.expenses.filter(e=>c.expenseIds.includes(e.id));
+                    return `<div onclick="NexusApp.openClaimDetail('${c.id}')" class="glass rounded-[2rem] p-6 border-white/5 hover:border-brand-500/30 transition-all cursor-pointer group">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <div class="flex items-center gap-3 mb-1">
+                                    <span class="text-brand-400 font-bold text-xs">${c.id}</span>
+                                    <span class="chip bg-white/5 text-gray-500 text-[10px]">${c.type}</span>
+                                </div>
+                                <p class="text-sm font-bold text-white group-hover:text-brand-400 transition-colors">${c.emp}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">Submitted: ${c.submittedOn}${c.settledOn?' · Settled: '+c.settledOn:''}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-black text-white">₹${c.amount.toLocaleString()}</p>
+                                ${this.badge(c.status)}
+                            </div>
+                        </div>
+                        ${exps.length?`<div class="flex gap-2 flex-wrap">
+                            ${exps.map(e=>`<button onclick="event.stopPropagation();NexusApp.switchModule('expense')" class="chip bg-white/5 text-gray-500 text-[10px] hover:text-brand-400 transition-colors">${e.id}: ₹${e.amount.toLocaleString()}</button>`).join('')}
+                        </div>`:''}
+                    </div>`;
+                }).join('')}
+            </div>`;
+    },
+
+    // ─── DOCUMENTS ────────────────────────────────────────────────────────────
+    ui_documents(container) {
+        const categories = [...new Set(this.db.documents.map(d=>d.type))];
+        container.innerHTML = `
+            ${this.sectionHeader('Document Management', 'Employee records · Contracts · Compliance', 'Upload Document', "NexusApp.openDocUpload()")}
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                ${this.stat('Total Documents', this.db.documents.length, 'folder-open', 'text-brand-400', '')}
+                ${this.stat('Verified', this.db.documents.filter(d=>d.status==='Verified').length, 'shield-check', 'text-green-400', '')}
+                ${this.stat('Pending Verification', this.db.documents.filter(d=>d.status==='Pending Verification').length, 'clock', 'text-yellow-400', '')}
+                ${this.stat('Document Types', categories.length, 'tag', 'text-teal-400', '')}
+            </div>
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-xl">
+                <div class="px-8 py-5 border-b border-white/5"><h3 class="text-xs font-black uppercase tracking-widest text-gray-500">Document Repository</h3></div>
+                <div class="divide-y divide-white/5">
+                    ${this.db.documents.map(d=>`<div class="flex items-center gap-4 px-8 py-5 hover:bg-white/[0.02] transition-all group">
+                        <div class="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0">
+                            <i data-lucide="file-text" class="w-4 h-4 text-brand-400"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-200 group-hover:text-brand-400 transition-colors">${d.filename}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${d.type} · ${d.emp} · ${d.uploadedOn} · ${d.size}</p>
+                            ${d.expiry?`<p class="text-[10px] text-yellow-400 mt-0.5">Expires: ${d.expiry}</p>`:''}
+                        </div>
+                        <div class="flex items-center gap-3">
+                            ${this.badge(d.status)}
+                            <button onclick="NexusApp.downloadDocument('${d.id}')" class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-gray-600 hover:text-brand-400 hover:bg-brand-500/10 transition-all">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>`).join('')}
+                </div>
+            </div>`;
+    },
+
+    downloadDocument(docId) {
+        const doc = this.db.documents.find(x=>x.id===docId);
+        if(!doc) {
+            this.notify('Document not found!', 'error');
+            return;
+        }
+        
+        // Create HTML content for document download
+        const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${doc.filename}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .document-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .doc-title {
+            font-size: 16px;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .doc-details {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .details-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+        .label {
+            font-weight: 600;
+            color: #555;
+        }
+        .doc-content {
+            padding: 30px;
+            line-height: 1.8;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #999;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-verified {
+            background: #10b98120;
+            color: #10b981;
+        }
+        .status-pending {
+            background: #f59e0b20;
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="document-container">
+        <div class="header">
+            <div class="company-name">MCLARENS NEXUS ENTERPRISE '26</div>
+            <div class="doc-title">OFFICIAL DOCUMENT</div>
+        </div>
+        
+        <div class="doc-details">
+            <div class="details-item"><span class="label">Document ID:</span><span>${doc.id}</span></div>
+            <div class="details-item"><span class="label">Document Type:</span><span>${doc.type}</span></div>
+            <div class="details-item"><span class="label">Employee:</span><span>${doc.emp}</span></div>
+            <div class="details-item"><span class="label">Filename:</span><span>${doc.filename}</span></div>
+            <div class="details-item"><span class="label">Uploaded On:</span><span>${doc.uploadedOn}</span></div>
+            <div class="details-item"><span class="label">File Size:</span><span>${doc.size}</span></div>
+            <div class="details-item"><span class="label">Status:</span><span><span class="status-badge ${doc.status === 'Verified' ? 'status-verified' : 'status-pending'}">${doc.status}</span></span></div>
+            ${doc.expiry ? `<div class="details-item"><span class="label">Expiry Date:</span><span>${doc.expiry}</span></div>` : ''}
+        </div>
+        
+        <div class="doc-content">
+            <h3 style="color: #8b5cf6; margin-bottom: 15px;">Document Information</h3>
+            <p>This document (${doc.filename}) is an official record maintained by Mclarens Nexus Enterprise HRMS.</p>
+            <p style="margin-top: 15px;">Document Type: ${doc.type}</p>
+            <p>Employee: ${doc.emp}</p>
+            <p>Verification Status: ${doc.status}</p>
+            <p style="margin-top: 20px;">This is a system-generated copy of the original document stored in the HRMS repository.</p>
+            <p style="margin-top: 15px;">For any discrepancies, please contact the HR department immediately.</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an official document from Mclarens Nexus Enterprise HRMS.</p>
+            <p>Generated on: ${new Date().toLocaleString('en-IN')}</p>
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.filename.replace('.pdf', '.html');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.notify(`Document ${doc.filename} downloaded! Open in any browser.`, 'success');
+    },
+
+    // ─── LIFECYCLE ────────────────────────────────────────────────────────────
+    ui_lifecycle(container) {
+        const stages = ['Offered','Onboarding','Probation','Active','Senior','Exit'];
+        container.innerHTML = `
+            ${this.sectionHeader('Employee Lifecycle', 'From hire to retire — complete journey', 'Initiate Offboarding', "NexusApp.openOffboardingForm()")}
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                ${this.stat('Onboarding', 1, 'user-plus', 'text-blue-400', '')}
+                ${this.stat('Active Employees', this.db.employees.filter(e=>e.status==='Active').length, 'users', 'text-green-400', 'eis')}
+                ${this.stat('On Probation', this.db.employees.filter(e=>e.status==='Probation').length, 'clock', 'text-yellow-400', '')}
+            </div>
+            <!-- Stage funnel -->
+            <div class="glass rounded-[2rem] p-8 border-white/5 mb-6 shadow-xl">
+                <h3 class="text-xs font-black uppercase tracking-widest text-gray-500 mb-6">Lifecycle Stage Overview</h3>
+                <div class="flex items-center gap-2 overflow-x-auto pb-2">
+                    ${stages.map((s,i)=>`<div class="flex items-center gap-2 shrink-0">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="w-10 h-10 rounded-xl ${i===2?'bg-yellow-500/20 border-yellow-500/40':i===3?'bg-green-500/20 border-green-500/40':'bg-white/5 border-white/10'} border flex items-center justify-center text-[10px] font-black text-gray-400">
+                                ${this.db.employees.filter(e=>i===2?e.status==='Probation':i===3?e.status==='Active':false).length || (i===1?1:0)}
+                            </div>
+                            <span class="text-[9px] font-bold text-gray-600 uppercase tracking-wide">${s}</span>
+                        </div>
+                        ${i<stages.length-1?'<div class="w-8 h-px bg-white/10 mb-4"></div>':''}
+                    </div>`).join('')}
+                </div>
+            </div>
+            <!-- Employee Journey Cards -->
+            <div class="flex flex-col gap-4">
+                ${this.db.lifecycle.map(l=>{
+                    const emp = this.db.employees.find(e=>e.id===l.empId);
+                    const stageColor = l.stage==='Active'?'text-green-400':l.stage==='Probation'?'text-yellow-400':'text-red-400';
+                    return `<div class="glass rounded-[2rem] p-6 border-white/5 hover:border-brand-500/30 transition-all">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/40 to-indigo-600/40 flex items-center justify-center font-black text-white">${l.name.split(' ').map(n=>n[0]).join('')}</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-1">
+                                    <p class="text-sm font-bold text-white">${l.name}</p>
+                                    <span class="chip bg-white/5 ${stageColor} text-[10px]">${l.stage}</span>
+                                </div>
+                                <p class="text-xs text-gray-500">${emp?emp.role+' · '+emp.dept:''}</p>
+                            </div>
+                            ${!l.confirmed?`<button onclick="NexusApp.confirmEmployee('${l.empId}')" class="text-[11px] px-4 py-2 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 font-bold transition-all whitespace-nowrap">Confirm Now</button>`:''}
+                        </div>
+                        <!-- Journey timeline -->
+                        <div class="flex items-center gap-3 overflow-x-auto pb-2">
+                            ${l.events.map((ev,i)=>`<div class="flex items-center gap-2 shrink-0">
+                                <div class="flex flex-col items-center gap-1">
+                                    <div class="w-2 h-2 rounded-full ${i===l.events.length-1?'bg-brand-400':'bg-gray-600'}"></div>
+                                    <span class="text-[9px] text-gray-500 whitespace-nowrap">${ev}</span>
+                                </div>
+                                ${i<l.events.length-1?'<div class="w-8 h-px bg-white/10 mb-3"></div>':''}
+                            </div>`).join('')}
+                        </div>
+                        <div class="flex gap-3 mt-4 flex-wrap">
+                            <button onclick="NexusApp.switchModule('eis')" class="text-[10px] px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-brand-500/30 text-gray-500 hover:text-brand-400 transition-all font-bold">Profile</button>
+                            <button onclick="NexusApp.switchModule('documents')" class="text-[10px] px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-brand-500/30 text-gray-500 hover:text-brand-400 transition-all font-bold">Documents</button>
+                            <button onclick="NexusApp.switchModule('performance')" class="text-[10px] px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-brand-500/30 text-gray-500 hover:text-brand-400 transition-all font-bold">Performance</button>
+                            <button onclick="NexusApp.switchModule('payroll')" class="text-[10px] px-3 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-brand-500/30 text-gray-500 hover:text-brand-400 transition-all font-bold">Payroll</button>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+    },
+
+    confirmEmployee(empId) {
+        const lc = this.db.lifecycle.find(l=>l.empId===empId);
+        const emp = this.db.employees.find(e=>e.id===empId);
+        if(lc) { lc.confirmed=true; lc.stage='Active'; lc.events.push('Confirmed & Regularized'); }
+        if(emp) emp.status='Active';
+        this.notify(`${emp?emp.name:'Employee'} confirmed and regularized!`, 'success');
+        this.renderContent();
+    },
+
+    // ─── TABLE VIEW (Generic) ─────────────────────────────────────────────────
+    ui_tableView(container, modKey) {
+        let data = this.db[modKey];
+        if (this.state.filters.search) data = data.filter(row => Object.values(row).some(val => String(val).toLowerCase().includes(this.state.filters.search)));
+        const cols = Object.keys(this.db[modKey][0]);
+        container.innerHTML = `
+            ${this.sectionHeader(modKey+' Ledger', 'Enterprise Resource Recordset', 'New Entry', `NexusApp.openWizard('${modKey}')`)}
+            <div class="glass rounded-[2rem] border-white/5 overflow-hidden shadow-2xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 border-b border-white/5"><tr>${cols.map(c=>`<th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-500">${c}</th>`).join('')}<th class="px-8 py-5 text-right text-[10px] font-black uppercase tracking-widest text-gray-500">Actions</th></tr></thead>
+                        <tbody class="divide-y divide-white/5">
+                            ${data.length ? data.map(row=>`<tr class="hover:bg-white/[0.02] transition-colors">${cols.map(c=>`<td class="px-8 py-5 text-gray-300 font-medium text-sm">${row[c]}</td>`).join('')}<td class="px-8 py-5 text-right"><button onclick="NexusApp.openDetail('${modKey}','${row.id||row.name}')" class="w-10 h-10 rounded-xl bg-dark-700/50 border border-white/5 hover:border-brand-500/50 text-gray-500 hover:text-brand-400 transition-all inline-flex items-center justify-center"><i data-lucide="arrow-up-right" class="w-4 h-4"></i></button></td></tr>`).join('') : `<tr><td colspan="100%" class="px-8 py-20 text-center text-gray-600 font-medium">No records found</td>`}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+    },
+
+    ui_placeholder(container, name) {
+        container.innerHTML = `<div class="h-[60vh] flex flex-col items-center justify-center text-center"><div class="w-24 h-24 bg-dark-800 border border-white/5 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl"><i data-lucide="cpu" class="w-10 h-10 text-gray-600"></i></div><h3 class="text-2xl font-black uppercase tracking-tighter text-white">${name} Virtualizing...</h3><p class="text-gray-500 mt-2 max-w-sm text-sm">Module provisioning in progress.</p><button onclick="NexusApp.switchModule('dashboard')" class="mt-10 px-10 py-3 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all">Back to HQ</button></div>`;
+    },
+
+    // ─── MODALS ───────────────────────────────────────────────────────────────
+    openModal(title, body, actions) {
+        const overlay = document.getElementById('modalOverlay');
+        document.getElementById('modalContent').innerHTML = `
+            <h2 class="text-xl font-black tracking-tight text-white mb-6">${title}</h2>
+            ${body||'<p class="text-gray-500 text-sm">This action will be committed to the enterprise ledger.</p>'}
+            <div class="flex gap-4 mt-8">
+                ${actions||`<button onclick="NexusApp.notify('Action committed!','success');NexusApp.closeModal()" class="flex-1 bg-brand-500 text-white font-black uppercase tracking-widest text-xs py-4 rounded-2xl">Confirm</button>
+                <button onclick="NexusApp.closeModal()" class="flex-1 bg-dark-700 text-gray-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl border border-white/5">Cancel</button>`}
+            </div>`;
+        overlay.style.display = 'flex';
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
+        }
+    },
+
+    openEmpProfile(empId) {
+        const e = this.db.employees.find(x=>x.id===empId);
+        if(!e) return;
+        const lb = this.db.leaveBalances[empId];
+        const myPay = this.db.payroll.find(p=>p.empId===empId&&p.status==='Paid');
+        const myPerf = this.db.performance.find(p=>p.empId===empId);
+        this.openModal(`Employee Profile — ${e.id}`,`
+            <div class="flex items-center gap-4 mb-6 pb-6 border-b border-white/5">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center font-black text-white text-xl shadow-xl">${e.name.split(' ').map(n=>n[0]).join('')}</div>
+                <div><h3 class="text-lg font-black text-white">${e.name}</h3><p class="text-gray-400 text-sm">${e.role} · ${e.dept}</p><p class="text-xs text-gray-600">${e.email} · ${e.mobile}</p></div>
+                <div class="ml-auto">${this.badge(e.status)}</div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                ${[['Emp ID',e.id],['Location',e.location],['DOJ',e.doj],['Manager',e.manager],['CTC',e.ctc],['Status',e.status]].map(([l,v])=>`<div class="bg-white/[0.03] rounded-xl p-3"><p class="text-[10px] text-gray-600">${l}</p><p class="text-sm font-bold text-gray-200">${v}</p></div>`).join('')}
+            </div>
+            ${lb?`<div class="mb-6"><h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Leave Balance</h4><div class="grid grid-cols-4 gap-3">${[['Casual',lb.casual],['Sick',lb.sick],['Annual',lb.annual],['Earned',lb.earned]].map(([l,v])=>`<div class="text-center bg-white/[0.02] rounded-xl p-3"><p class="text-xl font-black text-brand-400">${v}</p><p class="text-[9px] text-gray-600 uppercase tracking-wider">${l}</p></div>`).join('')}</div></div>`:''}
+            ${myPerf?`<div class="p-4 rounded-2xl bg-brand-500/5 border border-brand-500/20 mb-4"><div class="flex justify-between items-center"><p class="text-xs text-gray-400">Q1 2026 KPI</p><span class="text-lg font-black text-brand-400">${myPerf.kpiScore}%</span></div><div class="prog-bar mt-2"><div class="prog-fill bg-brand-500" style="width:${myPerf.kpiScore}%"></div></div><p class="text-[10px] text-gray-500 mt-2">${myPerf.rating}</p></div>`:''}
+            <div class="flex gap-3 flex-wrap">
+                <button onclick="NexusApp.closeModal();NexusApp.switchModule('attendance')" class="flex-1 min-w-0 text-[11px] py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-brand-400 hover:border-brand-500/30 transition-all font-bold">Attendance</button>
+                <button onclick="NexusApp.closeModal();NexusApp.switchModule('payroll')" class="flex-1 min-w-0 text-[11px] py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-brand-400 hover:border-brand-500/30 transition-all font-bold">Payroll</button>
+                <button onclick="NexusApp.closeModal();NexusApp.switchModule('documents')" class="flex-1 min-w-0 text-[11px] py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-brand-400 hover:border-brand-500/30 transition-all font-bold">Documents</button>
+            </div>`, '');
+    },
+
+    openPayslip(payId) {
+        const p = this.db.payroll.find(x=>x.id===payId);
+        if(!p) return;
+        this.openModal(`Payslip — ${p.emp}`, `
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+                <div><p class="text-xs text-gray-500">Month</p><p class="text-sm font-bold text-brand-400">${p.month}</p></div>
+                <div class="text-right"><p class="text-xs text-gray-500">Net Pay</p><p class="text-3xl font-black text-white">₹${p.net.toLocaleString()}</p></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div><h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Earnings</h4>
+                    ${[['Basic Salary',p.basic],['HRA',p.hra],['Transport Allow.',p.ta]].map(([l,v])=>`<div class="flex justify-between py-2 border-b border-white/[0.03] text-xs"><span class="text-gray-400">${l}</span><span class="text-white font-bold">₹${v.toLocaleString()}</span></div>`).join('')}
+                    <div class="flex justify-between py-2 text-xs font-black"><span class="text-gray-300">Gross</span><span class="text-green-400">₹${p.gross.toLocaleString()}</span></div>
+                </div>
+                <div><h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Deductions</h4>
+                    ${[['PF',p.pf],['Income Tax',p.tax],['LOP',p.lop]].map(([l,v])=>`<div class="flex justify-between py-2 border-b border-white/[0.03] text-xs"><span class="text-gray-400">${l}</span><span class="${v>0?'text-red-400':'text-gray-600'}">₹${v.toLocaleString()}</span></div>`).join('')}
+                    <div class="flex justify-between py-2 text-xs font-black"><span class="text-gray-300">Total Ded.</span><span class="text-red-400">₹${(p.pf+p.tax+p.lop).toLocaleString()}</span></div>
+                </div>
+            </div>
+            <div class="p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex justify-between items-center">
+                <span class="text-sm font-bold text-white">Net Take-Home</span>
+                <span class="text-2xl font-black text-brand-400">₹${p.net.toLocaleString()}</span>
+            </div>`, `<button onclick="NexusApp.downloadPayslip('${p.id}');NexusApp.closeModal()" class="flex-1 bg-brand-500 text-white font-black uppercase tracking-widest text-xs py-4 rounded-2xl">Download HTML</button><button onclick="NexusApp.closeModal()" class="flex-1 bg-dark-700 text-gray-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl border border-white/5">Close</button>`);
+    },
+
+    openTaskDetail(tskId) {
+        const t = this.db.tasks.find(x=>x.id===tskId);
+        if(!t) return;
+        const priColors = {Critical:'text-red-400',High:'text-yellow-400',Medium:'text-brand-400',Low:'text-gray-400'};
+        const statuses = ['Todo','In Progress','Review','Done'];
+        this.openModal(`Task: ${t.id}`, `
+            <p class="text-base font-bold text-white mb-4">${t.title}</p>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                ${[['Priority',`<span class="${priColors[t.priority]||'text-gray-400'} font-bold">${t.priority}</span>`],['Due Date',t.due],['Module',t.module],['Linked',t.linkedId]].map(([l,v])=>`<div class="bg-white/[0.03] rounded-xl p-3"><p class="text-[10px] text-gray-600 mb-1">${l}</p><p class="text-sm">${v}</p></div>`).join('')}
+            </div>
+            <div class="mb-4"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2 block">Move to Stage</label>
+                <div class="flex gap-2 flex-wrap">${statuses.map(s=>`<button onclick="NexusApp.moveTask('${t.id}','${s}');NexusApp.closeModal()" class="px-4 py-2 rounded-xl ${t.status===s?'bg-brand-500 text-white':'bg-white/5 border border-white/10 text-gray-400 hover:border-brand-500/30 hover:text-brand-400'} text-xs font-bold transition-all">${s}</button>`).join('')}</div>
+            </div>
+            <button onclick="NexusApp.closeModal();NexusApp.switchModule('${t.module}')" class="w-full text-xs py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-brand-400 hover:border-brand-500/30 transition-all font-bold">Open Linked Module: ${t.module} →</button>`, '');
+    },
+
+    moveTask(id, status) {
+        const t = this.db.tasks.find(x=>x.id===id);
+        if(t) { t.status=status; this.notify(`Task moved to ${status}`,'success'); this.renderContent(); }
+    },
+
+    openPerfDetail(perfId) {
+        const p = this.db.performance.find(x=>x.id===perfId);
+        if(!p) return;
+        this.openModal(`Appraisal — ${p.emp}`, `
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                ${[['Cycle',p.cycle],['Reviewer',p.reviewer],['Goals',p.goalsAchieved],['Rating',p.rating]].map(([l,v])=>`<div class="bg-white/[0.03] rounded-xl p-4"><p class="text-[10px] text-gray-600">${l}</p><p class="text-sm font-bold text-white mt-1">${v}</p></div>`).join('')}
+            </div>
+            <div class="mb-4"><div class="flex justify-between mb-2 text-xs"><span class="text-gray-500">KPI Score</span><span class="font-black text-brand-400">${p.kpiScore}%</span></div><div class="prog-bar"><div class="prog-fill bg-brand-500" style="width:${p.kpiScore}%"></div></div></div>`,
+            `<button onclick="NexusApp.notify('Review finalized!','success');NexusApp.closeModal()" class="flex-1 bg-brand-500 text-white font-black uppercase tracking-widest text-xs py-4 rounded-2xl">Finalize Review</button><button onclick="NexusApp.closeModal()" class="flex-1 bg-dark-700 text-gray-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl border border-white/5">Close</button>`);
+    },
+
+    openGrievanceDetail(grvId) {
+        const g = this.db.grievances.find(x=>x.id===grvId);
+        if(!g) return;
+        this.openModal(`Grievance — ${g.id}`, `
+            <p class="text-base font-bold text-white mb-1">${g.subject}</p>
+            <p class="text-xs text-gray-500 mb-6">Filed: ${g.date} · Category: ${g.category} · Priority: ${g.priority}</p>
+            <div class="p-4 rounded-2xl ${g.anonymous?'bg-blue-500/10 border border-blue-500/20':'bg-white/[0.03] border border-white/5'} mb-4 text-xs text-gray-400">
+                ${g.anonymous?'<i data-lucide="eye-off" class="w-3 h-3 inline mr-1 text-blue-400"></i> Filed anonymously — identity protected':'Filed by: '+g.emp}
+            </div>
+            <div class="flex gap-3 flex-wrap mb-2">
+                ${['Open','In Progress','Resolved','Closed'].map(s=>`<button onclick="NexusApp.updateGrievance('${g.id}','${s}');NexusApp.closeModal()" class="px-4 py-2 rounded-xl ${g.status===s?'bg-brand-500 text-white':'bg-white/5 border border-white/10 text-gray-400 hover:border-brand-500/30 hover:text-brand-400'} text-xs font-bold transition-all">${s}</button>`).join('')}
+            </div>`, '');
+    },
+
+    updateGrievance(id, status) {
+        const g = this.db.grievances.find(x=>x.id===id);
+        if(g) { g.status=status; this.notify(`Grievance ${id} updated to ${status}`,'success'); this.renderContent(); }
+    },
+
+    openJobDetail(jobId) {
+        const j = this.db.recruitment.find(x=>x.id===jobId);
+        if(!j) return;
+        const cands = this.db.candidates.filter(c=>c.job===jobId);
+        this.openModal(`Job: ${j.role}`, `
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                ${[['Department',j.dept],['Location',j.location],['Openings',j.openings],['Applicants',j.applicants],['Current Stage',j.stage],['Status',j.status]].map(([l,v])=>`<div class="bg-white/[0.03] rounded-xl p-3"><p class="text-[10px] text-gray-600">${l}</p><p class="text-sm font-bold text-white mt-1">${v}</p></div>`).join('')}
+            </div>
+            ${cands.length?`<h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Shortlisted Candidates (${cands.length})</h4>
+            <div class="space-y-2">${cands.map(c=>`<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-xl border border-white/5"><span class="text-sm font-medium text-white">${c.name}</span><span class="chip bg-brand-500/10 text-brand-400 text-[10px]">${c.stage}</span><button onclick="NexusApp.convertToEmployee('${c.id}');NexusApp.closeModal()" class="text-[10px] text-green-400 hover:text-green-300 font-bold">+ Hire</button></div>`).join('')}</div>`:'<p class="text-gray-600 text-sm">No shortlisted candidates yet.</p>'}`, '');
+    },
+
+    openClaimDetail(clmId) {
+        const c = this.db.claims.find(x=>x.id===clmId);
+        if(!c) return;
+        this.openModal(`Claim — ${c.id}`, `
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                ${[['Employee',c.emp],['Type',c.type],['Amount','₹'+c.amount.toLocaleString()],['Submitted',c.submittedOn],['Status',c.status],['Settled',c.settledOn||'Pending']].map(([l,v])=>`<div class="bg-white/[0.03] rounded-xl p-3"><p class="text-[10px] text-gray-600">${l}</p><p class="text-sm font-bold text-white mt-1">${v}</p></div>`).join('')}
+            </div>`,
+            `<button onclick="NexusApp.approveClaim('${c.id}');NexusApp.closeModal()" class="flex-1 bg-green-500/20 border border-green-500/30 text-green-400 font-black uppercase tracking-widest text-xs py-4 rounded-2xl">Approve & Settle</button><button onclick="NexusApp.closeModal()" class="flex-1 bg-dark-700 text-gray-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl border border-white/5">Close</button>`);
+    },
+
+    approveClaim(id) {
+        const c = this.db.claims.find(x=>x.id===id);
+        if(c) { c.status='Approved'; c.settledOn=new Date().toISOString().split('T')[0]; this.notify(`Claim ${id} approved and settled!`,'success'); this.renderContent(); }
+    },
+
+    // ─── FORM MODALS ──────────────────────────────────────────────────────────
+    openLeaveForm() {
+        this.openModal('Apply Leave', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Leave Type</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50"><option>Casual Leave</option><option>Sick Leave</option><option>Annual Leave</option><option>Earned Leave</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Days</label>
+                    <input type="number" value="1" min="1" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">From Date</label>
+                    <input type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">To Date</label>
+                    <input type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Reason</label>
+                    <textarea rows="3" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50 resize-none" placeholder="Briefly describe the reason..."></textarea>
+                </div>
+            </div>`);
+    },
+
+    openExpenseForm() {
+        this.openModal('Submit Expense', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Category</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Travel</option><option>Accommodation</option><option>Meals</option><option>Stationery</option><option>Medical</option><option>Other</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Amount (₹)</label>
+                    <input type="number" placeholder="0.00" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Date</label>
+                    <input type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Link to Assignment</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>—</option>${this.db.assignments.map(a=>`<option>${a.id} — ${a.insured}</option>`).join('')}</select>
+                </div>
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Description</label>
+                    <input type="text" placeholder="e.g. Mumbai to Pune travel for MCL-001 survey" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+            </div>`);
+    },
+
+    openLoanForm() {
+        this.openModal('Apply for Loan', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Loan Type</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Personal Loan</option><option>Emergency Loan</option><option>Education Loan</option><option>Vehicle Loan</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Amount (₹)</label>
+                    <input type="number" placeholder="100000" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Tenure (months)</label>
+                    <input type="number" placeholder="12" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Repayment via</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Salary Deduction (Auto)</option><option>Bank Transfer</option></select>
+                </div>
+            </div>
+            <p class="text-[10px] text-yellow-400"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i>EMI will be auto-deducted from payroll. Subject to HR approval.</p>`);
+    },
+
+    openClaimForm() {
+        this.openModal('Submit Reimbursement Claim', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Claim Type</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Travel Reimbursement</option><option>Medical</option><option>Meal Allowance</option><option>Other</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Total Amount (₹)</label>
+                    <input type="number" placeholder="0.00" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Link Expense IDs</label>
+                    <input type="text" placeholder="e.g. EXP-001, EXP-002" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50">
+                </div>
+            </div>`);
+    },
+
+    openGrievanceForm() {
+        this.openModal('File a Grievance', `
+            <div class="flex gap-3 mb-4 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                <i data-lucide="shield" class="w-4 h-4 text-blue-400 shrink-0 mt-0.5"></i>
+                <p class="text-xs text-blue-300">All grievances are handled confidentially. You may file anonymously.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Category</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Harassment</option><option>Workplace Safety</option><option>Discrimination</option><option>Policy Violation</option><option>Other</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Priority</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+                </div>
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Subject</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50" placeholder="Brief subject line">
+                </div>
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Details</label>
+                    <textarea rows="4" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none resize-none focus:border-brand-500/50" placeholder="Describe the incident in detail..."></textarea>
+                </div>
+                <div class="col-span-2 flex items-center gap-3"><input type="checkbox" id="anon-chk" class="w-4 h-4"><label for="anon-chk" class="text-sm text-gray-400">File anonymously</label></div>
+            </div>`);
+    },
+
+    openJobPostForm() {
+        this.openModal('Post a Job Opening', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Role Title</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50" placeholder="e.g. Senior Marine Surveyor">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Department</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Operations</option><option>Finance</option><option>HR & Admin</option><option>Technology</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Location</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none" placeholder="Mumbai / Remote">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">No. of Openings</label>
+                    <input type="number" value="1" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Triggered by</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Business Growth</option><option>Performance Gap</option><option>Exit / Backfill</option></select>
+                </div>
+            </div>`);
+    },
+
+    openDocUpload() {
+        this.openModal('Upload Document', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Employee</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">${this.db.employees.map(e=>`<option>${e.name}</option>`).join('')}</select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Document Type</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Offer Letter</option><option>ID Proof</option><option>Educational Certificate</option><option>Surveyor License</option><option>PAN Card</option><option>Other</option></select>
+                </div>
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">File</label>
+                    <div class="border-2 border-dashed border-white/10 rounded-2xl p-8 text-center hover:border-brand-500/30 transition-all cursor-pointer">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-gray-600 mx-auto mb-2"></i>
+                        <p class="text-sm text-gray-500">Click to upload or drag & drop</p>
+                        <p class="text-[10px] text-gray-600 mt-1">PDF, JPG, PNG up to 10 MB</p>
+                    </div>
+                </div>
+            </div>`);
+    },
+
+    openOffboardingForm() {
+        this.openModal('Initiate Offboarding', `
+            <div class="p-4 mb-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-300 flex gap-3">
+                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                <span>This will initiate the full exit workflow: final settlement, document clearance, payroll stop, and access revocation.</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Employee</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">${this.db.employees.map(e=>`<option>${e.name}</option>`).join('')}</select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Last Working Day</label>
+                    <input type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Reason</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Resignation</option><option>Termination</option><option>Retirement</option><option>Contract End</option></select>
+                </div>
+            </div>`,
+            `<button onclick="NexusApp.notify('Offboarding workflow initiated!','info');NexusApp.closeModal()" class="flex-1 bg-red-500/30 border border-red-500/40 text-red-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl hover:bg-red-500/40 transition-all">Initiate Exit</button><button onclick="NexusApp.closeModal()" class="flex-1 bg-dark-700 text-gray-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl border border-white/5">Cancel</button>`);
+    },
+
+    openNewEmpForm() {
+        this.openModal('Add New Employee', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Full Name</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50" placeholder="First Last">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Role</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50" placeholder="e.g. Sr. Surveyor">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Department</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Operations</option><option>Finance</option><option>HR & Admin</option><option>Technology</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Location</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Mumbai HQ</option><option>Delhi</option><option>Chennai</option><option>Bangalore</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Date of Joining</label>
+                    <input type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">CTC (Annual)</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none" placeholder="₹ 10 LPA">
+                </div>
+            </div>`);
+    },
+
+    openNewTask() {
+        this.openModal('Create New Task', `
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="col-span-2"><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Task Title</label>
+                    <input type="text" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-brand-500/50" placeholder="Describe the task...">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Assign To</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">${this.db.employees.map(e=>`<option>${e.name}</option>`).join('')}</select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Priority</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Due Date</label>
+                    <input type="date" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none">
+                </div>
+                <div><label class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Link to Module</label>
+                    <select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"><option>—</option><option>attendance</option><option>leave</option><option>payroll</option><option>performance</option><option>grievance</option><option>recruitment</option><option>assignments</option></select>
+                </div>
+            </div>`);
+    },
+
+    showNotifications() {
+        this.openModal('Notifications', `
+            <div class="space-y-3">
+                ${[{icon:'calendar-days',text:'Leave LV-2203 by Meena Krishnan — awaiting your approval',time:'Just now',c:'text-yellow-400',btn:'leave'},
+                   {icon:'message-square-warning',text:'Critical grievance GRV-002 assigned to you',time:'2h ago',c:'text-red-400',btn:'grievance'},
+                   {icon:'indian-rupee',text:'April payroll ready to run — 4 employees pending',time:'3h ago',c:'text-brand-400',btn:'payroll'},
+                   {icon:'target',text:'Appraisal for Rahul Bose is overdue',time:'1d ago',c:'text-orange-400',btn:'performance'},
+                   {icon:'user-plus',text:'Deepa Menon moved to HR Round — schedule interview',time:'2d ago',c:'text-teal-400',btn:'recruitment'}
+                ].map(n=>`<div onclick="NexusApp.closeModal();NexusApp.switchModule('${n.btn}')" class="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-brand-500/30 transition-all cursor-pointer group">
+                    <i data-lucide="${n.icon}" class="w-4 h-4 ${n.c} shrink-0 mt-0.5"></i>
+                    <div class="flex-1"><p class="text-xs text-gray-300 group-hover:text-white transition-colors">${n.text}</p><p class="text-[10px] text-gray-600 mt-1">${n.time}</p></div>
+                    <i data-lucide="chevron-right" class="w-3 h-3 text-gray-700 group-hover:text-brand-400 transition-colors shrink-0 mt-0.5"></i>
+                </div>`).join('')}
+            </div>`, '<button onclick="NexusApp.closeModal()" class="w-full bg-dark-700 text-gray-300 font-black uppercase tracking-widest text-xs py-4 rounded-2xl border border-white/5">Dismiss All</button>');
+    },
+
+    openDetail(type, id) {
+        this.openModal(`Record: ${id}`, `
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="p-4 rounded-2xl bg-white/5 border border-white/5"><p class="text-[10px] text-gray-500 uppercase mb-1">Status</p><p class="text-sm font-bold text-brand-400 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>Synchronized</p></div>
+                <div class="p-4 rounded-2xl bg-white/5 border border-white/5"><p class="text-[10px] text-gray-500 uppercase mb-1">Timestamp</p><p class="text-sm font-bold text-white">${new Date().toLocaleString('en-IN')}</p></div>
+            </div>`);
+    },
+
+    openWizard(mod) { this.notify(`Initializing wizard for ${mod}...`,'info'); },
+    closeModal() { document.getElementById('modalOverlay').style.display = 'none'; },
+
+    notify(msg, type='success') {
+        const container = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        const colors = type==='success'?'border-green-500/50 text-green-400 bg-green-500/10':type==='info'?'border-brand-500/50 text-brand-400 bg-brand-500/10':'border-red-500/50 text-red-400 bg-red-500/10';
+        t.className = `p-4 rounded-2xl glass border ${colors} shadow-2xl flex items-center gap-3 module-fade-in pointer-events-auto`;
+        t.innerHTML = `<i data-lucide="${type==='success'?'check-circle':'info'}" class="w-4 h-4 shrink-0"></i><span class="text-xs font-bold">${msg}</span>`;
+        container.appendChild(t);
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
+        }
+        setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(20px)';t.style.transition='all 0.3s';setTimeout(()=>t.remove(),300);},3500);
+    }
+};
+
+// ===== AUTH GUARD =====
+(function() {
+  var token = localStorage.getItem('nexus_token');
+  if (!token) { window.location.replace('index.html'); return; }
+  try {
+    var u = JSON.parse(localStorage.getItem('nexus_user'));
+    if (u && u.name) {
+      var parts    = u.name.trim().split(' ');
+      var initials = parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].substring(0,2);
+      initials = initials.toUpperCase();
+      // update topbar avatar
+      var btn = document.getElementById('userAvatarBtn');
+      if (btn) btn.textContent = initials;
+      // update sidebar avatar
+      var sideEl = document.querySelector('.w-10.h-10.rounded-xl.bg-gradient-to-br');
+      if (sideEl) sideEl.textContent = initials;
+      var nameEl = document.querySelector('.text-xs.font-bold.truncate.text-white');
+      if (nameEl) nameEl.textContent = u.name;
+      var roleEl = document.querySelector('.text-\\[10px\\].text-gray-500.truncate');
+      if (roleEl && u.role) roleEl.textContent = u.role.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
+    }
+  } catch(e) {}
+})();
+
+function doLogout() {
+  if (!confirm('Sign out of McLarens Nexus?')) return;
+  var token = localStorage.getItem('nexus_token');
+  if (token) {
+    fetch('https://mclarens-nexus-api.amitbhavikmnm.workers.dev/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+    }).catch(function(){});
+  }
+  localStorage.removeItem('nexus_token');
+  localStorage.removeItem('nexus_user');
+  window.location.href = 'index.html';
+}
+
+window.onload = () => NexusApp.init();
+</script>
+</body>
+</html>
