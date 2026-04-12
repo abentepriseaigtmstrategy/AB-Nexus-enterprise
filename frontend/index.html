@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -336,3 +336,15 @@
     } catch (err) {
       showError('Connection failed. Check your network and try again.');
       btn.disabled    = false;
+
+    }
+  }
+
+  function showError(msg) {
+    var box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.style.display = 'block';
+  }
+</script>
+</body>
+</html>
