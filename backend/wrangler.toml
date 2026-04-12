@@ -1,0 +1,36 @@
+# wrangler.toml — McLarens Nexus Enterprise v5.0 (FREE PLAN)
+
+name = "ab-nexus-api"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ab-nexus-db"
+database_id = "f7b4804f-38b2-458e-b65d-f53ef98aa820"
+
+[[r2_buckets]]
+binding = "DOCS"
+bucket_name = "ab-nexus-documents"
+
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "NexusRealtimeHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NexusRealtimeHub"]
+
+[triggers]
+crons = ["0 3 * * *", "0 11 * * *"]
+
+[ai]
+binding = "AI"
+
+[vars]
+ENVIRONMENT = "production"
+APP_NAME = "AB Nexus Enterprise"
+APP_VERSION = "5.0"
+RESEND_FROM = "AB Nexus <noreply@mclarens.in>"
+FRONTEND_URL = "https://ab-nexus-enterprise.pages.dev"

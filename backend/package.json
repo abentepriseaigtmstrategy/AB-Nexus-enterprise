@@ -1,0 +1,21 @@
+{
+  "name": "ab-nexus-backend",
+  "version": "5.0.0",
+  "description": "McLarens Nexus Enterprise — Insurer-First Architecture",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "db:init": "wrangler d1 execute ab-nexus-db --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute ab-nexus-db --local --file=./schema.sql",
+    "db:query": "wrangler d1 execute ab-nexus-db --command"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240512.0",
+    "wrangler": "^3.57.0"
+  },
+  "dependencies": {
+    "openai": "^6.33.0"
+  }
+}
