@@ -489,6 +489,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     <div class="dept-meta">
       <span class="status status-inprogress" style="font-size:11px;padding:5px 10px;" id="claimStatusBadge">In Progress</span>
       <button class="action-btn" onclick="switchModule('pipeline')" id="btnPipeline" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.1);color:#a78bfa;" disabled>📋 Reports Pipeline</button>
+      <button class="action-btn" onclick="advanceClaimStatus()" id="btnAdvanceStatus" style="display:none;" title="Advance claim status"></button>
       <button class="action-btn teal" onclick="runAIVerify()" id="btnVerify" disabled>🔍 AI Verify</button>
       <button class="action-btn primary" onclick="generateReport()" id="btnReport" disabled>📋 Report ↗</button>
     </div>
@@ -719,7 +720,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
           <div class="cam-btn" onclick="geoTagAll()">📍 Geo-Tag All</div>
         </div>
         <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" multiple onchange="handleFileCapture(event)">
-        <input type="file" id="galleryInput" accept="image/*" style="display:none;" multiple onchange="handleFileCapture(event)">
+        <input type="file" id="galleryInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" style="display:none;" multiple onchange="handleFileCapture(event)">
         <div class="ocr-panel" id="ocrPanel">
           <div class="ocr-panel-title">✓ GPT-4 VISION OCR — EXTRACTED TEXT</div>
           <textarea class="ocr-field" id="ocrText" readonly></textarea>
@@ -1093,12 +1094,16 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
           <textarea id="nc-circumstances" rows="3" placeholder="e.g. Burglary incident at warehouse. Forced entry through rear shutter." style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;resize:vertical;"></textarea>
         </div>
         <div class="field">
-          <label>Policy Number</label>
-          <input type="text" id="nc-policyNo" placeholder="e.g. 1016/343494841/00/000" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+          <label>Policy Number <span style="font-family:var(--mono);font-size:8px;color:var(--text-ter);font-weight:400;margin-left:4px;">optional — can add later</span></label>
+          <input type="text" id="nc-policyNo" placeholder="e.g. 1016/343494841/00/000 — leave blank if not received" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
         </div>
         <div class="field">
-          <label>Sum Insured (₹)</label>
-          <input type="number" id="nc-sumInsured" placeholder="e.g. 1500000" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+          <label>Claim / Intimation Number <span style="font-family:var(--mono);font-size:8px;color:var(--text-ter);font-weight:400;margin-left:4px;">optional — can add later</span></label>
+          <input type="text" id="nc-claimNo" placeholder="e.g. FIR054987837 — leave blank if not received" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div class="field">
+          <label>Sum Insured (₹) <span style="font-family:var(--mono);font-size:8px;color:var(--text-ter);font-weight:400;margin-left:4px;">optional</span></label>
+          <input type="number" id="nc-sumInsured" placeholder="e.g. 1500000 — add when policy copy received" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
         </div>
         <div class="field">
           <label>Insured Address</label>
@@ -1118,26 +1123,63 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 
     <!-- Step 2: Photo Upload + AI OCR -->
     <div id="ncStep2" style="display:none;">
-      <div class="pip-modal-title">📸 Upload Site Photos — AI Will Fill JIR</div>
-      <div class="pip-modal-sub" id="ncClaimRef">STEP 2 OF 2 · CLAIM CREATED · AI-OCR WILL PRE-FILL JIR FORM</div>
-      <div style="background:linear-gradient(135deg,rgba(34,196,160,0.06),rgba(91,156,246,0.04));border:1px solid rgba(34,196,160,0.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
-        <span style="font-family:var(--mono);font-size:9px;color:var(--teal);border:1px solid rgba(34,196,160,0.3);border-radius:3px;padding:2px 6px;white-space:nowrap;">AI-OCR</span>
-        <div style="font-size:12px;color:var(--text-sec);line-height:1.6;">Upload your <strong style="color:var(--teal);">handwritten JIR photos</strong> or site evidence photos. AI will extract all text and pre-fill the JIR form fields — you just review and confirm.</div>
+      <div class="pip-modal-title">📁 Upload Documents & Photos</div>
+      <div class="pip-modal-sub" id="ncClaimRef">STEP 2 OF 2 · CLAIM CREATED · UPLOAD WHATEVER YOU HAVE NOW</div>
+
+      <!-- Status progression -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:14px;padding:10px 14px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">
+        <div style="flex:1;text-align:center;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--amber);font-weight:600;padding:3px 8px;background:var(--amber-dim);border-radius:4px;display:inline-block;">● DRAFT</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--text-ter);margin-top:3px;">Claim created</div>
+        </div>
+        <div style="width:40px;height:1px;background:var(--border2);"></div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);padding:3px 8px;border:1px solid var(--border);border-radius:4px;display:inline-block;">IN PROGRESS</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--text-ter);margin-top:3px;">After first survey</div>
+        </div>
+        <div style="width:40px;height:1px;background:var(--border2);"></div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);padding:3px 8px;border:1px solid var(--border);border-radius:4px;display:inline-block;">READY FOR FSR</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--text-ter);margin-top:3px;">Docs complete</div>
+        </div>
       </div>
+
+      <div style="background:linear-gradient(135deg,rgba(34,196,160,0.06),rgba(91,156,246,0.04));border:1px solid rgba(34,196,160,0.2);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-sec);line-height:1.6;">
+        Upload <strong style="color:var(--teal);">whatever you have right now</strong> — handwritten JIR photos, policy PDF, invoices, Excel sheets. All formats accepted. You can add more documents anytime from the Vault tab.
+      </div>
+
+      <!-- Format type selector -->
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button onclick="ncSetUploadType('all')" id="ncUplAll" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:99px;border:1px solid rgba(232,160,32,0.4);background:var(--amber-dim);color:var(--amber);cursor:pointer;font-weight:600;">All Files</button>
+        <button onclick="ncSetUploadType('image')" id="ncUplImg" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;">📷 Photos</button>
+        <button onclick="ncSetUploadType('pdf')" id="ncUplPdf" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;">📄 PDF</button>
+        <button onclick="ncSetUploadType('word')" id="ncUplDoc" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;">📝 Word</button>
+        <button onclick="ncSetUploadType('excel')" id="ncUplXls" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;">📊 Excel</button>
+      </div>
+
       <!-- Drop zone -->
-      <div id="ncDropZone" onclick="document.getElementById('ncFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor='rgba(34,196,160,0.25)'" ondrop="ncHandleDrop(event)" style="border:2px dashed rgba(34,196,160,0.25);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:12px;">
-        <div style="font-size:28px;margin-bottom:8px;">📷</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--teal);font-weight:600;">Click to upload or drag photos here</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:4px;">JPG · PNG · HEIC · up to 10 photos</div>
-        <input type="file" id="ncFileInput" multiple accept="image/*" style="display:none;" onchange="ncHandleFiles(this.files)">
+      <div id="ncDropZone" onclick="document.getElementById('ncFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor='rgba(34,196,160,0.25)'" ondrop="ncHandleDrop(event)" style="border:2px dashed rgba(34,196,160,0.25);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:10px;">
+        <div style="font-size:26px;margin-bottom:6px;">📂</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--teal);font-weight:600;">Click to browse or drag files here</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:5px;line-height:1.7;">
+          <span style="color:var(--text-sec);">Images:</span> JPG · PNG · HEIC &nbsp;|&nbsp;
+          <span style="color:var(--text-sec);">Docs:</span> PDF · DOC · DOCX &nbsp;|&nbsp;
+          <span style="color:var(--text-sec);">Financial:</span> XLS · XLSX &nbsp;|&nbsp;
+          <span style="color:var(--text-sec);">Text:</span> TXT
+        </div>
+        <input type="file" id="ncFileInput" multiple
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+          style="display:none;" onchange="ncHandleFiles(this.files)">
       </div>
-      <!-- Preview thumbnails -->
-      <div id="ncPhotoPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
-      <!-- OCR status -->
+
+      <!-- Preview area -->
+      <div id="ncPhotoPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+      <!-- Status -->
       <div id="ncOcrStatus" style="display:none;font-family:var(--mono);font-size:10px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin-bottom:10px;"></div>
+
       <div class="pip-modal-footer">
-        <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Fill JIR Manually</button>
-        <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncRunOCR()" disabled>🔍 Run AI-OCR & Fill JIR</button>
+        <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Go to Claim</button>
+        <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncRunOCR()" disabled>🔍 Run AI-OCR on Photos</button>
       </div>
     </div>
   </div>
@@ -1649,8 +1691,8 @@ async function loadClaimsSidebar() {
   list.innerHTML = r.claims.slice(0,8).map(c => {
     const slaDays = c.sla_days_remaining || '?';
     const slaCls  = slaDays < 5 ? 'sla-crit' : slaDays < 10 ? 'sla-warn' : 'sla-ok';
-    const stMap   = { intimated:'status-intimated', in_progress:'status-inprogress',
-                      submitted:'status-submitted',  settled:'status-settled' };
+    const stMap   = { draft:'status-intimated', intimated:'status-intimated', in_progress:'status-inprogress',
+                      ready_for_fsr:'status-submitted', submitted:'status-submitted', settled:'status-settled' };
     const stCls   = stMap[c.claim_status] || 'status-intimated';
     return '<div class="claim-mini ' + (c.id === state.claimId ? 'active' : '') +
       '" onclick="loadClaim(\'' + c.id + '\')">' +
@@ -1707,9 +1749,26 @@ async function loadClaim(claimId) {
   document.getElementById('rp-priority').textContent      = (c.priority || '').toUpperCase();
   document.getElementById('rp-priority').style.color      =
     c.priority === 'high' ? 'var(--red)' : c.priority === 'medium' ? 'var(--amber)' : 'var(--text-ter)';
+  const statusClassMap = {
+    draft:          'status-intimated',
+    intimated:      'status-intimated',
+    in_progress:    'status-inprogress',
+    ready_for_fsr:  'status-submitted',
+    submitted:      'status-submitted',
+    settled:        'status-settled'
+  };
+  const statusLabelMap = {
+    draft:          'Draft',
+    intimated:      'Intimated',
+    in_progress:    'In Progress',
+    ready_for_fsr:  'Ready for FSR',
+    submitted:      'Submitted',
+    settled:        'Settled'
+  };
   document.getElementById('claimStatusBadge').className   =
-    'status status-' + (c.claim_status || '').replace('_','');
-  document.getElementById('claimStatusBadge').textContent = (c.claim_status || '').replace('_',' ');
+    'status ' + (statusClassMap[c.claim_status] || 'status-intimated');
+  document.getElementById('claimStatusBadge').textContent =
+    statusLabelMap[c.claim_status] || (c.claim_status || '').replace(/_/g,' ');
   document.getElementById('rp-refNo').textContent         = c.claim_number;
 
   const fmt = v => v ? '\u20b9' + Math.round(v/1000) + 'K' : '\u2014';
@@ -1735,7 +1794,40 @@ async function loadClaim(claimId) {
   loadChecklistStatus();
   calcDelay();
   document.getElementById('btnPipeline').disabled = false;
+  // Show status advance button based on current status
+  updateStatusAdvanceBtn(c.claim_status);
   pip_updateNavBadge();
+}
+
+function updateStatusAdvanceBtn(status) {
+  var btn = document.getElementById('btnAdvanceStatus');
+  if (!btn) return;
+  var next = { draft:'in_progress', in_progress:'ready_for_fsr', ready_for_fsr:null };
+  var labels = { draft:'→ Mark In Progress', in_progress:'→ Mark Ready for FSR', ready_for_fsr:null };
+  var nextStatus = next[status];
+  if (!nextStatus) { btn.style.display = 'none'; return; }
+  btn.style.display  = 'block';
+  btn.textContent    = labels[status] || '';
+  btn.dataset.target = nextStatus;
+}
+
+async function advanceClaimStatus() {
+  if (!state.claimId) return;
+  var btn        = document.getElementById('btnAdvanceStatus');
+  var nextStatus = btn && btn.dataset.target;
+  if (!nextStatus) return;
+  var r = await api('PUT', '/api/claims/' + state.claimId, { claim_status: nextStatus });
+  if (r && !r.error) {
+    var labels = { in_progress:'In Progress', ready_for_fsr:'Ready for FSR', submitted:'Submitted' };
+    toast('\u2713 Status updated: ' + (labels[nextStatus] || nextStatus), 'success');
+    // Update local state
+    if (state.claimData) state.claimData.claim_status = nextStatus;
+    var statusClassMap = { in_progress:'status-inprogress', ready_for_fsr:'status-submitted' };
+    document.getElementById('claimStatusBadge').className   = 'status ' + (statusClassMap[nextStatus]||'status-intimated');
+    document.getElementById('claimStatusBadge').textContent = labels[nextStatus] || nextStatus;
+    updateStatusAdvanceBtn(nextStatus);
+    loadClaimsSidebar();
+  }
 }
 
 // ── Document checklist ────────────────────────────────────────────────
@@ -3731,21 +3823,26 @@ async function ncCreateClaim() {
   var addr      = document.getElementById('nc-address').value.trim();
   var lossAmt   = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
   var policyNo  = document.getElementById('nc-policyNo').value.trim();
+  var claimNo   = document.getElementById('nc-claimNo').value.trim();
   var sumIns    = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
 
-  var r = await api('POST', '/api/claims', {
-    insurer_id:      insId,
-    insurer_name:    insName,
-    insured_name:    name,
-    insured_address: addr,
-    department:      dept,
-    incident_date:   new Date(date).getTime(),
-    circumstances:   circ,
-    loss_amount:     lossAmt,
-    policy_number:   policyNo,
-    sum_insured:     sumIns || undefined,
-    claim_status:    'intimated'
-  });
+  // Build payload — optional fields only included if provided (surveyor may not have them yet)
+  var payload = {
+    insurer_id:    insId,
+    insurer_name:  insName,
+    insured_name:  name,
+    department:    dept,
+    incident_date: new Date(date).getTime(),
+    claim_status:  'draft'
+  };
+  if (circ)     payload.circumstances   = circ;
+  if (addr)     payload.insured_address = addr;
+  if (lossAmt)  payload.loss_amount     = lossAmt;
+  if (policyNo) payload.policy_number   = policyNo;
+  if (claimNo)  payload.claim_number    = claimNo;
+  if (sumIns)   payload.sum_insured     = sumIns;
+
+  var r = await api('POST', '/api/claims', payload);
 
   btn.disabled = false;
   btn.textContent = 'Create Claim & Upload Photos \u2192';
@@ -3770,21 +3867,68 @@ async function ncCreateClaim() {
   toast('\u2713 Claim ' + claimNum + ' created', 'success');
 }
 
-function ncHandleFiles(files) {
-  Array.from(files).forEach(function(f) {
-    if (_ncPhotos.length >= 10) return;
-    _ncPhotos.push(f);
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var prev = document.getElementById('ncPhotoPreview');
-      var div  = document.createElement('div');
-      div.style.cssText = 'position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid var(--border2);';
-      div.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
-      prev.appendChild(div);
-    };
-    reader.readAsDataURL(f);
+function ncSetUploadType(type) {
+  var acceptMap = {
+    'all':   'image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt',
+    'image': 'image/*',
+    'pdf':   '.pdf,application/pdf',
+    'word':  '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'excel': '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  };
+  document.getElementById('ncFileInput').accept = acceptMap[type] || acceptMap['all'];
+  // Update button styles
+  ['All','Img','Pdf','Doc','Xls'].forEach(function(t) {
+    var btn = document.getElementById('ncUpl' + t);
+    if (!btn) return;
+    btn.style.background   = 'var(--bg3)';
+    btn.style.color        = 'var(--text-sec)';
+    btn.style.borderColor  = 'var(--border2)';
+    btn.style.fontWeight   = '400';
   });
-  document.getElementById('ncOcrBtn').disabled = _ncPhotos.length === 0;
+  var activeId = { all:'All', image:'Img', pdf:'Pdf', word:'Doc', excel:'Xls' }[type];
+  var activeBtn = document.getElementById('ncUpl' + activeId);
+  if (activeBtn) {
+    activeBtn.style.background  = 'var(--amber-dim)';
+    activeBtn.style.color       = 'var(--amber)';
+    activeBtn.style.borderColor = 'rgba(232,160,32,0.4)';
+    activeBtn.style.fontWeight  = '600';
+  }
+}
+
+function ncHandleFiles(files) {
+  var ACCEPT_TYPES = ['image/', 'application/pdf', 'application/msword',
+    'application/vnd.openxmlformats-officedocument',
+    'application/vnd.ms-excel', 'text/plain'];
+  var EXT_ICONS = {
+    'pdf':'.pdf', 'doc':'.doc', 'docx':'.docx',
+    'xls':'.xls', 'xlsx':'.xlsx', 'txt':'.txt'
+  };
+  Array.from(files).forEach(function(f) {
+    if (_ncPhotos.length >= 20) return;
+    _ncPhotos.push(f);
+    var prev = document.getElementById('ncPhotoPreview');
+    var div  = document.createElement('div');
+    var isImg = f.type.startsWith('image/');
+    div.style.cssText = 'position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;' +
+      'border:1px solid var(--border2);background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;';
+    if (isImg) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        div.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+      };
+      reader.readAsDataURL(f);
+    } else {
+      var ext = f.name.split('.').pop().toLowerCase();
+      var icons = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', txt:'📋' };
+      div.innerHTML = '<div style="font-size:22px;">' + (icons[ext]||'📎') + '</div>' +
+        '<div style="font-family:var(--mono);font-size:8px;color:var(--text-sec);text-align:center;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:68px;">' +
+        f.name.slice(0,12) + (f.name.length > 12 ? '…' : '') + '</div>';
+    }
+    prev.appendChild(div);
+  });
+  // Enable OCR button only if images present
+  var hasImages = _ncPhotos.some(function(f){ return f.type.startsWith('image/'); });
+  document.getElementById('ncOcrBtn').disabled = !hasImages;
 }
 
 function ncHandleDrop(e) {
