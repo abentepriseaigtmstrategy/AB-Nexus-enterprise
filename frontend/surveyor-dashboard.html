@@ -1093,6 +1093,14 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
           <textarea id="nc-circumstances" rows="3" placeholder="e.g. Burglary incident at warehouse. Forced entry through rear shutter." style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;resize:vertical;"></textarea>
         </div>
         <div class="field">
+          <label>Policy Number</label>
+          <input type="text" id="nc-policyNo" placeholder="e.g. 1016/343494841/00/000" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div class="field">
+          <label>Sum Insured (₹)</label>
+          <input type="number" id="nc-sumInsured" placeholder="e.g. 1500000" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div class="field">
           <label>Insured Address</label>
           <input type="text" id="nc-address" placeholder="Site/Loss location address" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
         </div>
@@ -1131,6 +1139,70 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
         <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Fill JIR Manually</button>
         <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncRunOCR()" disabled>🔍 Run AI-OCR & Fill JIR</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     LOSS ASSESSMENT WORKSHEET MODAL
+════════════════════════════════════════════════════════════════ -->
+<div class="pip-modal-overlay" id="laWsModal" style="z-index:2100;">
+  <div class="pip-modal-box" style="width:680px;">
+    <div class="pip-modal-title">📊 AI Loss Assessment Worksheet</div>
+    <div class="pip-modal-sub">HUMAN-IN-THE-LOOP · AI SUGGESTS · SURVEYOR CONFIRMS EACH LINE</div>
+
+    <!-- AI generating state -->
+    <div id="laWsGenerating" style="display:none;text-align:center;padding:32px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--teal);margin-bottom:8px;" id="laWsGenStatus">⟳ Analysing JIR data + quotations...</div>
+      <div style="font-size:12px;color:var(--text-ter);">AI is preparing the worksheet based on this claim</div>
+    </div>
+
+    <!-- Worksheet table -->
+    <div id="laWsTable" style="display:none;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--teal);padding:6px 10px;background:var(--teal-dim);border-radius:6px;margin-bottom:12px;" id="laWsAiBasis"></div>
+
+      <!-- Items table -->
+      <div style="overflow-x:auto;margin-bottom:12px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;" id="laWsItemTable">
+          <thead>
+            <tr style="background:var(--bg2);">
+              <th style="padding:7px 10px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">#</th>
+              <th style="padding:7px 10px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">Description</th>
+              <th style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">Qty</th>
+              <th style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">Rate (₹)</th>
+              <th style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">Claimed (₹)</th>
+              <th style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">Allowed (₹)</th>
+              <th style="padding:7px 10px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;border-bottom:1px solid var(--border2);">Remarks</th>
+              <th style="padding:7px 4px;border-bottom:1px solid var(--border2);"></th>
+            </tr>
+          </thead>
+          <tbody id="laWsItemBody"></tbody>
+        </table>
+      </div>
+      <button onclick="laWs_addRow()" style="font-family:var(--mono);font-size:10px;padding:5px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text-sec);cursor:pointer;margin-bottom:14px;">+ Add Row</button>
+
+      <!-- Deductions -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-bottom:10px;letter-spacing:0.08em;text-transform:uppercase;">Deductions & Adjustments</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field"><label>Building / Ineligible items disallowed (₹)</label><input type="number" id="laWs-disallowed" value="0" oninput="laWs_computeTotals()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none;"></div>
+          <div class="field"><label>Quantity variation deduction (%)</label><input type="number" id="laWs-qtyVar" value="0" min="0" max="100" oninput="laWs_computeTotals()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none;"></div>
+          <div class="field"><label>Rate variation deduction (%)</label><input type="number" id="laWs-rateVar" value="0" min="0" max="100" oninput="laWs_computeTotals()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none;"></div>
+          <div class="field"><label>Depreciation (%)</label><input type="number" id="laWs-depn" value="0" min="0" max="100" oninput="laWs_computeTotals()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none;"></div>
+          <div class="field"><label>Salvage / Recovery (₹)</label><input type="number" id="laWs-salvage" value="0" oninput="laWs_computeTotals()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none;"></div>
+          <div class="field"><label>Policy Excess / Deductible (₹)</label><input type="number" id="laWs-excess" value="0" oninput="laWs_computeTotals()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none;"></div>
+        </div>
+      </div>
+
+      <!-- Running totals -->
+      <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:0;" id="laWsTotals"></div>
+      </div>
+    </div>
+
+    <div class="pip-modal-footer">
+      <button class="btn-modal-close" onclick="pip_closeModal('laWsModal')">Cancel</button>
+      <button class="btn-modal-confirm" id="laWsApplyBtn" onclick="laWs_applyToFSR()" disabled>✓ Apply to FSR</button>
     </div>
   </div>
 </div>
@@ -3019,6 +3091,27 @@ function pip_renderFSR() {
         pip_renderCalcRow('E','Gross Assessed Loss after Depreciation (\u20b9)','fsr-grossAssessed',d.grossAssessed,'=',true) +
       '</div></div>'
     ) +
+    '<div class="card" style="border-color:rgba(167,139,250,0.2);"><div class="card-header" style="background:rgba(167,139,250,0.06);">' +
+      '<span class="card-title" style="color:var(--purple);">📊 Loss Assessment Worksheet</span>' +
+      '<span style="margin-left:auto;display:flex;gap:8px;align-items:center;">' +
+        '<span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Barkul-style line-item assessment</span>' +
+        '<button class="btn-small purple" onclick="laWs_openModal()" style="font-size:10px;padding:4px 10px;">⚡ AI Generate Worksheet</button>' +
+      '</span>' +
+    '</div><div class="card-body">' +
+      '<div id="laWs-container">' +
+        (claimState.fsr.data._laWorksheet && claimState.fsr.data._laWorksheet.length
+          ? laWs_renderTable(claimState.fsr.data._laWorksheet, claimState.fsr.data._laDeductions)
+          : '<div style="text-align:center;padding:24px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' +
+              'Click <strong style="color:var(--purple);">⚡ AI Generate Worksheet</strong> to auto-create the loss assessment from JIR data + quotations.<br>' +
+              'Or add items manually below.' +
+            '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px;">' +
+            '<button class="btn-action" onclick="laWs_addRow()" style="flex:1;font-size:11px;padding:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);border-radius:6px;cursor:pointer;">+ Add Line Item</button>' +
+            '<button class="btn-action" onclick="laWs_recalc()" style="flex:1;font-size:11px;padding:7px;border:1px solid rgba(94,198,122,0.3);background:var(--green-dim);color:var(--green);border-radius:6px;cursor:pointer;">⟳ Recalculate</button>' +
+          '</div>'
+        ) +
+      '</div>' +
+    '</div></div>' +
     '<div class="card" style="border-color:rgba(232,160,32,0.2);"><div class="card-header" style="background:var(--amber-glow);">' +
       '<span class="card-title" style="color:var(--amber);">Settlement Computation \u2014 Deductions &amp; Adjustments</span>' +
       '<span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-ter);">Rules: ' + (c.insurer_name||'Insurer') + '</span>' +
@@ -3637,17 +3730,21 @@ async function ncCreateClaim() {
   var circ      = document.getElementById('nc-circumstances').value.trim();
   var addr      = document.getElementById('nc-address').value.trim();
   var lossAmt   = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
+  var policyNo  = document.getElementById('nc-policyNo').value.trim();
+  var sumIns    = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
 
   var r = await api('POST', '/api/claims', {
-    insurer_id:     insId,
-    insurer_name:   insName,
-    insured_name:   name,
+    insurer_id:      insId,
+    insurer_name:    insName,
+    insured_name:    name,
     insured_address: addr,
-    department:     dept,
-    incident_date:  new Date(date).getTime(),
-    circumstances:  circ,
-    loss_amount:    lossAmt,
-    claim_status:   'intimated'
+    department:      dept,
+    incident_date:   new Date(date).getTime(),
+    circumstances:   circ,
+    loss_amount:     lossAmt,
+    policy_number:   policyNo,
+    sum_insured:     sumIns || undefined,
+    claim_status:    'intimated'
   });
 
   btn.disabled = false;
@@ -3782,6 +3879,283 @@ function ncSkipPhotos() {
       toast('Claim created. Fill JIR form manually.', 'info');
     });
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// LOSS ASSESSMENT WORKSHEET — Phase 2
+// Based on real Barkul case structure: items → deductions → net
+// ══════════════════════════════════════════════════════════════════════
+
+var _laWsItems = [];  // [{desc, qty, rate, claimed, allowed, remarks}]
+
+function laWs_openModal() {
+  document.getElementById('laWsGenerating').style.display = 'none';
+  document.getElementById('laWsTable').style.display      = 'none';
+  document.getElementById('laWsApplyBtn').disabled        = true;
+
+  // Pre-populate from existing data if available
+  var existing = claimState.fsr && claimState.fsr.data && claimState.fsr.data._laWorksheet;
+  if (existing && existing.length) {
+    _laWsItems = JSON.parse(JSON.stringify(existing));
+    var ded = claimState.fsr.data._laDeductions || {};
+    document.getElementById('laWs-disallowed').value = ded.disallowed || 0;
+    document.getElementById('laWs-qtyVar').value     = ded.qtyVar     || 0;
+    document.getElementById('laWs-rateVar').value    = ded.rateVar    || 0;
+    document.getElementById('laWs-depn').value       = ded.depn       || 0;
+    document.getElementById('laWs-salvage').value    = ded.salvage    || 0;
+    document.getElementById('laWs-excess').value     = ded.excess     || (pip_insurerRules && pip_insurerRules.deductible_rules && pip_insurerRules.deductible_rules.fixed) || 0;
+    laWs_renderItems();
+    laWs_computeTotals();
+    document.getElementById('laWsTable').style.display = 'block';
+    document.getElementById('laWsApplyBtn').disabled   = false;
+  } else {
+    // Auto-generate from AI
+    laWs_aiGenerate();
+  }
+  document.getElementById('laWsModal').classList.add('show');
+}
+
+async function laWs_aiGenerate() {
+  document.getElementById('laWsGenerating').style.display = 'block';
+  document.getElementById('laWsTable').style.display      = 'none';
+
+  var c   = pip_claim || {};
+  var jd  = (claimState.jir && claimState.jir.data) || {};
+  var rules = pip_insurerRules || {};
+
+  var status = document.getElementById('laWsGenStatus');
+  status.textContent = '\u23f3 Analysing claim data with AI\u2026';
+
+  try {
+    // Build prompt from known claim data
+    var prompt = 'You are a senior IRDAI-licensed insurance surveyor preparing a Loss Assessment Worksheet.\n\n' +
+      'CLAIM: ' + (c.claim_number||'') + '\n' +
+      'Insured: ' + (c.insured_name||'') + '\n' +
+      'Department: ' + (c.department||'') + '\n' +
+      'Insurer: ' + (c.insurer_name||'') + '\n' +
+      'Policy SI: Rs.' + ((c.sum_insured||0)).toLocaleString('en-IN') + '\n' +
+      'Claimed Loss: Rs.' + ((c.loss_amount||0)).toLocaleString('en-IN') + '\n' +
+      'Circumstances: ' + (c.circumstances||jd.narration||'Not provided') + '\n' +
+      'Observations: ' + (jd.observations||'Not provided') + '\n' +
+      'Insurer Deductible: Rs.' + ((rules.deductible_rules&&rules.deductible_rules.fixed)||5000) + '\n' +
+      'Insurer Depreciation Table: ' + JSON.stringify((rules.depreciation_table||[]).slice(0,3)) + '\n\n' +
+      'Generate a realistic Loss Assessment Worksheet with 4-8 line items.\n' +
+      'For each item provide: description, qty_affected, rate_per_item, amount_claimed, amount_allowed, remarks.\n' +
+      'Also suggest: disallowed_ineligible (Rs, items not covered), qty_variation_pct (0-15%), rate_variation_pct (0-15%), depreciation_pct (based on item age), salvage_lumpsum (Rs), policy_excess (Rs).\n\n' +
+      'Return ONLY valid JSON:\n' +
+      '{"items":[{"desc":"","qty":0,"rate":0,"claimed":0,"allowed":0,"remarks":""}],' +
+      '"deductions":{"disallowed":0,"qtyVar":0,"rateVar":0,"depn":0,"salvage":0,"excess":0},' +
+      '"basis":"1-line explanation of assessment approach"}';
+
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var raw  = data.content && data.content[0] && data.content[0].text || '{}';
+    var parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    _laWsItems = (parsed.items || []).map(function(item) {
+      return {
+        desc:    item.desc    || '',
+        qty:     item.qty     || 1,
+        rate:    item.rate    || 0,
+        claimed: item.claimed || (item.qty * item.rate),
+        allowed: item.allowed || item.claimed || 0,
+        remarks: item.remarks || 'As per AI assessment'
+      };
+    });
+
+    var ded = parsed.deductions || {};
+    document.getElementById('laWs-disallowed').value = ded.disallowed || 0;
+    document.getElementById('laWs-qtyVar').value     = ded.qtyVar     || 0;
+    document.getElementById('laWs-rateVar').value    = ded.rateVar    || 0;
+    document.getElementById('laWs-depn').value       = ded.depn       || 0;
+    document.getElementById('laWs-salvage').value    = ded.salvage    || 0;
+    document.getElementById('laWs-excess').value     = ded.excess     || (rules.deductible_rules&&rules.deductible_rules.fixed) || 5000;
+
+    var basisEl = document.getElementById('laWsAiBasis');
+    if (basisEl) basisEl.textContent = '\u2605 AI basis: ' + (parsed.basis || 'Assessment generated from claim data');
+
+    laWs_renderItems();
+    laWs_computeTotals();
+
+    document.getElementById('laWsGenerating').style.display = 'none';
+    document.getElementById('laWsTable').style.display      = 'block';
+    document.getElementById('laWsApplyBtn').disabled        = false;
+
+  } catch(err) {
+    // Fallback: empty worksheet with defaults
+    _laWsItems = [{ desc: '', qty: 1, rate: 0, claimed: 0, allowed: 0, remarks: '' }];
+    document.getElementById('laWs-excess').value = (rules.deductible_rules&&rules.deductible_rules.fixed) || 5000;
+    laWs_renderItems();
+    laWs_computeTotals();
+    document.getElementById('laWsGenerating').style.display = 'none';
+    document.getElementById('laWsTable').style.display      = 'block';
+    document.getElementById('laWsApplyBtn').disabled        = false;
+    var basisEl = document.getElementById('laWsAiBasis');
+    if (basisEl) basisEl.textContent = '\u26a0 AI unavailable — worksheet ready for manual entry';
+  }
+}
+
+function laWs_renderItems() {
+  var tbody = document.getElementById('laWsItemBody');
+  if (!tbody) return;
+  tbody.innerHTML = _laWsItems.map(function(item, i) {
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' + (i+1) + '</td>' +
+      '<td style="padding:4px 6px;"><input value="' + (item.desc||'') + '" onchange="laWs_updateItem(' + i + ',\'desc\',this.value)" style="width:140px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text-pri);font-size:11px;padding:4px 7px;outline:none;"></td>' +
+      '<td style="padding:4px 6px;text-align:right;"><input type="number" value="' + (item.qty||0) + '" onchange="laWs_updateItem(' + i + ',\'qty\',parseFloat(this.value)||0)" style="width:60px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text-pri);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;text-align:right;"></td>' +
+      '<td style="padding:4px 6px;text-align:right;"><input type="number" value="' + (item.rate||0) + '" onchange="laWs_updateItem(' + i + ',\'rate\',parseFloat(this.value)||0)" style="width:80px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text-pri);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;text-align:right;"></td>' +
+      '<td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-sec);">' + Math.round(item.claimed||0).toLocaleString('en-IN') + '</td>' +
+      '<td style="padding:4px 6px;text-align:right;"><input type="number" value="' + (item.allowed||0) + '" onchange="laWs_updateItem(' + i + ',\'allowed\',parseFloat(this.value)||0)" style="width:90px;background:var(--bg3);border:1px solid rgba(94,198,122,0.3);border-radius:4px;color:var(--green);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;text-align:right;"></td>' +
+      '<td style="padding:4px 6px;"><input value="' + (item.remarks||'') + '" onchange="laWs_updateItem(' + i + ',\'remarks\',this.value)" style="width:120px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text-sec);font-size:10px;padding:4px 7px;outline:none;"></td>' +
+      '<td style="padding:4px;"><button onclick="laWs_removeRow(' + i + ')" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px;">\u00d7</button></td>' +
+    '</tr>';
+  }).join('');
+  laWs_computeTotals();
+}
+
+function laWs_updateItem(i, field, val) {
+  _laWsItems[i][field] = val;
+  if (field === 'qty' || field === 'rate') {
+    _laWsItems[i].claimed = (_laWsItems[i].qty||0) * (_laWsItems[i].rate||0);
+    _laWsItems[i].allowed = _laWsItems[i].claimed;
+  }
+  laWs_renderItems();
+}
+
+function laWs_addRow() {
+  _laWsItems.push({ desc: '', qty: 1, rate: 0, claimed: 0, allowed: 0, remarks: '' });
+  laWs_renderItems();
+}
+
+function laWs_removeRow(i) {
+  _laWsItems.splice(i, 1);
+  laWs_renderItems();
+}
+
+function laWs_computeTotals() {
+  var totalClaimed = _laWsItems.reduce(function(s,r){ return s + (r.claimed||0); }, 0);
+  var totalAllowed = _laWsItems.reduce(function(s,r){ return s + (r.allowed||0); }, 0);
+
+  var disallowed = parseFloat(document.getElementById('laWs-disallowed').value) || 0;
+  var qtyVar     = parseFloat(document.getElementById('laWs-qtyVar').value)     || 0;
+  var rateVar    = parseFloat(document.getElementById('laWs-rateVar').value)    || 0;
+  var depn       = parseFloat(document.getElementById('laWs-depn').value)       || 0;
+  var salvage    = parseFloat(document.getElementById('laWs-salvage').value)    || 0;
+  var excess     = parseFloat(document.getElementById('laWs-excess').value)     || 0;
+
+  var afterDisallow  = totalAllowed - disallowed;
+  var netRestore     = Math.max(0, afterDisallow);
+  var qtyVarAmt      = Math.round(netRestore * qtyVar / 100);
+  var rateVarAmt     = Math.round((netRestore - qtyVarAmt) * rateVar / 100);
+  var afterVariation = netRestore - qtyVarAmt - rateVarAmt;
+  var depnAmt        = Math.round(afterVariation * depn / 100);
+  var assessed       = Math.max(0, afterVariation - depnAmt);
+  var afterSalvage   = Math.max(0, assessed - salvage);
+  var netAdjusted    = Math.max(0, afterSalvage - excess);
+
+  var fmt = function(n) { return '\u20b9' + Math.round(n).toLocaleString('en-IN'); };
+
+  var rows = [
+    ['Total Amount Claimed',         fmt(totalClaimed), ''],
+    ['Gross Loss (Allowed by Surveyor)', fmt(totalAllowed), ''],
+    ['Less: Ineligible / Not Covered',  '(' + fmt(disallowed) + ')', 'var(--red)'],
+    ['Net Cost of Restoration',         fmt(netRestore), 'var(--amber)'],
+    ['Less: Quantity Variation (' + qtyVar + '%)',  '(' + fmt(qtyVarAmt) + ')', 'var(--red)'],
+    ['Less: Rate Variation (' + rateVar + '%)',     '(' + fmt(rateVarAmt) + ')', 'var(--red)'],
+    ['Less: Depreciation (' + depn + '%)',          '(' + fmt(depnAmt) + ')', 'var(--red)'],
+    ['Assessed Loss',                   fmt(assessed), 'var(--amber)'],
+    ['Less: Salvage',                   '(' + fmt(salvage) + ')', 'var(--red)'],
+    ['Less: Policy Excess',             '(' + fmt(excess) + ')', 'var(--red)'],
+    ['NET ADJUSTED LOSS / SETTLEMENT',  fmt(netAdjusted), 'var(--green)']
+  ];
+
+  var totalsEl = document.getElementById('laWsTotals');
+  if (!totalsEl) return;
+  totalsEl.innerHTML = rows.map(function(row, i) {
+    var isTotal = row[0].startsWith('NET') || row[0].startsWith('Assessed') || row[0].startsWith('Net Cost') || row[0].startsWith('Gross Loss');
+    var bg      = isTotal ? 'var(--bg2)' : 'transparent';
+    var fw      = isTotal ? '500' : '400';
+    return '<div style="padding:6px 12px;font-size:12px;color:' + (row[2]||'var(--text-sec)') + ';font-weight:' + fw + ';background:' + bg + ';border-bottom:0.5px solid var(--border);">' + row[0] + '</div>' +
+           '<div style="padding:6px 12px;font-size:12px;font-family:var(--mono);color:' + (row[2]||'var(--text-pri)') + ';font-weight:' + fw + ';background:' + bg + ';border-bottom:0.5px solid var(--border);text-align:right;">' + row[1] + '</div>';
+  }).join('');
+
+  // Store for apply
+  window._laWsNetAdjusted = netAdjusted;
+  window._laWsGrossLoss   = totalAllowed;
+}
+
+function laWs_applyToFSR() {
+  if (!claimState.fsr) return;
+  if (!claimState.fsr.data) claimState.fsr.data = {};
+
+  // Save worksheet
+  claimState.fsr.data._laWorksheet = JSON.parse(JSON.stringify(_laWsItems));
+  claimState.fsr.data._laDeductions = {
+    disallowed: parseFloat(document.getElementById('laWs-disallowed').value)||0,
+    qtyVar:     parseFloat(document.getElementById('laWs-qtyVar').value)||0,
+    rateVar:    parseFloat(document.getElementById('laWs-rateVar').value)||0,
+    depn:       parseFloat(document.getElementById('laWs-depn').value)||0,
+    salvage:    parseFloat(document.getElementById('laWs-salvage').value)||0,
+    excess:     parseFloat(document.getElementById('laWs-excess').value)||0
+  };
+
+  // Push net loss into FSR gross assessed field
+  if (window._laWsGrossLoss) {
+    claimState.fsr.data.grossAssessed = Math.round(window._laWsGrossLoss);
+  }
+  if (window._laWsNetAdjusted) {
+    claimState.fsr.data.deductible = parseFloat(document.getElementById('laWs-excess').value)||0;
+    claimState.fsr.data.salvage    = parseFloat(document.getElementById('laWs-salvage').value)||0;
+  }
+
+  pip_closeModal('laWsModal');
+  pip_showReport('fsr');  // Re-render FSR with populated values
+  pip_fsrCalc();
+  toast('\u2713 Loss Assessment applied to FSR — review and confirm all values', 'success');
+}
+
+function laWs_renderTable(items, ded) {
+  // Used by pip_renderFSR to show existing worksheet inline
+  var totalAllowed = items.reduce(function(s,r){ return s + (r.allowed||0); }, 0);
+  ded = ded || {};
+  var netRestore = Math.max(0, totalAllowed - (ded.disallowed||0));
+  var qtyAmt     = Math.round(netRestore * (ded.qtyVar||0) / 100);
+  var rateAmt    = Math.round((netRestore-qtyAmt) * (ded.rateVar||0) / 100);
+  var depnAmt    = Math.round((netRestore-qtyAmt-rateAmt) * (ded.depn||0) / 100);
+  var assessed   = Math.max(0, netRestore - qtyAmt - rateAmt - depnAmt);
+  var net        = Math.max(0, assessed - (ded.salvage||0) - (ded.excess||0));
+  var fmt        = function(n){ return '\u20b9' + Math.round(n).toLocaleString('en-IN'); };
+
+  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+    '<thead><tr style="background:var(--bg3);">' +
+    '<th style="padding:6px 10px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;">#</th>' +
+    '<th style="padding:6px 10px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;">Item</th>' +
+    '<th style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;">Claimed</th>' +
+    '<th style="padding:6px 10px;text-align:right;font-family:var(--mono);font-size:9px;color:var(--green);font-weight:500;">Allowed</th>' +
+    '</tr></thead><tbody>' +
+    items.map(function(item,i){ return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:5px 10px;font-family:var(--mono);font-size:9px;color:var(--text-ter);">' + (i+1) + '</td>' +
+      '<td style="padding:5px 10px;color:var(--text-pri);">' + (item.desc||'') + ' <span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">×' + (item.qty||1) + '</span></td>' +
+      '<td style="padding:5px 10px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text-sec);">' + fmt(item.claimed||0) + '</td>' +
+      '<td style="padding:5px 10px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--green);">' + fmt(item.allowed||0) + '</td>' +
+    '</tr>'; }).join('') +
+    '<tr style="background:var(--amber-glow);border-top:1px solid rgba(232,160,32,0.2);">' +
+    '<td colspan="3" style="padding:7px 10px;font-size:12px;font-weight:500;color:var(--text-pri);">Net Settlement</td>' +
+    '<td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:500;color:var(--green);">' + fmt(net) + '</td>' +
+    '</tr></tbody></table></div>' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="btn-action" onclick="laWs_openModal()" style="flex:1;font-size:11px;padding:7px;border:1px solid rgba(167,139,250,0.3);background:var(--purple-dim);color:var(--purple);border-radius:6px;cursor:pointer;">\u270f Edit Worksheet</button>' +
+    '<button class="btn-action" onclick="laWs_openModal()" style="flex:1;font-size:11px;padding:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);border-radius:6px;cursor:pointer;">\u21bb Regenerate</button>' +
+    '</div>';
 }
 
 function pip_printReport() {
