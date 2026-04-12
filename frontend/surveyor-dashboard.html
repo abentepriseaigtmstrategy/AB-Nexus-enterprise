@@ -463,6 +463,11 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
       <span id="pipNavBadge" style="font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:3px;background:var(--bg3);color:var(--text-ter);">—</span>
     </div>
   </div>
+  <div style="padding:10px 12px;border-bottom:1px solid var(--border);">
+    <button onclick="openNewClaimModal()" style="width:100%;padding:10px;border-radius:7px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.35);color:var(--amber);font-family:var(--display);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.06em;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;" onmouseover="this.style.background='rgba(232,160,32,0.22)'" onmouseout="this.style.background='var(--amber-dim)'">
+      <span style="font-size:16px;line-height:1;">+</span> NEW CLAIM
+    </button>
+  </div>
   <div class="sidebar-section">
     <div class="sidebar-label">Active Claims</div>
     <div id="claimList">
@@ -1044,6 +1049,88 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     <div class="pip-modal-footer">
       <button class="btn-modal-close" onclick="pip_closeModal('pip-previewModal')">Close</button>
       <button class="btn-modal-confirm" onclick="pip_printReport()">🖨 Print / Save as PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     NEW CLAIM MODAL — Step 1: Intimation Details
+════════════════════════════════════════════════════════════════ -->
+<div class="pip-modal-overlay" id="newClaimModal" style="z-index:2000;">
+  <div class="pip-modal-box" style="width:560px;">
+    <!-- Step 1: Intimation Details -->
+    <div id="ncStep1">
+      <div class="pip-modal-title">📋 New Claim — Intimation Details</div>
+      <div class="pip-modal-sub">STEP 1 OF 2 · ENTER DETAILS FROM HQ INTIMATION EMAIL</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="field" style="grid-column:1/-1;">
+          <label>Insurer *</label>
+          <select id="nc-insurer" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;-webkit-appearance:none;">
+            <option value="">— Select Insurance Company —</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Insured Name *</label>
+          <input type="text" id="nc-insuredName" placeholder="e.g. Sharma Textiles Pvt Ltd" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div class="field">
+          <label>Date of Loss *</label>
+          <input type="date" id="nc-lossDate" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div class="field">
+          <label>Department *</label>
+          <select id="nc-dept" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;-webkit-appearance:none;">
+            <option value="burglary">Theft & Burglary</option>
+            <option value="fire">Fire & Allied Perils</option>
+            <option value="marine">Marine Cargo</option>
+            <option value="motor">Motor Own Damage</option>
+            <option value="engineering">Engineering (CAR/EAR)</option>
+            <option value="misc">Miscellaneous</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Nature of Loss / Circumstances</label>
+          <textarea id="nc-circumstances" rows="3" placeholder="e.g. Burglary incident at warehouse. Forced entry through rear shutter." style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;resize:vertical;"></textarea>
+        </div>
+        <div class="field">
+          <label>Insured Address</label>
+          <input type="text" id="nc-address" placeholder="Site/Loss location address" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div class="field">
+          <label>Estimated Loss (₹)</label>
+          <input type="number" id="nc-lossAmt" placeholder="0" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+      </div>
+      <div id="ncStep1Error" style="display:none;background:rgba(232,85,85,0.1);border:1px solid rgba(232,85,85,0.25);border-radius:6px;padding:8px 12px;color:var(--red);font-family:var(--mono);font-size:10px;margin-bottom:10px;"></div>
+      <div class="pip-modal-footer">
+        <button class="btn-modal-close" onclick="closeNewClaimModal()">Cancel</button>
+        <button class="btn-modal-confirm" id="ncStep1Btn" onclick="ncCreateClaim()">Create Claim & Upload Photos →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Photo Upload + AI OCR -->
+    <div id="ncStep2" style="display:none;">
+      <div class="pip-modal-title">📸 Upload Site Photos — AI Will Fill JIR</div>
+      <div class="pip-modal-sub" id="ncClaimRef">STEP 2 OF 2 · CLAIM CREATED · AI-OCR WILL PRE-FILL JIR FORM</div>
+      <div style="background:linear-gradient(135deg,rgba(34,196,160,0.06),rgba(91,156,246,0.04));border:1px solid rgba(34,196,160,0.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--teal);border:1px solid rgba(34,196,160,0.3);border-radius:3px;padding:2px 6px;white-space:nowrap;">AI-OCR</span>
+        <div style="font-size:12px;color:var(--text-sec);line-height:1.6;">Upload your <strong style="color:var(--teal);">handwritten JIR photos</strong> or site evidence photos. AI will extract all text and pre-fill the JIR form fields — you just review and confirm.</div>
+      </div>
+      <!-- Drop zone -->
+      <div id="ncDropZone" onclick="document.getElementById('ncFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor='rgba(34,196,160,0.25)'" ondrop="ncHandleDrop(event)" style="border:2px dashed rgba(34,196,160,0.25);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:12px;">
+        <div style="font-size:28px;margin-bottom:8px;">📷</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--teal);font-weight:600;">Click to upload or drag photos here</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:4px;">JPG · PNG · HEIC · up to 10 photos</div>
+        <input type="file" id="ncFileInput" multiple accept="image/*" style="display:none;" onchange="ncHandleFiles(this.files)">
+      </div>
+      <!-- Preview thumbnails -->
+      <div id="ncPhotoPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+      <!-- OCR status -->
+      <div id="ncOcrStatus" style="display:none;font-family:var(--mono);font-size:10px;color:var(--teal);padding:8px 12px;background:var(--teal-dim);border-radius:6px;margin-bottom:10px;"></div>
+      <div class="pip-modal-footer">
+        <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Fill JIR Manually</button>
+        <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncRunOCR()" disabled>🔍 Run AI-OCR & Fill JIR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3487,6 +3574,214 @@ function pip_generateReportHTML(type, d) {
         .join('') +
     '</table>' +
   '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// NEW CLAIM FLOW — Phase 1
+// ══════════════════════════════════════════════════════════════════════
+
+var _ncClaimId   = null;
+var _ncPhotos    = [];
+var _ncOcrResult = null;
+
+function openNewClaimModal() {
+  // Populate insurer dropdown from existing list
+  var srcSel  = document.getElementById('insurerSel');
+  var destSel = document.getElementById('nc-insurer');
+  destSel.innerHTML = '<option value="">— Select Insurance Company —</option>';
+  Array.from(srcSel.options).forEach(function(o) {
+    if (o.value) destSel.innerHTML += '<option value="' + o.value + '">' + o.text + '</option>';
+  });
+  // Pre-select current insurer if one is already chosen
+  if (state.insurerId) destSel.value = state.insurerId;
+  // Pre-select current dept
+  var deptSel = document.getElementById('nc-dept');
+  if (state.dept) deptSel.value = state.dept;
+  // Default loss date to today
+  document.getElementById('nc-lossDate').value = new Date().toISOString().slice(0,10);
+  // Reset state
+  _ncClaimId = null; _ncPhotos = []; _ncOcrResult = null;
+  document.getElementById('ncStep1').style.display = 'block';
+  document.getElementById('ncStep2').style.display = 'none';
+  document.getElementById('ncStep1Error').style.display = 'none';
+  document.getElementById('ncPhotoPreview').innerHTML = '';
+  document.getElementById('ncOcrStatus').style.display = 'none';
+  document.getElementById('ncOcrBtn').disabled = true;
+  document.getElementById('newClaimModal').classList.add('show');
+}
+
+function closeNewClaimModal() {
+  document.getElementById('newClaimModal').classList.remove('show');
+}
+
+async function ncCreateClaim() {
+  var insId  = document.getElementById('nc-insurer').value;
+  var name   = document.getElementById('nc-insuredName').value.trim();
+  var date   = document.getElementById('nc-lossDate').value;
+  var dept   = document.getElementById('nc-dept').value;
+  var errBox = document.getElementById('ncStep1Error');
+
+  if (!insId || !name || !date) {
+    errBox.textContent = '\u26a0 Insurer, Insured Name and Date of Loss are required.';
+    errBox.style.display = 'block';
+    return;
+  }
+  errBox.style.display = 'none';
+
+  var btn = document.getElementById('ncStep1Btn');
+  btn.disabled = true;
+  btn.textContent = 'Creating claim\u2026';
+
+  var insOption = document.getElementById('nc-insurer').selectedOptions[0];
+  var insName   = insOption ? insOption.text : '';
+  var circ      = document.getElementById('nc-circumstances').value.trim();
+  var addr      = document.getElementById('nc-address').value.trim();
+  var lossAmt   = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
+
+  var r = await api('POST', '/api/claims', {
+    insurer_id:     insId,
+    insurer_name:   insName,
+    insured_name:   name,
+    insured_address: addr,
+    department:     dept,
+    incident_date:  new Date(date).getTime(),
+    circumstances:  circ,
+    loss_amount:    lossAmt,
+    claim_status:   'intimated'
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Create Claim & Upload Photos \u2192';
+
+  if (!r || r.error) {
+    errBox.textContent = '\u26a0 ' + (r && r.error ? r.error : 'Failed to create claim. Check your connection.');
+    errBox.style.display = 'block';
+    return;
+  }
+
+  _ncClaimId = r.claim && r.claim.id ? r.claim.id : r.id;
+  var claimNum = r.claim && r.claim.claim_number ? r.claim.claim_number : r.claim_number || 'NEW';
+
+  // Switch to step 2
+  document.getElementById('ncStep1').style.display = 'none';
+  document.getElementById('ncStep2').style.display = 'block';
+  document.getElementById('ncClaimRef').textContent =
+    'STEP 2 OF 2 \u00b7 CLAIM ' + claimNum + ' CREATED \u00b7 UPLOAD SITE PHOTOS FOR AI OCR';
+
+  // Refresh sidebar
+  loadClaimsSidebar();
+  toast('\u2713 Claim ' + claimNum + ' created', 'success');
+}
+
+function ncHandleFiles(files) {
+  Array.from(files).forEach(function(f) {
+    if (_ncPhotos.length >= 10) return;
+    _ncPhotos.push(f);
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var prev = document.getElementById('ncPhotoPreview');
+      var div  = document.createElement('div');
+      div.style.cssText = 'position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid var(--border2);';
+      div.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+      prev.appendChild(div);
+    };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById('ncOcrBtn').disabled = _ncPhotos.length === 0;
+}
+
+function ncHandleDrop(e) {
+  e.preventDefault();
+  document.getElementById('ncDropZone').style.borderColor = 'rgba(34,196,160,0.25)';
+  ncHandleFiles(e.dataTransfer.files);
+}
+
+async function ncRunOCR() {
+  if (!_ncPhotos.length) return;
+  var btn    = document.getElementById('ncOcrBtn');
+  var status = document.getElementById('ncOcrStatus');
+  btn.disabled = true;
+  btn.textContent = '\u23f3 Running AI-OCR\u2026';
+  status.style.display = 'block';
+  status.textContent   = '\u2b50 Analysing ' + _ncPhotos.length + ' photo(s) with GPT-4o Vision\u2026';
+
+  try {
+    // Read first photo as base64 (primary handwritten JIR)
+    var file = _ncPhotos[0];
+    var b64  = await new Promise(function(res, rej) {
+      var r2 = new FileReader();
+      r2.onload = function(ev) { res(ev.target.result.split(',')[1]); };
+      r2.onerror = rej;
+      r2.readAsDataURL(file);
+    });
+
+    var ocrRes = await api('POST', '/api/claims/' + _ncClaimId + '/ocr', {
+      imageBase64: b64,
+      mimeType:    file.type || 'image/jpeg',
+      context:     'handwritten_report'
+    });
+
+    if (ocrRes && ocrRes.structured) {
+      _ncOcrResult = ocrRes;
+      status.textContent = '\u2713 AI extracted text. Pre-filling JIR form\u2026';
+      ncApplyOCRToJIR(ocrRes);
+      setTimeout(function() {
+        closeNewClaimModal();
+        // Load the claim and open pipeline
+        loadClaim(_ncClaimId).then(function() {
+          switchModule('pipeline');
+          pip_showReport('jir');
+          toast('\u2713 JIR pre-filled from handwritten notes. Review and confirm.', 'success');
+        });
+      }, 1200);
+    } else {
+      status.textContent = '\u26a0 OCR returned limited data. Opening JIR for manual fill.';
+      setTimeout(function() { ncSkipPhotos(); }, 1500);
+    }
+  } catch(err) {
+    status.textContent = '\u26a0 OCR failed: ' + err.message + '. Opening JIR manually.';
+    setTimeout(function() { ncSkipPhotos(); }, 1500);
+  }
+}
+
+function ncApplyOCRToJIR(ocr) {
+  var s = ocr.structured || {};
+  // Map OCR fields to JIR form fields
+  var maps = {
+    'jir-surveyDate':   s.date,
+    'jir-lossDateTime': s.date,
+    'jir-lossAddress':  s.location,
+    'jir-sitePhone':    s.contact_person,
+    'jir-firNo':        s.fir_number,
+    'jir-policeStation':s.police_station,
+    'jir-narration':    s.loss_description,
+    'jir-observations': s.observations && s.observations.length ? s.observations.join('\n') : null
+  };
+  Object.entries(maps).forEach(function(pair) {
+    var el = document.getElementById(pair[0]);
+    if (el && pair[1]) el.value = pair[1];
+  });
+  // Set preliminary loss if amounts found
+  if (s.amounts && s.amounts.length) {
+    var el = document.getElementById('jir-prelimLoss');
+    if (el) el.value = s.amounts[0];
+  }
+  // Put full raw text in narration if structured is sparse
+  if (!s.loss_description && ocr.raw_text) {
+    var el = document.getElementById('jir-narration');
+    if (el && !el.value) el.value = ocr.raw_text.slice(0, 800);
+  }
+}
+
+function ncSkipPhotos() {
+  closeNewClaimModal();
+  if (_ncClaimId) {
+    loadClaim(_ncClaimId).then(function() {
+      switchModule('pipeline');
+      pip_showReport('jir');
+      toast('Claim created. Fill JIR form manually.', 'info');
+    });
+  }
 }
 
 function pip_printReport() {
