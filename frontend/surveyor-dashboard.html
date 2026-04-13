@@ -680,6 +680,52 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 
   <!-- TAB: VAULT / DOCUMENTS -->
   <div class="content-area tab-panel" id="tab-vault">
+
+    <!-- ── DCM: Uploaded Documents (PRIMARY) ─────────────────────── -->
+    <div class="card" style="border-color:rgba(34,196,160,0.2);">
+      <div class="card-header" style="background:rgba(34,196,160,0.04);">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="3" width="9" height="7.5" rx="1.5" stroke="var(--teal)" stroke-width="1"/><path d="M4 3V2a2 2 0 014 0v1" stroke="var(--teal)" stroke-width="1"/></svg>
+        <span class="card-title" style="color:var(--teal);">Claim Documents</span>
+        <span id="docUploadedCount" style="font-family:var(--mono);font-size:9px;background:var(--bg3);color:var(--text-ter);padding:2px 8px;border-radius:99px;margin-left:6px;">0 files</span>
+        <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+          <!-- Multi-format upload trigger -->
+          <button onclick="document.getElementById('vaultUploadInput').click()"
+            style="font-family:var(--mono);font-size:10px;padding:4px 12px;border-radius:5px;background:var(--teal-dim);border:1px solid rgba(34,196,160,0.35);color:var(--teal);cursor:pointer;font-weight:700;letter-spacing:0.04em;">
+            ↑ Add File
+          </button>
+          <input type="file" id="vaultUploadInput" multiple
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+            style="display:none;" onchange="handleVaultUpload(event)">
+          <!-- Refresh -->
+          <button onclick="dcm_refresh()" title="Refresh document list"
+            style="font-family:var(--mono);font-size:10px;padding:4px 8px;border-radius:5px;background:var(--bg3);border:1px solid var(--border2);color:var(--text-sec);cursor:pointer;">⟳</button>
+        </div>
+      </div>
+
+      <!-- Upload progress bar -->
+      <div id="uploadProgress" style="display:none;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--text-sec);" id="uploadProgressLabel">Uploading...</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--teal);" id="uploadProgressPct">0%</span>
+        </div>
+        <div class="doc-progress-bar"><div class="doc-progress-fill" id="uploadProgressFill" style="width:0%;"></div></div>
+      </div>
+
+      <!-- Format accepted hint -->
+      <div style="padding:6px 14px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;color:var(--text-ter);">
+        Accepts: 📷 JPG/PNG/HEIC &nbsp;·&nbsp; 📄 PDF &nbsp;·&nbsp; 📝 DOC/DOCX &nbsp;·&nbsp; 📊 XLS/XLSX &nbsp;·&nbsp; 📋 TXT
+      </div>
+
+      <div class="card-body" id="uploadedDocsList" style="padding:10px;">
+        <div style="text-align:center;padding:28px 16px;">
+          <div style="font-size:28px;margin-bottom:8px;">📂</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No documents uploaded yet</div>
+          <div style="font-size:12px;color:var(--text-ter);margin-top:4px;">Load a claim then click ↑ Add File</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Document Checklist (SECONDARY) ────────────────────────── -->
     <div class="card" style="border-color:rgba(34,196,160,0.15);">
       <div class="card-header" style="background:rgba(34,196,160,0.04);">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2h8v9H2z" stroke="var(--teal)" stroke-width="1"/><path d="M4 5l1.5 1.5L8 4" stroke="var(--teal)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -691,21 +737,13 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
         <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);text-align:center;padding:12px;">Select insurer + department to load document checklist</div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="3" width="9" height="7.5" rx="1.5" stroke="var(--teal)" stroke-width="1"/><path d="M4 3V2a2 2 0 014 0v1" stroke="var(--teal)" stroke-width="1"/></svg>
-        <span class="card-title">Uploaded Documents</span>
-        <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-ter);">Cloudflare R2</span>
-      </div>
-      <div class="card-body" id="uploadedDocsList">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No documents uploaded yet.</div>
-      </div>
-    </div>
+
+    <!-- ── Field Camera / OCR (TERTIARY) ─────────────────────────── -->
     <div class="card" style="border-color:rgba(34,196,160,0.15);">
       <div class="card-header" style="background:rgba(34,196,160,0.04);">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="3" width="10" height="7.5" rx="1.5" stroke="var(--teal)" stroke-width="1"/><circle cx="6" cy="6.5" r="2" stroke="var(--teal)" stroke-width="1"/><path d="M4.5 3V2.5h3V3" stroke="var(--teal)" stroke-width="1"/></svg>
-        <span class="card-title" style="color:var(--teal);">Field Camera — GPT-4 Vision OCR + Geo-tagging</span>
-        <span id="photoCount" style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-ter);">0 photos</span>
+        <span class="card-title" style="color:var(--teal);">Field Camera — Handwritten JIR OCR + Geo-tagging</span>
+        <span id="photoCount" style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-ter);">0 docs</span>
       </div>
       <div class="card-body">
         <div class="camera-zone" onclick="triggerCamera('camera')" id="cameraZone">
@@ -731,15 +769,12 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
           </div>
         </div>
         <div class="photo-grid" id="photoGrid"></div>
-        <div id="uploadProgress" style="display:none;margin-top:10px;">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-bottom:4px;" id="uploadProgressLabel">Uploading...</div>
-          <div class="doc-progress-bar"><div class="doc-progress-fill" id="uploadProgressFill" style="width:0%;"></div></div>
-        </div>
       </div>
     </div>
+
     <div class="ai-insight">
       <span class="ai-icon">AI</span>
-      <div class="ai-text" id="crossVerifyNote">Upload documents and run AI Verify to get cross-document analysis against insurer's checklist and warranty requirements.</div>
+      <div class="ai-text" id="crossVerifyNote">Upload documents and run AI Verify to get cross-document analysis against insurer checklist and warranty requirements.</div>
     </div>
   </div>
 
@@ -1179,7 +1214,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 
       <div class="pip-modal-footer">
         <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Go to Claim</button>
-        <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncRunOCR()" disabled>🔍 Run AI-OCR on Photos</button>
+        <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncProcessAllFiles()" disabled>🔍 Process &amp; Classify Files</button>
       </div>
     </div>
   </div>
@@ -1816,12 +1851,37 @@ async function advanceClaimStatus() {
   var btn        = document.getElementById('btnAdvanceStatus');
   var nextStatus = btn && btn.dataset.target;
   if (!nextStatus) return;
-  var r = await api('PUT', '/api/claims/' + state.claimId, { claim_status: nextStatus });
+
+  // FSR READINESS GATE: mandatory fields must be present before ready_for_fsr
+  if (nextStatus === 'ready_for_fsr') {
+    var c   = state.claimData || {};
+    var missing = [];
+    if (!c.policy_number)  missing.push('Policy Number');
+    if (!c.claim_number)   missing.push('Claim / Intimation Number');
+    if (!c.sum_insured)    missing.push('Sum Insured');
+    if (!c.insured_address) missing.push('Loss Location Address');
+    if (missing.length) {
+      toast('\u26a0 Cannot mark Ready for FSR. Missing: ' + missing.join(', ') +
+        '. Update in Intake & UW tab first.', 'error');
+      return;
+    }
+    // Also check worksheet exists
+    if (!claimState.fsr || !claimState.fsr.data || !claimState.fsr.data._laWorksheet) {
+      if (!confirm('Loss Assessment Worksheet not generated yet. Mark Ready for FSR anyway?')) return;
+    }
+  }
+
+  var r = await api('PUT', '/api/claims/' + state.claimId, {
+    claim_status: nextStatus,
+    fsr_ready:    nextStatus === 'ready_for_fsr'
+  });
   if (r && !r.error) {
     var labels = { in_progress:'In Progress', ready_for_fsr:'Ready for FSR', submitted:'Submitted' };
     toast('\u2713 Status updated: ' + (labels[nextStatus] || nextStatus), 'success');
-    // Update local state
-    if (state.claimData) state.claimData.claim_status = nextStatus;
+    if (state.claimData) {
+      state.claimData.claim_status = nextStatus;
+      state.claimData.fsr_ready    = nextStatus === 'ready_for_fsr';
+    }
     var statusClassMap = { in_progress:'status-inprogress', ready_for_fsr:'status-submitted' };
     document.getElementById('claimStatusBadge').className   = 'status ' + (statusClassMap[nextStatus]||'status-intimated');
     document.getElementById('claimStatusBadge').textContent = labels[nextStatus] || nextStatus;
@@ -1938,35 +1998,175 @@ async function loadChecklistStatus() {
 // ── Uploaded docs ─────────────────────────────────────────────────────
 function renderUploadedDocs(docs) {
   const container = document.getElementById('uploadedDocsList');
-  if (!docs.length) {
-    container.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No documents uploaded yet.</div>';
+  // Update count badge
+  const countEl = document.getElementById('docUploadedCount');
+  if (countEl) countEl.textContent = (docs && docs.length || 0) + ' file' + (docs && docs.length === 1 ? '' : 's');
+  if (!docs || !docs.length) {
+    container.innerHTML =
+      '<div style="text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' +
+        'No documents uploaded yet.<br>' +
+        '<span style="color:var(--text-ter);">Use Gallery or Camera below to upload files.</span>' +
+      '</div>';
     return;
   }
-  const icons = { fir:'\ud83d\ude94', invoice:'\ud83e\udded', photo:'\ud83d\udcf8',
-                  stock_register:'\ud83d\udce6', report:'\ud83d\udcc4',
-                  handwritten_report:'\u270d', certificate:'\ud83d\udcdc' };
-  container.innerHTML = docs.map(d => {
-    const icon       = icons[d.document_type] || '\ud83d\udcc4';
-    const score      = d.verification_score || 0;
-    const scoreColor = score > 85 ? 'var(--green)' : score > 60 ? 'var(--amber)' : 'var(--red)';
-    const geoTag     = d.geo_lat ? '<span style="color:var(--teal)"> \u00b7 \ud83d\udccd Geo-tagged</span>' : '';
-    return '<div class="doc-item">' +
-      '<div class="doc-icon">' + icon + '</div>' +
-      '<div><div class="doc-name">' + d.filename + '</div>' +
-        '<div class="doc-meta">' + (d.document_type || 'doc') + ' \u00b7 ' +
-          (d.file_size ? Math.round(d.file_size/1024) + 'KB' : '') + ' \u00b7 ' +
-          new Date((d.created_at * 1000) || d.created_at).toLocaleDateString('en-IN') + geoTag +
-        '</div></div>' +
-      '<div class="doc-score">' +
-        '<div class="score-bar"><div class="score-fill" style="width:' + score + '%;background:' + scoreColor + ';"></div></div>' +
-        '<div class="score-text">' + (score > 0 ? 'Auth: ' + score + '%' : 'Pending OCR') + '</div>' +
-      '</div></div>';
+
+  // Extended icon map — covers all classified types
+  const icons = {
+    fir:'🚔', invoice:'🧾', photo:'📸', stock_register:'📦',
+    report:'📄', handwritten_report:'✍', certificate:'📜',
+    policy:'📋', quotation:'💬', panchnama:'📝', jir:'🔍',
+    fsr:'🏆', statement:'📃', financial:'📊', registration:'🏭',
+    loss_assessment:'⚖️', document:'📄'
+  };
+
+  // Type colour badges
+  const typeBg = {
+    fir:'rgba(232,85,85,0.12)', policy:'rgba(91,156,246,0.12)',
+    invoice:'rgba(232,160,32,0.12)', quotation:'rgba(232,160,32,0.12)',
+    panchnama:'rgba(167,139,250,0.12)', jir:'rgba(34,196,160,0.12)',
+    fsr:'rgba(94,198,122,0.12)', financial:'rgba(34,196,160,0.12)',
+    photo:'rgba(91,156,246,0.12)'
+  };
+  const typeColor = {
+    fir:'var(--red)', policy:'var(--blue)', invoice:'var(--amber)',
+    quotation:'var(--amber)', panchnama:'var(--purple)', jir:'var(--teal)',
+    fsr:'var(--green)', financial:'var(--teal)', photo:'var(--blue)'
+  };
+
+  container.innerHTML = docs.map((d, idx) => {
+    const dtype    = d.document_type || d.doc_type || 'document';
+    const icon     = icons[dtype] || '📄';
+    const score    = d.verification_score || 0;
+    const scoreTxt = score > 0 ? score + '%' : '—';
+    const scoreCol = score > 85 ? 'var(--green)' : score > 60 ? 'var(--amber)' : 'var(--text-ter)';
+    const geoTag   = d.geo_lat ? ' · 📍 Geo' : '';
+    const sizeTxt  = d.file_size ? Math.round(d.file_size / 1024) + ' KB' : '';
+    const dateTxt  = d.created_at
+      ? new Date(d.created_at > 1e10 ? d.created_at : d.created_at * 1000).toLocaleDateString('en-IN')
+      : '';
+    const bg   = typeBg[dtype]   || 'rgba(255,255,255,0.03)';
+    const col  = typeColor[dtype] || 'var(--text-ter)';
+    const docId = d.id || idx;
+
+    return (
+      '<div class="doc-item" id="docrow-' + docId + '" style="align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);margin-bottom:6px;">' +
+
+        // Icon + type badge
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-right:10px;flex-shrink:0;">' +
+          '<div class="doc-icon" style="width:34px;height:34px;border-radius:7px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + icon + '</div>' +
+          '<span style="font-family:var(--mono);font-size:7px;padding:1px 5px;border-radius:3px;background:' + bg + ';color:' + col + ';white-space:nowrap;">' + dtype.replace(/_/g,' ').toUpperCase() + '</span>' +
+        '</div>' +
+
+        // File info
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;color:var(--text-pri);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (d.filename||'') + '">' + (d.filename || 'Document') + '</div>' +
+          '<div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:3px;">' +
+            (sizeTxt ? sizeTxt + ' · ' : '') + (dateTxt || '') + geoTag +
+          '</div>' +
+          (score > 0 ?
+            '<div style="display:flex;align-items:center;gap:6px;margin-top:5px;">' +
+              '<div style="flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">' +
+                '<div style="height:100%;width:' + score + '%;background:' + scoreCol + ';border-radius:2px;"></div>' +
+              '</div>' +
+              '<span style="font-family:var(--mono);font-size:8px;color:' + scoreCol + ';">Auth: ' + scoreTxt + '</span>' +
+            '</div>' : '') +
+        '</div>' +
+
+        // Action buttons
+        '<div style="display:flex;flex-direction:column;gap:4px;margin-left:8px;flex-shrink:0;">' +
+          // View / download
+          (d.file_url ?
+            '<button onclick="viewUploadedDoc(\'' + (d.file_url||'') + '\',\'' + (d.filename||'') + '\')" ' +
+              'style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;" title="View/Download">' +
+              '↗ View</button>' : '') +
+          // Delete
+          '<button onclick="deleteUploadedDoc(\'' + docId + '\',\'' + state.claimId + '\')" ' +
+            'style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,85,85,0.2);background:rgba(232,85,85,0.06);color:var(--red);cursor:pointer;" title="Remove document">' +
+            '✕ Delete</button>' +
+        '</div>' +
+
+      '</div>'
+    );
   }).join('');
+}
+
+async function dcm_refresh() {
+  if (!state.claimId) { toast('Load a claim first', 'warning'); return; }
+  const r = await api('GET', '/api/claims/' + state.claimId);
+  if (r && r.claim) {
+    state.claimData = r.claim;
+    renderUploadedDocs(r.claim.documents || []);
+    toast('Document list refreshed', 'success');
+  }
+}
+
+async function viewUploadedDoc(url, filename) {
+  if (!url) { toast('No URL available for this document', 'warning'); return; }
+  window.open(url, '_blank');
+}
+
+async function deleteUploadedDoc(docId, claimId) {
+  if (!confirm('Remove this document from the claim? This cannot be undone.')) return;
+  const r = await api('DELETE', '/api/claims/' + claimId + '/documents/' + docId);
+  if (r && !r.error) {
+    toast('Document removed', 'success');
+    // Remove from local state
+    if (state.claimData && state.claimData.documents) {
+      state.claimData.documents = state.claimData.documents.filter(d => (d.id || '') !== docId);
+      renderUploadedDocs(state.claimData.documents);
+    }
+    // Refresh doc progress
+    updateDocProgress(state.claimData && state.claimData.pending_documents || []);
+  } else {
+    toast('Delete failed — ' + ((r && r.error) || 'check connection'), 'error');
+  }
 }
 
 // ── Camera / OCR ──────────────────────────────────────────────────────
 function triggerCamera(mode) {
   document.getElementById(mode === 'gallery' ? 'galleryInput' : 'cameraInput').click();
+}
+
+// Direct upload from Vault tab — supports all formats
+async function handleVaultUpload(event) {
+  if (!state.claimId) { toast('Load a claim first', 'warning'); return; }
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+
+  const prog = document.getElementById('uploadProgress');
+  if (prog) prog.style.display = 'block';
+
+  for (let i = 0; i < files.length; i++) {
+    const file    = files[i];
+    const docType = classifyDocument ? classifyDocument(file.name, file.type) : 'document';
+    const label   = document.getElementById('uploadProgressLabel');
+    const fill    = document.getElementById('uploadProgressFill');
+    const pct     = document.getElementById('uploadProgressPct');
+    const pctVal  = Math.round(((i + 0.5) / files.length) * 100);
+    if (label) label.textContent = 'Uploading ' + (i+1) + '/' + files.length + ': ' + file.name;
+    if (fill)  fill.style.width  = pctVal + '%';
+    if (pct)   pct.textContent   = pctVal + '%';
+
+    const form = new FormData();
+    form.append('file',         file);
+    form.append('claimId',      state.claimId);
+    form.append('documentType', docType);
+    form.append('run_ocr',      file.type.startsWith('image/') ? 'true' : 'false');
+    const r = await api('POST', '/api/upload', form, true);
+    if (r && r.error) { toast('Upload failed: ' + file.name, 'error'); }
+    else              { toast('✓ Uploaded: ' + file.name + ' (' + docType.replace(/_/g,' ') + ')', 'success'); }
+  }
+
+  if (fill)  fill.style.width = '100%';
+  setTimeout(() => { if (prog) prog.style.display = 'none'; }, 1200);
+  event.target.value = '';
+
+  // Refresh uploaded docs list
+  const r2 = await api('GET', '/api/claims/' + state.claimId);
+  if (r2 && r2.claim) {
+    state.claimData = r2.claim;
+    renderUploadedDocs(r2.claim.documents || []);
+  }
 }
 
 async function handleFileCapture(event) {
@@ -1992,33 +2192,59 @@ async function handleFileCapture(event) {
       Math.round(((i + 0.5) / files.length) * 100) + '%';
     const url = URL.createObjectURL(file);
     state.ocrLastImage = { file, url, geo };
-    addPhotoPreview(url, geo);
+    // Only add photo preview for images
+    if (file.type.startsWith('image/')) addPhotoPreview(url, geo);
     if (state.claimId) {
+      const docType = typeof classifyDocument === 'function'
+        ? classifyDocument(file.name, file.type)
+        : (event.target.dataset.targetDoc ? JSON.parse(event.target.dataset.targetDoc).name : 'photo');
       const form = new FormData();
       form.append('file', file);
       form.append('claimId', state.claimId);
-      const targetDoc = event.target.dataset.targetDoc
-        ? JSON.parse(event.target.dataset.targetDoc).name : 'photo';
-      form.append('documentType', targetDoc);
+      form.append('documentType', docType);
       form.append('run_ocr',
         (file.name.toLowerCase().includes('handwritten') || event.target.id === 'cameraInput') ? 'true' : 'false');
       form.append('is_handwritten', event.target.id === 'cameraInput' ? 'true' : 'false');
       if (geo) { form.append('geo_lat', geo.lat); form.append('geo_lng', geo.lng); }
       const r = await api('POST', '/api/upload', form, true);
-      if (r.ocr_data && r.ocr_data.raw_text) {
-        showOCRResult(r.ocr_data);
-        state.ocrLastOCR = r.ocr_data;
-        toast('OCR: ' + r.ocr_data.confidence + '% confidence', 'success');
-      }
-      if (r.documentId && event.target.dataset.targetIdx !== undefined) {
-        const idx = parseInt(event.target.dataset.targetIdx);
-        if (!isNaN(idx)) setDocStatus(idx, 'submitted');
+      if (r && !r.error) {
+        // Push uploaded doc immediately to local state so the list refreshes without a reload
+        if (!state.claimData) state.claimData = {};
+        if (!state.claimData.documents) state.claimData.documents = [];
+        const newDoc = {
+          id:                r.documentId || r.id || ('local-' + Date.now()),
+          filename:          file.name,
+          document_type:     docType,
+          file_size:         file.size,
+          file_url:          r.file_url || r.url || null,
+          geo_lat:           geo ? geo.lat : null,
+          verification_score: r.verification_score || 0,
+          created_at:        Math.floor(Date.now() / 1000)
+        };
+        // Replace if already present (re-upload), else append
+        const existingIdx = state.claimData.documents.findIndex(d => d.filename === file.name);
+        if (existingIdx >= 0) state.claimData.documents[existingIdx] = newDoc;
+        else state.claimData.documents.push(newDoc);
+        renderUploadedDocs(state.claimData.documents);
+        // Mark checklist item submitted if linked
+        if (r.documentId && event.target.dataset.targetIdx !== undefined) {
+          const idx = parseInt(event.target.dataset.targetIdx);
+          if (!isNaN(idx)) setDocStatus(idx, 'submitted');
+        }
+        if (r.ocr_data && r.ocr_data.raw_text) {
+          showOCRResult(r.ocr_data);
+          state.ocrLastOCR = r.ocr_data;
+          toast('OCR: ' + r.ocr_data.confidence + '% confidence', 'success');
+        }
+      } else {
+        toast('Upload failed: ' + file.name, 'error');
       }
     }
   }
   document.getElementById('uploadProgressFill').style.width = '100%';
   setTimeout(() => { document.getElementById('uploadProgress').style.display = 'none'; }, 1500);
-  document.getElementById('photoCount').textContent = state.photos.length + ' photos';
+  document.getElementById('photoCount').textContent =
+    (state.claimData && state.claimData.documents ? state.claimData.documents.length : 0) + ' docs';
   event.target.value = '';
 }
 
@@ -3826,21 +4052,22 @@ async function ncCreateClaim() {
   var claimNo   = document.getElementById('nc-claimNo').value.trim();
   var sumIns    = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
 
-  // Build payload — optional fields only included if provided (surveyor may not have them yet)
+  // Build payload — optional fields sent as null (not omitted) for consistent API schema
   var payload = {
-    insurer_id:    insId,
-    insurer_name:  insName,
-    insured_name:  name,
-    department:    dept,
-    incident_date: new Date(date).getTime(),
-    claim_status:  'draft'
+    insurer_id:      insId,
+    insurer_name:    insName,
+    insured_name:    name,
+    department:      dept,
+    incident_date:   new Date(date).getTime(),
+    claim_status:    'draft',
+    circumstances:   circ   || null,
+    insured_address: addr   || null,
+    loss_amount:     lossAmt || null,
+    policy_number:   policyNo || null,
+    claim_number:    claimNo  || null,
+    sum_insured:     sumIns   || null,
+    fsr_ready:       false
   };
-  if (circ)     payload.circumstances   = circ;
-  if (addr)     payload.insured_address = addr;
-  if (lossAmt)  payload.loss_amount     = lossAmt;
-  if (policyNo) payload.policy_number   = policyNo;
-  if (claimNo)  payload.claim_number    = claimNo;
-  if (sumIns)   payload.sum_insured     = sumIns;
 
   var r = await api('POST', '/api/claims', payload);
 
@@ -3929,6 +4156,157 @@ function ncHandleFiles(files) {
   // Enable OCR button only if images present
   var hasImages = _ncPhotos.some(function(f){ return f.type.startsWith('image/'); });
   document.getElementById('ncOcrBtn').disabled = !hasImages;
+}
+
+
+// ── Document classification + multi-format processing ─────────────────
+var _ncDocTypes = {};  // filename → classified type
+
+function classifyDocument(filename, mimeType) {
+  var name = filename.toLowerCase();
+  // Rule-based classification (no AI call needed — fast, deterministic)
+  if (/fir|police|complaint|report/.test(name))               return 'fir';
+  if (/policy|schedule|cover.?note/.test(name))              return 'policy';
+  if (/invoice|bill|receipt/.test(name))                     return 'invoice';
+  if (/quotation|quote|proforma/.test(name))                 return 'quotation';
+  if (/panchnama|panchanama|panchnam/.test(name))            return 'panchnama';
+  if (/jir|joint.?inspection/.test(name))                    return 'jir';
+  if (/fsr|final.?survey|survey.?report/.test(name))         return 'fsr';
+  if (/statement|narration|declaration/.test(name))          return 'statement';
+  if (/stock|inventory|register/.test(name))                 return 'stock_register';
+  if (/itr|income.?tax|trading|balance/.test(name))          return 'financial';
+  if (/loss.?assess|assessment/.test(name))                  return 'loss_assessment';
+  if (/udyam|msme|gstin|registration/.test(name))            return 'registration';
+  if (/photo|img|image|site|damage/.test(name))              return 'photo';
+  // By MIME type
+  if (mimeType.startsWith('image/'))                         return 'photo';
+  if (/sheet|excel|csv/.test(mimeType))                      return 'financial';
+  if (/word|document/.test(mimeType))                        return 'document';
+  return 'document';
+}
+
+async function ncProcessAllFiles() {
+  if (!_ncPhotos.length) return;
+  var btn    = document.getElementById('ncOcrBtn');
+  var status = document.getElementById('ncOcrStatus');
+  btn.disabled = true;
+  btn.textContent = '\u23f3 Processing files\u2026';
+  status.style.display = 'block';
+
+  var images = _ncPhotos.filter(function(f){ return f.type.startsWith('image/'); });
+  var pdfs   = _ncPhotos.filter(function(f){ return f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'); });
+  var excels = _ncPhotos.filter(function(f){ return /xlsx?|csv/.test(f.name.toLowerCase()); });
+  var words  = _ncPhotos.filter(function(f){ return /docx?/.test(f.name.toLowerCase()); });
+
+  // Classify all files first
+  _ncPhotos.forEach(function(f) {
+    var classified = classifyDocument(f.name, f.type);
+    _ncDocTypes[f.name] = classified;
+  });
+
+  var ocrResult = null;
+
+  // 1. Process images with GPT-4o Vision (handwritten JIR, photos)
+  if (images.length > 0) {
+    status.textContent = '\u2b50 Reading ' + images.length + ' image(s) with GPT-4o Vision\u2026';
+    try {
+      var imgFile = images[0];
+      var b64 = await new Promise(function(res, rej) {
+        var r2 = new FileReader();
+        r2.onload = function(ev) { res(ev.target.result.split(',')[1]); };
+        r2.onerror = rej;
+        r2.readAsDataURL(imgFile);
+      });
+      if (_ncClaimId) {
+        var ocrRes = await api('POST', '/api/claims/' + _ncClaimId + '/ocr', {
+          imageBase64: b64,
+          mimeType:    imgFile.type || 'image/jpeg',
+          context:     'handwritten_report'
+        });
+        if (ocrRes && ocrRes.structured) ocrResult = ocrRes;
+      }
+    } catch(e) { console.warn('Image OCR failed:', e.message); }
+  }
+
+  // 2. Process PDFs — send to backend parser
+  for (var i = 0; i < pdfs.length; i++) {
+    status.textContent = '\u23f3 Parsing PDF ' + (i+1) + '/' + pdfs.length + ': ' + pdfs[i].name;
+    try {
+      if (_ncClaimId) {
+        var pdfB64 = await new Promise(function(res, rej) {
+          var r2 = new FileReader();
+          r2.onload = function(ev) { res(ev.target.result.split(',')[1]); };
+          r2.onerror = rej;
+          r2.readAsDataURL(pdfs[i]);
+        });
+        await api('POST', '/api/claims/' + _ncClaimId + '/parse-doc', {
+          fileBase64:   pdfB64,
+          mimeType:     'application/pdf',
+          filename:     pdfs[i].name,
+          documentType: _ncDocTypes[pdfs[i].name] || 'document'
+        });
+      }
+    } catch(e) { console.warn('PDF parse failed:', pdfs[i].name, e.message); }
+  }
+
+  // 3. Process Excel — send to backend financial parser
+  for (var j = 0; j < excels.length; j++) {
+    status.textContent = '\u23f3 Parsing Excel: ' + excels[j].name;
+    try {
+      if (_ncClaimId) {
+        var xlsB64 = await new Promise(function(res, rej) {
+          var r2 = new FileReader();
+          r2.onload = function(ev) { res(ev.target.result.split(',')[1]); };
+          r2.onerror = rej;
+          r2.readAsDataURL(excels[j]);
+        });
+        await api('POST', '/api/claims/' + _ncClaimId + '/parse-doc', {
+          fileBase64:   xlsB64,
+          mimeType:     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          filename:     excels[j].name,
+          documentType: _ncDocTypes[excels[j].name] || 'financial'
+        });
+      }
+    } catch(e) { console.warn('Excel parse failed:', excels[j].name, e.message); }
+  }
+
+  // 4. Update preview thumbnails with classification badges
+  var prevEl = document.getElementById('ncPhotoPreview');
+  if (prevEl) {
+    var thumbs = prevEl.querySelectorAll('div');
+    thumbs.forEach(function(thumb, idx) {
+      var f = _ncPhotos[idx];
+      if (!f) return;
+      var docType = _ncDocTypes[f.name] || 'document';
+      var badge = document.createElement('div');
+      badge.style.cssText = 'position:absolute;bottom:2px;left:2px;right:2px;font-family:var(--mono);' +
+        'font-size:7px;background:rgba(34,196,160,0.85);color:#fff;border-radius:2px;' +
+        'padding:1px 3px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      badge.textContent = docType.replace(/_/g,' ').toUpperCase();
+      thumb.style.position = 'relative';
+      thumb.appendChild(badge);
+    });
+  }
+
+  // 5. Apply OCR to JIR if found
+  if (ocrResult && ocrResult.structured) {
+    ncApplyOCRToJIR(ocrResult);
+    status.textContent = '\u2713 ' + _ncPhotos.length + ' file(s) processed. Classification complete. JIR pre-filled from handwritten notes.';
+    setTimeout(function() {
+      pip_closeModal('newClaimModal');
+      if (_ncClaimId) {
+        loadClaim(_ncClaimId).then(function() {
+          switchModule('pipeline');
+          pip_showReport('jir');
+          toast('\u2713 Files processed & classified. JIR pre-filled — review and confirm.', 'success');
+        });
+      }
+    }, 1500);
+  } else {
+    var summary = _ncPhotos.map(function(f){ return (classifyDocument(f.name,f.type)).replace(/_/g,' '); }).join(', ');
+    status.textContent = '\u2713 ' + _ncPhotos.length + ' file(s) classified: ' + summary + '. Opening claim.';
+    setTimeout(function() { ncSkipPhotos(); }, 1500);
+  }
 }
 
 function ncHandleDrop(e) {
@@ -4260,10 +4638,33 @@ function laWs_applyToFSR() {
     claimState.fsr.data.salvage    = parseFloat(document.getElementById('laWs-salvage').value)||0;
   }
 
+  // VERSIONED SNAPSHOT — immutable audit record before applying to FSR
+  var snapshot = {
+    version:    (claimState.fsr.data._snapshots || []).length + 1,
+    timestamp:  Date.now(),
+    applied_by: auth.user && auth.user.name || 'Surveyor',
+    claim_id:   state.claimId,
+    net_loss:   Math.round(window._laWsNetAdjusted || 0),
+    gross_loss: Math.round(window._laWsGrossLoss   || 0),
+    items:      JSON.parse(JSON.stringify(_laWsItems)),
+    deductions: claimState.fsr.data._laDeductions
+  };
+  if (!claimState.fsr.data._snapshots) claimState.fsr.data._snapshots = [];
+  claimState.fsr.data._snapshots.push(snapshot);
+
+  // Persist to backend (fire-and-forget — non-blocking)
+  if (state.claimId) {
+    api('POST', '/api/claims/' + state.claimId + '/audit', {
+      action:  'fsr_worksheet_applied',
+      version: snapshot.version,
+      data:    JSON.stringify(snapshot)
+    }).catch(function(){});
+  }
+
   pip_closeModal('laWsModal');
-  pip_showReport('fsr');  // Re-render FSR with populated values
+  pip_showReport('fsr');
   pip_fsrCalc();
-  toast('\u2713 Loss Assessment applied to FSR — review and confirm all values', 'success');
+  toast('\u2713 Loss Assessment v' + snapshot.version + ' applied \u2014 snapshot saved for audit', 'success');
 }
 
 function laWs_renderTable(items, ded) {

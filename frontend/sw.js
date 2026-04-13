@@ -3,7 +3,7 @@
 // v6 — FIXES: cache version bump forces old broken SW replacement,
 //      guaranteed Response returns, cross-origin skip, redirect:follow
 
-const CACHE  = 'nexus-v7';  // bumped from v6: fixes chrome-error:// reload loop
+const CACHE  = 'nexus-v8';  // bumped: fixes Response.clone() + redirected response errors
 const STATIC = [
   '/index.html',
   '/surveyor-dashboard.html',
@@ -57,14 +57,17 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   // SAFETY: never intercept chrome-error://, chrome-extension:// or non-http schemes
-  // These cannot be served by SW and cause "Unsafe attempt to load URL" errors
   if (!url.protocol.startsWith('http')) return;
 
   // Skip cross-origin entirely — Google Fonts, CDNs, Cloudflare Workers API
-  // Returning without e.respondWith() lets the browser handle these natively
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+  if (url.origin !== self.location.origin) return;
+
+  // CRITICAL FIX: never intercept HTML document navigation requests.
+  // When Cloudflare redirects (e.g. HTTP→HTTPS, trailing slash), the SW was
+  // returning the redirected response to the browser, which rejects it because
+  // the original navigation request didn't set redirect:'follow'.
+  // Letting the browser handle navigations natively avoids this entirely.
+  if (e.request.mode === 'navigate') return;
 
   // Non-GET requests: always go to network, never cache
   if (e.request.method !== 'GET') {
@@ -110,10 +113,12 @@ self.addEventListener('fetch', e => {
 
         return fetch(e.request, { redirect: 'follow' })
           .then(r => {
-            // Only cache valid same-origin responses (r.type === 'basic')
-            // Never cache opaque cross-origin or error responses
-            if (r && r.ok && r.type === 'basic') {
-              caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+            // FIX: clone BEFORE any consumption. Only cache basic (non-opaque,
+            // non-redirected) responses. Never try to clone a redirected response —
+            // its body may already be consumed, causing "body is already used".
+            if (r && r.ok && r.type === 'basic' && !r.redirected) {
+              const toCache = r.clone();
+              caches.open(CACHE).then(c => c.put(e.request, toCache));
             }
             return r;
           })
