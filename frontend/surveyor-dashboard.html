@@ -38,7 +38,7 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
 .offline-bar.show{display:block;}
 
 /* ── Insurer Bar ─────────────────────────────────────────────────────────── */
-.insurer-bar{display:flex;align-items:center;gap:12px;padding:10px 24px;background:linear-gradient(135deg,rgba(34,196,160,0.06),rgba(232,160,32,0.04));border-bottom:1px solid var(--border);position:sticky;top:56px;z-index:150;flex-wrap:wrap;}
+.insurer-bar{display:flex;align-items:center;gap:12px;padding:0 24px;height:48px;background:linear-gradient(135deg,rgba(34,196,160,0.06),rgba(232,160,32,0.04));border-bottom:1px solid var(--border);position:sticky;top:56px;z-index:150;flex-wrap:nowrap;overflow-x:auto;}
 .ins-label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--text-sec);text-transform:uppercase;white-space:nowrap;font-weight:600;}
 .ins-select-wrap{position:relative;min-width:280px;}
 .ins-select-wrap select{width:100%;background:var(--bg2);border:1px solid rgba(34,196,160,0.35);border-radius:7px;color:var(--teal);font-family:var(--display);font-size:14px;font-weight:700;padding:9px 30px 9px 12px;outline:none;cursor:pointer;-webkit-appearance:none;}
@@ -51,6 +51,8 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
 
 /* ── Shell ───────────────────────────────────────────────────────────────── */
 .shell{display:grid;grid-template-columns:230px 1fr 290px;height:calc(100vh - 56px - 48px);}
+.shell.pipeline-mode{grid-template-columns:1fr;}
+.shell.pipeline-mode .sidebar,.shell.pipeline-mode .right-panel{display:none;}
 .sidebar{background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
 .sidebar-section{padding:14px 0;border-bottom:1px solid var(--border);}
 .sidebar-label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--text-sec);padding:0 16px 9px;text-transform:uppercase;font-weight:700;}
@@ -245,6 +247,9 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
 .doc-progress-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:6px;}
 .doc-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--teal));border-radius:3px;transition:width 0.3s;}
 @media(max-width:900px){.shell{grid-template-columns:1fr;}.sidebar,.right-panel{display:none;}.view{height:calc(100vh - 56px - 48px);}}
+@media(max-width:1280px){.pip-shell{grid-template-columns:190px 1fr 220px;}}
+@media(max-width:1100px){.pip-shell{grid-template-columns:180px 1fr;}.pip-right{display:none;}}
+@media(max-width:800px){.pip-shell{grid-template-columns:1fr;}.pip-left{display:none;}}
 
 /* ══════════════════════════════════════════════════════════════════════════
    PIPELINE MODULE — embedded inside the workbench view
@@ -412,6 +417,9 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     <span class="sync-chip sync-ok" id="syncChip">⟳ SYNCED</span>
     <div class="badge-pill" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(34,196,160,0.25)">AI-OCR ACTIVE</div>
     <a href="hrms-dashboard.html" style="font-family:var(--mono);font-size:11px;color:var(--text-sec);text-decoration:none;padding:7px 14px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;" onmouseover="this.style.color='var(--amber)';this.style.borderColor='rgba(232,160,32,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">HRMS ↗</a>
+    <button onclick="switchModule('pipeline')" id="d-pipeline" style="font-family:var(--mono);font-size:11px;color:var(--text-sec);padding:7px 14px;border:1px solid var(--border2);border-radius:6px;background:transparent;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--purple)';this.style.borderColor='rgba(167,139,250,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">
+      📋 JIR → FSR <span id="pipNavBadge" style="font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:3px;background:var(--bg3);color:var(--text-ter);">—</span>
+    </button>
     <button onclick="doLogout()" style="display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:6px;background:rgba(232,85,85,0.12);border:1px solid rgba(232,85,85,0.3);color:var(--red);font-family:var(--mono);font-size:11px;cursor:pointer;font-weight:600;transition:all 0.15s;" onmouseover="this.style.background='rgba(232,85,85,0.2)'" onmouseout="this.style.background='rgba(232,85,85,0.12)'">
       <svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M5 2H2a1 1 0 00-1 1v6a1 1 0 001 1h3M8 4l3 2-3 2M5 6h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       SIGN OUT
@@ -454,14 +462,6 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     <div class="dept-btn active" id="d-burglary" onclick="switchDept('burglary')"><div class="dept-icon">🔓</div><span>Theft/Burglary</span><span class="dept-count" id="dc-burglary">—</span></div>
     <div class="dept-btn" id="d-motor" onclick="switchDept('motor')"><div class="dept-icon">🚗</div><span>Motor</span><span class="dept-count" id="dc-motor">—</span></div>
     <div class="dept-btn" id="d-misc" onclick="switchDept('misc')"><div class="dept-icon">📋</div><span>Miscellaneous</span><span class="dept-count" id="dc-misc">—</span></div>
-  </div>
-  <div class="sidebar-section">
-    <div class="sidebar-label">Report Pipeline</div>
-    <div class="pip-nav-btn" id="d-pipeline" onclick="switchModule('pipeline')">
-      <div class="dept-icon">📋</div>
-      <span style="flex:1;">JIR → FSR</span>
-      <span id="pipNavBadge" style="font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:3px;background:var(--bg3);color:var(--text-ter);">—</span>
-    </div>
   </div>
   <div style="padding:10px 12px;border-bottom:1px solid var(--border);">
     <button onclick="openNewClaimModal()" style="width:100%;padding:10px;border-radius:7px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.35);color:var(--amber);font-family:var(--display);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.06em;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;" onmouseover="this.style.background='rgba(232,160,32,0.22)'" onmouseout="this.style.background='var(--amber-dim)'">
@@ -716,11 +716,14 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
         Accepts: 📷 JPG/PNG/HEIC &nbsp;·&nbsp; 📄 PDF &nbsp;·&nbsp; 📝 DOC/DOCX &nbsp;·&nbsp; 📊 XLS/XLSX &nbsp;·&nbsp; 📋 TXT
       </div>
 
-      <div class="card-body" id="uploadedDocsList" style="padding:10px;">
-        <div style="text-align:center;padding:28px 16px;">
+      <div class="card-body" id="uploadedDocsList" style="padding:10px;"
+        ondragover="event.preventDefault();this.style.background='rgba(34,196,160,0.06)'"
+        ondragleave="this.style.background=''"
+        ondrop="this.style.background='';dcm_handleDrop(event)">
+        <div style="text-align:center;padding:28px 16px;" id="dcmEmpty">
           <div style="font-size:28px;margin-bottom:8px;">📂</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No documents uploaded yet</div>
-          <div style="font-size:12px;color:var(--text-ter);margin-top:4px;">Load a claim then click ↑ Add File</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);" id="dcmEmptyMsg">Load a claim to upload documents</div>
+          <div style="font-size:11px;color:var(--text-ter);margin-top:4px;">Or drag &amp; drop files anywhere in this area</div>
         </div>
       </div>
     </div>
@@ -1562,6 +1565,21 @@ function switchModule(name) {
   document.getElementById('view-' + name).classList.add('active');
   state.activeModule = name;
   document.querySelectorAll('.dept-btn, .pip-nav-btn').forEach(b => b.classList.remove('active'));
+  // Pipeline-mode: give full width to pipeline view, hide sidebar + right panel
+  document.querySelector('.shell').classList.toggle('pipeline-mode', name === 'pipeline');
+  // Active state on topnav pipeline button
+  var pipelineTopBtn = document.getElementById('d-pipeline');
+  if (pipelineTopBtn) {
+    if (name === 'pipeline') {
+      pipelineTopBtn.style.color = 'var(--purple)';
+      pipelineTopBtn.style.borderColor = 'rgba(167,139,250,0.4)';
+      pipelineTopBtn.style.background = 'rgba(167,139,250,0.08)';
+    } else {
+      pipelineTopBtn.style.color = '';
+      pipelineTopBtn.style.borderColor = '';
+      pipelineTopBtn.style.background = '';
+    }
+  }
   if (name === 'pipeline') {
     document.getElementById('d-pipeline').classList.add('active');
     pip_loadSavedReports().then(() => pip_showReport('jir'));
@@ -1854,6 +1872,16 @@ async function advanceClaimStatus() {
 
   // FSR READINESS GATE: mandatory fields must be present before ready_for_fsr
   if (nextStatus === 'ready_for_fsr') {
+    // CHECKLIST GATE: all mandatory items must be submitted or verified
+    var cl = (state.insurerRules && state.insurerRules.document_checklist) || [];
+    var mandatoryBlocking = cl.filter(function(d) {
+      return (d.mandatory || d.is_mandatory) && (!d.status || d.status === 'pending' || d.status === 'rejected');
+    });
+    if (mandatoryBlocking.length) {
+      toast('\u26a0 Cannot advance: ' + mandatoryBlocking.length + ' mandatory document(s) still pending \u2014 ' +
+        mandatoryBlocking.map(function(d){ return d.name || d.document_name; }).join(', '), 'error');
+      return;
+    }
     var c   = state.claimData || {};
     var missing = [];
     if (!c.policy_number)  missing.push('Policy Number');
@@ -1910,6 +1938,7 @@ function renderDocChecklist(checklist) {
       '<span class="doc-tracker-name">' + (doc.name || doc.document_name) + '</span>' +
       '<span class="doc-tbadge ' + (isMand ? 'tb-mandatory' : 'tb-optional') + '">' + (isMand ? 'REQ' : 'OPT') + '</span>' +
       '<span class="doc-tbadge tb-' + party + '">' + party.toUpperCase() + '</span>' +
+      (doc.linked_doc_name ? '<span style="font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:3px;background:var(--teal-dim);color:var(--teal);margin-left:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;" title="' + doc.linked_doc_name + '">' + doc.linked_doc_name.slice(0,12) + '</span>' : '') +
       '<select class="doc-status-sel" onchange="setDocStatus(' + idx + ',this.value)">' +
         '<option value="pending"   ' + (status==='pending'   ? 'selected' : '') + '>PENDING</option>' +
         '<option value="submitted" ' + (status==='submitted' ? 'selected' : '') + '>SUBMITTED</option>' +
@@ -1998,28 +2027,36 @@ async function loadChecklistStatus() {
 // ── Uploaded docs ─────────────────────────────────────────────────────
 function renderUploadedDocs(docs) {
   const container = document.getElementById('uploadedDocsList');
+  if (!container) return;
   // Update count badge
   const countEl = document.getElementById('docUploadedCount');
   if (countEl) countEl.textContent = (docs && docs.length || 0) + ' file' + (docs && docs.length === 1 ? '' : 's');
+
   if (!docs || !docs.length) {
+    const msg = state.claimId
+      ? 'No documents yet \u2014 click \u2191 Add File or drag & drop files here'
+      : 'Load a claim to upload documents';
     container.innerHTML =
-      '<div style="text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' +
-        'No documents uploaded yet.<br>' +
-        '<span style="color:var(--text-ter);">Use Gallery or Camera below to upload files.</span>' +
+      '<div style="text-align:center;padding:28px 16px;">' +
+        '<div style="font-size:28px;margin-bottom:8px;">\ud83d\udcc2</div>' +
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">' + msg + '</div>' +
+        (state.claimId
+          ? '<div style="font-size:11px;color:var(--text-ter);margin-top:4px;">Images \u00b7 PDF \u00b7 Word \u00b7 Excel \u00b7 Text</div>'
+          : '') +
       '</div>';
     return;
   }
 
-  // Extended icon map — covers all classified types
+  // Extended icon map
   const icons = {
-    fir:'🚔', invoice:'🧾', photo:'📸', stock_register:'📦',
-    report:'📄', handwritten_report:'✍', certificate:'📜',
-    policy:'📋', quotation:'💬', panchnama:'📝', jir:'🔍',
-    fsr:'🏆', statement:'📃', financial:'📊', registration:'🏭',
-    loss_assessment:'⚖️', document:'📄'
+    fir:'\ud83d\ude94', invoice:'\ud83e\udded', photo:'\ud83d\udcf8',
+    stock_register:'\ud83d\udce6', report:'\ud83d\udcc4',
+    handwritten_report:'\u270d', certificate:'\ud83d\udcdc',
+    policy:'\ud83d\udccb', quotation:'\ud83d\udcac', panchnama:'\ud83d\udcdd',
+    jir:'\ud83d\udd0d', fsr:'\ud83c\udfc6', statement:'\ud83d\udcc3',
+    financial:'\ud83d\udcca', registration:'\ud83c\udfe2',
+    loss_assessment:'\u2696\ufe0f', document:'\ud83d\udcc4'
   };
-
-  // Type colour badges
   const typeBg = {
     fir:'rgba(232,85,85,0.12)', policy:'rgba(91,156,246,0.12)',
     invoice:'rgba(232,160,32,0.12)', quotation:'rgba(232,160,32,0.12)',
@@ -2035,59 +2072,108 @@ function renderUploadedDocs(docs) {
 
   container.innerHTML = docs.map((d, idx) => {
     const dtype    = d.document_type || d.doc_type || 'document';
-    const icon     = icons[dtype] || '📄';
+    const icon     = icons[dtype] || '\ud83d\udcc4';
     const score    = d.verification_score || 0;
-    const scoreTxt = score > 0 ? score + '%' : '—';
     const scoreCol = score > 85 ? 'var(--green)' : score > 60 ? 'var(--amber)' : 'var(--text-ter)';
-    const geoTag   = d.geo_lat ? ' · 📍 Geo' : '';
-    const sizeTxt  = d.file_size ? Math.round(d.file_size / 1024) + ' KB' : '';
+    const sizeTxt  = d.file_size ? (d.file_size > 1048576
+      ? (d.file_size/1048576).toFixed(1) + ' MB'
+      : Math.round(d.file_size/1024) + ' KB') : '';
     const dateTxt  = d.created_at
       ? new Date(d.created_at > 1e10 ? d.created_at : d.created_at * 1000).toLocaleDateString('en-IN')
       : '';
-    const bg   = typeBg[dtype]   || 'rgba(255,255,255,0.03)';
-    const col  = typeColor[dtype] || 'var(--text-ter)';
-    const docId = d.id || idx;
+    const geoTag   = d.geo_lat ? ' \u00b7 \ud83d\udccd' : '';
+    const bg       = typeBg[dtype]   || 'rgba(255,255,255,0.03)';
+    const col      = typeColor[dtype] || 'var(--text-ter)';
+    const docId    = d.id || idx;
+    // Construct download URL from document id via API
+    const fileUrl  = d.file_url || (d.id && auth && auth.token
+      ? API + '/api/download/' + d.id + '?token=' + encodeURIComponent(auth.token)
+      : null);
 
     return (
-      '<div class="doc-item" id="docrow-' + docId + '" style="align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);margin-bottom:6px;">' +
+      '<div style="display:flex;align-items:flex-start;padding:10px 12px;border-radius:8px;' +
+        'background:var(--bg2);border:1px solid var(--border);margin-bottom:6px;">' +
 
         // Icon + type badge
         '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-right:10px;flex-shrink:0;">' +
-          '<div class="doc-icon" style="width:34px;height:34px;border-radius:7px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + icon + '</div>' +
-          '<span style="font-family:var(--mono);font-size:7px;padding:1px 5px;border-radius:3px;background:' + bg + ';color:' + col + ';white-space:nowrap;">' + dtype.replace(/_/g,' ').toUpperCase() + '</span>' +
+          '<div style="width:34px;height:34px;border-radius:7px;background:' + bg + ';' +
+            'display:flex;align-items:center;justify-content:center;font-size:16px;">' + icon + '</div>' +
+          '<span style="font-family:var(--mono);font-size:7px;padding:1px 5px;border-radius:3px;' +
+            'background:' + bg + ';color:' + col + ';white-space:nowrap;max-width:60px;' +
+            'overflow:hidden;text-overflow:ellipsis;">' +
+            dtype.replace(/_/g,' ').toUpperCase() + '</span>' +
         '</div>' +
 
-        // File info
+        // Filename + meta
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:13px;color:var(--text-pri);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (d.filename||'') + '">' + (d.filename || 'Document') + '</div>' +
+          '<div style="font-size:13px;color:var(--text-pri);font-weight:500;overflow:hidden;' +
+            'text-overflow:ellipsis;white-space:nowrap;" title="' + (d.filename||'') + '">' +
+            (d.filename || 'Document') + '</div>' +
           '<div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:3px;">' +
-            (sizeTxt ? sizeTxt + ' · ' : '') + (dateTxt || '') + geoTag +
+            (sizeTxt ? sizeTxt + ' \u00b7 ' : '') + (dateTxt || '') + geoTag +
           '</div>' +
-          (score > 0 ?
-            '<div style="display:flex;align-items:center;gap:6px;margin-top:5px;">' +
-              '<div style="flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">' +
-                '<div style="height:100%;width:' + score + '%;background:' + scoreCol + ';border-radius:2px;"></div>' +
-              '</div>' +
-              '<span style="font-family:var(--mono);font-size:8px;color:' + scoreCol + ';">Auth: ' + scoreTxt + '</span>' +
-            '</div>' : '') +
+          (score > 0
+            ? '<div style="display:flex;align-items:center;gap:6px;margin-top:5px;">' +
+                '<div style="flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">' +
+                  '<div style="height:100%;width:' + score + '%;background:' + scoreCol + ';border-radius:2px;"></div>' +
+                '</div>' +
+                '<span style="font-family:var(--mono);font-size:8px;color:' + scoreCol + ';">Auth: ' + score + '%</span>' +
+              '</div>'
+            : '') +
         '</div>' +
 
-        // Action buttons
+        // Actions
         '<div style="display:flex;flex-direction:column;gap:4px;margin-left:8px;flex-shrink:0;">' +
-          // View / download
-          (d.file_url ?
-            '<button onclick="viewUploadedDoc(\'' + (d.file_url||'') + '\',\'' + (d.filename||'') + '\')" ' +
-              'style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;" title="View/Download">' +
-              '↗ View</button>' : '') +
-          // Delete
+          (fileUrl
+            ? '<button onclick="window.open(\'' + fileUrl + '\',\'_blank\')" ' +
+                'style="font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:4px;' +
+                'border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;">↗ View</button>'
+            : '') +
           '<button onclick="deleteUploadedDoc(\'' + docId + '\',\'' + state.claimId + '\')" ' +
-            'style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,85,85,0.2);background:rgba(232,85,85,0.06);color:var(--red);cursor:pointer;" title="Remove document">' +
-            '✕ Delete</button>' +
+            'style="font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:4px;' +
+            'border:1px solid rgba(232,85,85,0.25);background:rgba(232,85,85,0.06);' +
+            'color:var(--red);cursor:pointer;">\u2715 Delete</button>' +
+          dcm_buildAssignDropdown(docId, d.filename||'') +
         '</div>' +
 
       '</div>'
     );
   }).join('');
+}
+
+// ── Document ↔ Checklist linkage ──────────────────────────────────────
+function dcm_buildAssignDropdown(docId, docName) {
+  var cl = (state.insurerRules && state.insurerRules.document_checklist) || [];
+  if (!cl.length) return '';
+  var opts = cl.map(function(item, i) {
+    var name = item.name || item.document_name || 'Item ' + i;
+    var linked = (item.linked_doc_id && item.linked_doc_id + '' === docId + '') ? ' selected' : '';
+    return '<option value="' + i + '"' + linked + '>' + name.slice(0, 22) + '</option>';
+  }).join('');
+  return '<select onchange="dcm_assignToChecklist(\'' + docId + '\',\'' +
+    docName.replace(/'/g,'').slice(0,20) + '\',this.value);this.value=\'\'' +
+    '" style="font-family:var(--mono);font-size:8px;padding:2px 4px;border-radius:4px;' +
+    'border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);cursor:pointer;' +
+    'margin-top:3px;width:100%;-webkit-appearance:none;">' +
+    '<option value="">\u2192 Assign</option>' + opts + '</select>';
+}
+
+function dcm_assignToChecklist(docId, docName, checklistIdxStr) {
+  var idx = parseInt(checklistIdxStr);
+  if (isNaN(idx) || idx < 0) return;
+  var cl = state.insurerRules && state.insurerRules.document_checklist;
+  if (!cl || !cl[idx]) return;
+  cl[idx].linked_doc_id   = docId;
+  cl[idx].linked_doc_name = docName;
+  if (!cl[idx].status || cl[idx].status === 'pending') cl[idx].status = 'submitted';
+  if (state.claimData && state.claimData.documents) {
+    var d = state.claimData.documents.find(function(d){ return (d.id||'')+'' === docId+''; });
+    if (d) d.linked_checklist_idx = idx;
+  }
+  renderDocChecklist(cl);
+  renderUploadedDocs(state.claimData && state.claimData.documents || []);
+  syncDocStatus(idx, cl[idx]);
+  toast('\u2713 ' + docName.slice(0,20) + ' linked to ' + (cl[idx].name || cl[idx].document_name), 'success');
 }
 
 async function dcm_refresh() {
@@ -2096,8 +2182,18 @@ async function dcm_refresh() {
   if (r && r.claim) {
     state.claimData = r.claim;
     renderUploadedDocs(r.claim.documents || []);
-    toast('Document list refreshed', 'success');
+    toast('\u2713 Documents refreshed', 'success');
   }
+}
+
+function dcm_handleDrop(event) {
+  event.preventDefault();
+  if (!state.claimId) { toast('Load a claim first', 'warning'); return; }
+  const files = event.dataTransfer.files;
+  if (!files.length) return;
+  // Simulate file input change
+  const fakeEvent = { target: { files, value: '' }, dataTransfer: { files } };
+  handleVaultUpload(fakeEvent);
 }
 
 async function viewUploadedDoc(url, filename) {
@@ -2110,15 +2206,13 @@ async function deleteUploadedDoc(docId, claimId) {
   const r = await api('DELETE', '/api/claims/' + claimId + '/documents/' + docId);
   if (r && !r.error) {
     toast('Document removed', 'success');
-    // Remove from local state
     if (state.claimData && state.claimData.documents) {
-      state.claimData.documents = state.claimData.documents.filter(d => (d.id || '') !== docId);
+      state.claimData.documents = state.claimData.documents.filter(d => (d.id || '') + '' !== docId + '');
       renderUploadedDocs(state.claimData.documents);
     }
-    // Refresh doc progress
     updateDocProgress(state.claimData && state.claimData.pending_documents || []);
   } else {
-    toast('Delete failed — ' + ((r && r.error) || 'check connection'), 'error');
+    toast('Delete failed \u2014 ' + ((r && r.error) || 'check connection'), 'error');
   }
 }
 
@@ -2138,7 +2232,8 @@ async function handleVaultUpload(event) {
 
   for (let i = 0; i < files.length; i++) {
     const file    = files[i];
-    const docType = classifyDocument ? classifyDocument(file.name, file.type) : 'document';
+    const docType = typeof classifyDocument === 'function'
+      ? classifyDocument(file.name, file.type) : 'document';
     const label   = document.getElementById('uploadProgressLabel');
     const fill    = document.getElementById('uploadProgressFill');
     const pct     = document.getElementById('uploadProgressPct');
@@ -2152,21 +2247,44 @@ async function handleVaultUpload(event) {
     form.append('claimId',      state.claimId);
     form.append('documentType', docType);
     form.append('run_ocr',      file.type.startsWith('image/') ? 'true' : 'false');
+
     const r = await api('POST', '/api/upload', form, true);
-    if (r && r.error) { toast('Upload failed: ' + file.name, 'error'); }
-    else              { toast('✓ Uploaded: ' + file.name + ' (' + docType.replace(/_/g,' ') + ')', 'success'); }
+
+    if (r && !r.error) {
+      // Build doc object immediately from upload response — no extra GET needed.
+      // file_url uses the download endpoint with the returned documentId.
+      if (!state.claimData) state.claimData = {};
+      if (!state.claimData.documents) state.claimData.documents = [];
+
+      const newDoc = {
+        id:                r.documentId || ('local-' + Date.now() + '-' + i),
+        filename:          file.name,
+        document_type:     docType,
+        file_size:         file.size,
+        // Download URL via our API endpoint
+        file_url:          r.documentId
+          ? (API + '/api/download/' + r.documentId + '?token=' + encodeURIComponent(auth.token))
+          : null,
+        geo_lat:           r.geo_tagged ? 1 : null,
+        verification_score: 0,
+        created_at:        Math.floor(Date.now() / 1000)
+      };
+
+      const existingIdx = state.claimData.documents.findIndex(d => d.filename === file.name);
+      if (existingIdx >= 0) state.claimData.documents[existingIdx] = newDoc;
+      else state.claimData.documents.push(newDoc);
+
+      renderUploadedDocs(state.claimData.documents);
+      toast('✓ ' + file.name + ' uploaded (' + docType.replace(/_/g,' ') + ')', 'success');
+    } else {
+      toast('Upload failed: ' + file.name + ' — ' + ((r && r.error) || 'check connection'), 'error');
+    }
   }
 
   if (fill)  fill.style.width = '100%';
+  if (pct)   pct.textContent  = '100%';
   setTimeout(() => { if (prog) prog.style.display = 'none'; }, 1200);
   event.target.value = '';
-
-  // Refresh uploaded docs list
-  const r2 = await api('GET', '/api/claims/' + state.claimId);
-  if (r2 && r2.claim) {
-    state.claimData = r2.claim;
-    renderUploadedDocs(r2.claim.documents || []);
-  }
 }
 
 async function handleFileCapture(event) {
