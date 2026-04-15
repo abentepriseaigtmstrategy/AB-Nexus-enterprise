@@ -2367,6 +2367,68 @@ Return ONLY valid JSON (no markdown):
         return jsonResponse({ snapshot: snap || null });
       }
 
+      // GET /api/claims/:id/snapshots/:stage/:version — fetch one specific version
+      if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+\/\d+$/) && method === 'GET') {
+        const parts   = path.split('/');
+        const claimId = parts[3];
+        const stage   = parts[5];
+        const version = parseInt(parts[6]);
+        if (isNaN(version)) return errorResponse('Invalid version', 400);
+        const snap = await env.DB.prepare(
+          'SELECT * FROM stage_snapshots WHERE claim_id=? AND stage=? AND version=? AND tenant_id=?'
+        ).bind(claimId, stage, version, user.tenantId).first();
+        if (!snap) return errorResponse('Snapshot not found', 404);
+        return jsonResponse({ snapshot: snap });
+      }
+
+      // POST /api/claims/:id/snapshots/:stage/restore — restore a specific version
+      if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+\/restore$/) && method === 'POST') {
+        const parts   = path.split('/');
+        const claimId = parts[3];
+        const stage   = parts[5];
+        const claim = await env.DB.prepare('SELECT id FROM claims WHERE id=? AND tenant_id=?').bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+        const body    = await request.json();
+        const version = body.version ? parseInt(body.version) : null;
+        // If version specified, restore that version; otherwise restore latest
+        const snap = version
+          ? await env.DB.prepare(
+              'SELECT * FROM stage_snapshots WHERE claim_id=? AND stage=? AND version=? AND tenant_id=?'
+            ).bind(claimId, stage, version, user.tenantId).first()
+          : await env.DB.prepare(
+              'SELECT * FROM stage_snapshots WHERE claim_id=? AND stage=? AND tenant_id=? ORDER BY version DESC LIMIT 1'
+            ).bind(claimId, stage, user.tenantId).first();
+        if (!snap) return errorResponse('No snapshot found to restore', 404);
+        // Update current_stage on claim
+        await env.DB.prepare('UPDATE claims SET current_stage=?,updated_at=? WHERE id=?')
+          .bind(stage, Date.now(), claimId).run();
+        // Also upsert back into survey_reports_pipeline so pipeline resume reflects restored state
+        const existing = await env.DB.prepare(
+          'SELECT id FROM survey_reports_pipeline WHERE claim_id=? AND report_type=?'
+        ).bind(claimId, stage).first();
+        if (existing) {
+          await env.DB.prepare(
+            'UPDATE survey_reports_pipeline SET report_data=?,status=?,version=version+1,updated_at=? WHERE id=?'
+          ).bind(snap.snapshot_data||null, snap.status||'saved', Date.now(), existing.id).run();
+        } else {
+          await env.DB.prepare(
+            `INSERT INTO survey_reports_pipeline (id,claim_id,tenant_id,report_type,report_data,status,created_by,created_at,version)
+             VALUES (?,?,?,?,?,?,?,?,1)`
+          ).bind(generateUUID(), claimId, user.tenantId, stage,
+                 snap.snapshot_data||null, snap.status||'saved', user.id, Date.now()).run();
+        }
+        await auditLog(env, user.tenantId, user.id, 'snapshot_restored', 'stage_snapshots',
+          claimId, clientIP, null, { stage, version: snap.version });
+        return jsonResponse({
+          success:       true,
+          snapshot_id:   snap.id,
+          version:       snap.version,
+          stage:         stage,
+          status:        snap.status,
+          snapshot_data: snap.snapshot_data
+        });
+      }
+
       // ════ DEFAULT 404 ══════════════════════════════════════════════════
       return errorResponse('API endpoint not found', 404);
 
