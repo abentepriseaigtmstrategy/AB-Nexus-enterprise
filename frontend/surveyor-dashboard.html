@@ -505,6 +505,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     <div class="tab" onclick="switchTab('assessment',this)">Financial Assessment</div>
     <div class="tab" onclick="switchTab('vault',this)">Vault · Documents</div>
     <div class="tab" onclick="switchTab('comms',this)">Communications</div>
+    <div class="tab" onclick="switchTab('repository',this)" id="tab-btn-repository">Repository</div>
   </div>
 
   <!-- TAB: INTAKE -->
@@ -826,6 +827,50 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
         <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No reminders sent yet for this claim.</div>
       </div>
     </div>
+  </div>
+
+  <!-- TAB: REPOSITORY -->
+  <div class="content-area tab-panel" id="tab-repository">
+
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--text-pri);">Claim Repository</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);margin-top:3px;">
+          Versioned snapshots · Read-only history · Restore any version
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);" id="repo-meta">—</div>
+        <select id="repo-stage-filter"
+          onchange="repo_loadStage(this.value)"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text-pri);font-family:var(--mono);font-size:10px;padding:5px 10px;outline:none;cursor:pointer;">
+          <option value="">All Stages</option>
+          <option value="jir">JIR</option>
+          <option value="spot">Spot Report</option>
+          <option value="lor">LOR</option>
+          <option value="psr">PSR</option>
+          <option value="interim">Interim</option>
+          <option value="fsr">FSR</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Snapshot table card -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="10" height="8" rx="1.5" stroke="var(--purple)" stroke-width="1"/><path d="M3 5h6M3 7h4" stroke="var(--purple)" stroke-width="1" stroke-linecap="round"/></svg>
+        <span class="card-title" style="color:var(--purple);">Snapshot History</span>
+        <span id="repo-total-badge" style="margin-left:8px;font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:99px;background:var(--bg3);color:var(--text-ter);">0 versions</span>
+        <button onclick="repo_refresh()" style="margin-left:auto;font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:4px;background:var(--bg3);border:1px solid var(--border2);color:var(--text-sec);cursor:pointer;">⟳ Refresh</button>
+      </div>
+      <div id="repo-table-wrap" style="overflow-x:auto;">
+        <div style="padding:28px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);" id="repo-empty">
+          Load a claim, then open the Repository tab to see version history.
+        </div>
+      </div>
+    </div>
+
   </div>
 </div><!-- end view-workbench -->
 
@@ -1255,6 +1300,30 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
         <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Go to Claim</button>
         <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncProcessAllFiles()" disabled>🔍 Process &amp; Classify Files</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     REPOSITORY — VIEW SNAPSHOT MODAL
+════════════════════════════════════════════════════════════════ -->
+<div class="pip-modal-overlay" id="repoViewModal" style="z-index:2300;">
+  <div class="pip-modal-box" style="width:700px;max-height:80vh;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="pip-modal-title" id="repoViewTitle">Snapshot — v1 · JIR</div>
+      <div style="display:flex;gap:6px;">
+        <span id="repoViewStageBadge" style="font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:4px;background:var(--purple-dim);color:var(--purple);"></span>
+        <span id="repoViewStatusBadge" style="font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:4px;background:var(--bg3);color:var(--text-ter);"></span>
+      </div>
+    </div>
+    <div class="pip-modal-sub" id="repoViewMeta">SAVED BY — · SAVED AT —</div>
+    <div style="background:rgba(34,196,160,0.06);border:1px solid rgba(34,196,160,0.15);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-family:var(--mono);font-size:9px;color:var(--teal);">
+      READ-ONLY SNAPSHOT · Editing happens only in Report Pipeline
+    </div>
+    <div id="repoViewBody" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;color:var(--text-sec);line-height:1.7;max-height:50vh;overflow-y:auto;font-family:var(--mono);white-space:pre-wrap;word-break:break-word;"></div>
+    <div class="pip-modal-footer" style="margin-top:14px;">
+      <button class="btn-modal-close" onclick="pip_closeModal('repoViewModal')">Close</button>
+      <button class="btn-modal-confirm" id="repoRestoreBtn" onclick="repo_restoreVersion()" style="background:var(--purple-dim);border-color:rgba(167,139,250,0.4);color:var(--purple);">♻ Restore This Version</button>
     </div>
   </div>
 </div>
@@ -2912,6 +2981,7 @@ function switchTab(id, el) {
   document.getElementById('tab-' + id).classList.add('active');
   if (el) el.classList.add('active');
   if (id === 'vault') loadChecklistStatus();
+  if (id === 'repository') repo_load();
 }
 
 function generateReport() {
@@ -5258,6 +5328,318 @@ function pip_printReport() {
   w.document.close();
   w.print();
 }
+// ══════════════════════════════════════════════════════════════════════
+// REPOSITORY MODULE
+// Read-only snapshot history. Editing = Pipeline. History = Repository.
+// ══════════════════════════════════════════════════════════════════════
+
+var _repoCurrentStageFilter = '';   // '' = all stages
+var _repoViewingSnapshot    = null; // { id, stage, version, snapshot_data }
+var _repoAllSnapshots       = [];   // flat list across all stages
+
+// Called when Repository tab is opened
+async function repo_load() {
+  if (!state.claimId) {
+    document.getElementById('repo-empty').textContent =
+      'Load a claim first, then open the Repository tab.';
+    var wrap = document.getElementById('repo-table-wrap');
+    if (wrap) wrap.innerHTML = '<div style="padding:28px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Load a claim first, then open the Repository tab.</div>';
+    return;
+  }
+  // Update header meta
+  var c = state.claimData || {};
+  var metaEl = document.getElementById('repo-meta');
+  if (metaEl) metaEl.textContent =
+    (c.claim_number || '—') + '  ·  ' +
+    (c.insurer_name || '—') + '  ·  ' +
+    ((c.department || '').toUpperCase() || '—');
+
+  // Reset filter to current selection
+  _repoCurrentStageFilter = document.getElementById('repo-stage-filter').value || '';
+  await repo_fetchAndRender(_repoCurrentStageFilter);
+}
+
+// Called when stage filter dropdown changes
+async function repo_loadStage(stage) {
+  _repoCurrentStageFilter = stage;
+  if (!state.claimId) return;
+  await repo_fetchAndRender(stage);
+}
+
+// Refresh button
+async function repo_refresh() {
+  await repo_load();
+}
+
+async function repo_fetchAndRender(stageFilter) {
+  var wrap = document.getElementById('repo-table-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Loading snapshots…</div>';
+
+  var stages = stageFilter ? [stageFilter] : ['jir','spot','lor','psr','interim','fsr'];
+  var allSnaps = [];
+
+  // Fetch each stage in parallel
+  await Promise.all(stages.map(async function(stage) {
+    try {
+      var r = await api('GET', '/api/claims/' + state.claimId + '/snapshots/' + stage);
+      if (r && r.snapshots && r.snapshots.length) {
+        r.snapshots.forEach(function(s) {
+          allSnaps.push({
+            id:           s.id,
+            stage:        stage,
+            version:      s.version,
+            status:       s.status || 'saved',
+            saved_by:     s.saved_by || '—',
+            note:         s.note || '',
+            created_at:   s.created_at,
+            has_data:     true
+          });
+        });
+      }
+    } catch(e) {}
+  }));
+
+  _repoAllSnapshots = allSnaps;
+
+  // Sort: newest first (by created_at desc, then version desc)
+  allSnaps.sort(function(a, b) {
+    return (b.created_at || 0) - (a.created_at || 0) || (b.version - a.version);
+  });
+
+  // Update total badge
+  var badge = document.getElementById('repo-total-badge');
+  if (badge) badge.textContent = allSnaps.length + ' version' + (allSnaps.length !== 1 ? 's' : '');
+
+  if (!allSnaps.length) {
+    wrap.innerHTML =
+      '<div style="padding:28px;text-align:center;">' +
+        '<div style="font-size:28px;margin-bottom:10px;">📂</div>' +
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No snapshots yet for ' +
+          (stageFilter ? stageFilter.toUpperCase() : 'any stage') + '.<br>' +
+          'Save a report in the Pipeline to create the first snapshot.</div>' +
+      '</div>';
+    return;
+  }
+
+  var stageColors = {
+    jir:'var(--amber)', spot:'var(--red)', lor:'var(--blue)',
+    psr:'var(--teal)', interim:'var(--text-sec)', fsr:'var(--green)'
+  };
+  var stageBgs = {
+    jir:'rgba(232,160,32,0.1)', spot:'rgba(232,85,85,0.08)', lor:'rgba(91,156,246,0.1)',
+    psr:'rgba(34,196,160,0.1)', interim:'var(--bg3)', fsr:'rgba(94,198,122,0.1)'
+  };
+  var statusColors = {
+    saved:'var(--amber)', submitted:'var(--teal)', draft:'var(--text-ter)',
+    extended:'var(--purple)', overridden:'var(--teal)'
+  };
+  var statusBgs = {
+    saved:'rgba(232,160,32,0.1)', submitted:'rgba(34,196,160,0.1)',
+    draft:'var(--bg3)', extended:'rgba(167,139,250,0.1)', overridden:'rgba(34,196,160,0.1)'
+  };
+
+  var tableHtml =
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+      '<thead>' +
+        '<tr style="background:var(--bg2);border-bottom:1px solid var(--border2);">' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">VERSION</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">STAGE</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">STATUS</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">NOTE</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">SAVED AT</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">SAVED BY</th>' +
+          '<th style="padding:9px 14px;"></th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody id="repo-tbody">' +
+      '</tbody>' +
+    '</table>';
+
+  wrap.innerHTML = tableHtml;
+  var tbody = document.getElementById('repo-tbody');
+  if (!tbody) return;
+
+  // Group to find latest per stage (for "latest" badge)
+  var latestPerStage = {};
+  allSnaps.forEach(function(s) {
+    if (!latestPerStage[s.stage] || s.version > latestPerStage[s.stage]) {
+      latestPerStage[s.stage] = s.version;
+    }
+  });
+
+  allSnaps.forEach(function(snap) {
+    var isLatest  = latestPerStage[snap.stage] === snap.version;
+    var savedDate = snap.created_at
+      ? new Date(snap.created_at > 1e10 ? snap.created_at : snap.created_at * 1000).toLocaleString('en-IN')
+      : '—';
+    var stCol = stageColors[snap.stage] || 'var(--text-sec)';
+    var stBg  = stageBgs[snap.stage]   || 'var(--bg3)';
+    var stColor = statusColors[snap.status] || 'var(--text-ter)';
+    var stBgCol = statusBgs[snap.status]   || 'var(--bg3)';
+
+    var tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid var(--border);transition:background 0.12s;' +
+      (isLatest ? 'background:rgba(94,198,122,0.03);' : '');
+    tr.addEventListener('mouseover', function() { this.style.background = 'var(--bg2)'; });
+    tr.addEventListener('mouseout',  function() { this.style.background = isLatest ? 'rgba(94,198,122,0.03)' : ''; });
+
+    tr.innerHTML =
+      '<td style="padding:10px 14px;">' +
+        '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-pri);">v' + snap.version + '</span>' +
+        (isLatest ? '<span style="font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(94,198,122,0.15);color:var(--green);margin-left:5px;">LATEST</span>' : '') +
+      '</td>' +
+      '<td style="padding:10px 14px;"><span style="font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:4px;background:' + stBg + ';color:' + stCol + ';">' + snap.stage.toUpperCase() + '</span></td>' +
+      '<td style="padding:10px 14px;"><span style="font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:4px;background:' + stBgCol + ';color:' + stColor + ';">' + snap.status.toUpperCase() + '</span></td>' +
+      '<td style="padding:10px 14px;font-size:11px;color:var(--text-sec);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (snap.note||'') + '">' + (snap.note || '—') + '</td>' +
+      '<td style="padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' + savedDate + '</td>' +
+      '<td style="padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text-sec);">' + snap.saved_by + '</td>' +
+      '<td style="padding:10px 14px;white-space:nowrap;">' +
+        '<button style="font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:4px;background:var(--bg3);border:1px solid var(--border2);color:var(--text-sec);cursor:pointer;margin-right:4px;">👁 View</button>' +
+        '<button style="font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:4px;background:var(--purple-dim);border:1px solid rgba(167,139,250,0.3);color:var(--purple);cursor:pointer;">♻ Restore</button>' +
+      '</td>';
+
+    var buttons = tr.querySelectorAll('button');
+    buttons[0].addEventListener('click', function() { repo_viewSnapshot(snap); });
+    buttons[1].addEventListener('click', function() { repo_confirmRestore(snap); });
+    tbody.appendChild(tr);
+  });
+}
+
+// ── View a specific snapshot ────────────────────────────────────────
+async function repo_viewSnapshot(snap) {
+  // Fetch full snapshot_data from backend (list endpoint doesn't include data)
+  var fullSnap = snap;
+  try {
+    var r = await api('GET', '/api/claims/' + state.claimId + '/snapshots/' + snap.stage + '/' + snap.version);
+    if (r && r.snapshot) fullSnap = r.snapshot;
+  } catch(e) {}
+
+  _repoViewingSnapshot = { id: snap.id, stage: snap.stage, version: snap.version };
+
+  var stageLabels = { jir:'JIR', spot:'Spot Report', lor:'LOR', psr:'PSR', interim:'Interim', fsr:'FSR' };
+  document.getElementById('repoViewTitle').textContent =
+    'Snapshot — v' + snap.version + ' · ' + (stageLabels[snap.stage] || snap.stage.toUpperCase());
+  document.getElementById('repoViewStageBadge').textContent = (snap.stage || '').toUpperCase();
+  document.getElementById('repoViewStatusBadge').textContent = (snap.status || '').toUpperCase();
+
+  var savedDate = snap.created_at
+    ? new Date(snap.created_at > 1e10 ? snap.created_at : snap.created_at * 1000).toLocaleString('en-IN')
+    : '—';
+  document.getElementById('repoViewMeta').textContent =
+    'SAVED BY: ' + (snap.saved_by || '—') + '  ·  SAVED AT: ' + savedDate + '  ·  NOTE: ' + (snap.note || '—');
+
+  // Format snapshot_data as readable key-value pairs
+  var rawData = fullSnap.snapshot_data || fullSnap.snapshot_data;
+  var displayText = '';
+  try {
+    var parsed = JSON.parse(rawData || '{}');
+    displayText = repo_formatSnapshotData(parsed);
+  } catch(e) {
+    displayText = rawData || '(no data)';
+  }
+  document.getElementById('repoViewBody').textContent = displayText;
+
+  document.getElementById('repoViewModal').classList.add('show');
+}
+
+function repo_formatSnapshotData(obj) {
+  if (!obj || typeof obj !== 'object') return String(obj);
+  var lines = [];
+  var skipKeys = ['sigData', '_snapshots'];  // skip binary/internal fields
+  Object.entries(obj).forEach(function(entry) {
+    var k = entry[0], v = entry[1];
+    if (skipKeys.includes(k)) return;
+    if (v === null || v === undefined || v === '') return;
+    if (typeof v === 'object') {
+      lines.push(k.toUpperCase().replace(/_/g,' ') + ':');
+      try { lines.push('  ' + JSON.stringify(v).slice(0, 200)); } catch(e) {}
+    } else {
+      lines.push(k.toUpperCase().replace(/_/g,' ') + ':  ' + String(v).slice(0, 200));
+    }
+  });
+  return lines.join('\n') || '(empty snapshot)';
+}
+
+// ── Confirm restore (version-specific) ──────────────────────────────
+function repo_confirmRestore(snap) {
+  _repoViewingSnapshot = { id: snap.id, stage: snap.stage, version: snap.version };
+  if (!confirm(
+    'Restore v' + snap.version + ' of ' + snap.stage.toUpperCase() + '?\n\n' +
+    'This will load this snapshot into the Pipeline. ' +
+    'Your current unsaved pipeline state will be replaced.'
+  )) return;
+  repo_doRestore(snap.stage, snap.version);
+}
+
+// ── Restore button inside view modal ────────────────────────────────
+function repo_restoreVersion() {
+  if (!_repoViewingSnapshot) return;
+  var snap = _repoViewingSnapshot;
+  pip_closeModal('repoViewModal');
+  if (!confirm(
+    'Restore v' + snap.version + ' of ' + snap.stage.toUpperCase() + '?\n\n' +
+    'Your current unsaved pipeline state will be replaced.'
+  )) return;
+  repo_doRestore(snap.stage, snap.version);
+}
+
+async function repo_doRestore(stage, version) {
+  if (!state.claimId) { toast('Load a claim first', 'warning'); return; }
+  toast('Restoring v' + version + ' of ' + stage.toUpperCase() + '…', 'info');
+
+  try {
+    // 1. POST restore endpoint — sets current_stage, returns payload
+    var r = await api('POST', '/api/claims/' + state.claimId + '/snapshots/' + stage + '/restore', {
+      version: version
+    });
+    if (!r || r.error) { toast('Restore failed: ' + (r && r.error || 'server error'), 'error'); return; }
+
+    // 2. Inject snapshot data into claimState for this stage
+    if (r.snapshot_data) {
+      try {
+        var data = JSON.parse(r.snapshot_data);
+        claimState[stage] = {
+          status:       r.status || 'saved',
+          data:         data,
+          id:           claimState[stage] && claimState[stage].id || null,
+          _snapVersion: version
+        };
+      } catch(e) {}
+    }
+
+    // 3. Reset other stages to avoid stale data bleeding
+    ['jir','spot','lor','psr','interim','fsr'].forEach(function(t) {
+      if (t !== stage) return; // only touch the restored stage
+    });
+
+    // 4. Load claim context (restores form, docs, checklist)
+    await loadClaim(state.claimId);
+
+    // 5. Load all saved reports (restores pipeline state for other stages)
+    await pip_loadSavedReports();
+
+    // 6. Override the restored stage with the snapshot data we just set
+    //    (pip_loadSavedReports may have overwritten it with server data)
+    if (r.snapshot_data) {
+      try {
+        claimState[stage].data   = JSON.parse(r.snapshot_data);
+        claimState[stage].status = r.status || 'saved';
+        claimState[stage]._snapVersion = version;
+      } catch(e) {}
+    }
+
+    // 7. Switch to pipeline and navigate to the restored stage
+    switchModule('pipeline');
+    pip_showReport(stage);
+    pip_updatePipelineUI();
+
+    toast('✓ v' + version + ' of ' + stage.toUpperCase() + ' restored — now in pipeline', 'success');
+  } catch(err) {
+    toast('Restore error: ' + err.message, 'error');
+  }
+}
+
 </script>
 </body>
 </html>
