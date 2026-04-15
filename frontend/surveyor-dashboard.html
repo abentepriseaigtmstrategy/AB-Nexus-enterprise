@@ -1869,17 +1869,30 @@ async function loadMyClaims() {
           '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">STAGE</th>' +
           '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">STATUS</th>' +
           '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">UPDATED</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">REPOSITORY</th>' +
           '<th style="padding:9px 14px;"></th>' +
         '</tr>' +
       '</thead>' +
       '<tbody id="mc-tbody">' +
       '</tbody>' +
     '</table>';
-  // Populate rows safely without inline quote escaping issues
-  mc_populateRows(claims, stMap, stLabel, stageLabel);
+  // Fetch pipeline summary (repository) for all claims, then populate rows
+  mc_loadPipelineSummaries(claims, stMap, stLabel, stageLabel);
 }
 
-function mc_populateRows(claims, stMap, stLabel, stageLabel) {
+async function mc_loadPipelineSummaries(claims, stMap, stLabel, stageLabel) {
+  // Parallel non-blocking fetch of per-claim pipeline summaries for repository display
+  var summaries = {};
+  await Promise.all(claims.map(async function(c) {
+    try {
+      var r = await api('GET', '/api/claims/' + c.id + '/reports/pipeline-summary');
+      if (r && r.summary) summaries[c.id] = r.summary;
+    } catch {}
+  }));
+  mc_populateRows(claims, stMap, stLabel, stageLabel, summaries);
+}
+
+function mc_populateRows(claims, stMap, stLabel, stageLabel, summaries) {
   var tbody = document.getElementById('mc-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -1906,6 +1919,16 @@ function mc_populateRows(claims, stMap, stLabel, stageLabel) {
     });
     tr.addEventListener('click', function() { mc_resumeClaim(c.id); });
 
+    // Build pipeline stage badges from repository summary
+    var sumData = (summaries && summaries[c.id]) || {};
+    var stageBadges = ['jir','spot','lor','psr','fsr'].map(function(st) {
+      var ss = sumData[st];
+      if (!ss) return '';
+      var col = ss === 'submitted' ? 'var(--teal)' : ss === 'saved' ? 'var(--amber)' : 'var(--text-ter)';
+      var bg  = ss === 'submitted' ? 'rgba(34,196,160,0.1)' : ss === 'saved' ? 'rgba(232,160,32,0.1)' : 'var(--bg3)';
+      return '<span style="font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:3px;background:' + bg + ';color:' + col + ';margin-right:2px;">' + st.toUpperCase() + '</span>';
+    }).join('');
+    if (!stageBadges) stageBadges = '<span style="font-family:var(--mono);font-size:8px;color:var(--text-ter);">—</span>';
     tr.innerHTML =
       '<td style="padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:600;">'  + (c.claim_number || '—') + '</td>' +
       '<td style="padding:10px 14px;color:var(--text-pri);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (c.insured_name || '—') + '</td>' +
@@ -1914,6 +1937,7 @@ function mc_populateRows(claims, stMap, stLabel, stageLabel) {
       '<td style="padding:10px 14px;"><span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--purple-dim);color:var(--purple);">' + stage + '</span></td>' +
       '<td style="padding:10px 14px;"><span class="status ' + stCls + '">' + stLbl + '</span></td>' +
       '<td style="padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' + updDate + '</td>' +
+      '<td style="padding:10px 14px;">' + stageBadges + '</td>' +
       '<td style="padding:10px 14px;"><button style="font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:4px;background:var(--teal-dim);border:1px solid rgba(34,196,160,0.3);color:var(--teal);cursor:pointer;">Resume →</button></td>';
 
     var resumeBtn = tr.querySelector('button');
@@ -3369,18 +3393,32 @@ function pip_renderJIR() {
 // ── Spot ─────────────────────────────────────────────────────────────
 function pip_renderSpot() {
   const d = claimState.spot.data, jd = claimState.jir.data, s = claimState.spot.status, c = pip_claim || {};
-  const intimTs = jd.intimationDateTime
+  // ── Single source of truth for deadline state ─────────────────────
+  const dl_state   = claimState._deadlines && claimState._deadlines['spot'];
+  const dl_type    = (dl_state && dl_state.deadline_type) || 'fixed';
+  const intimTs    = jd.intimationDateTime
     ? new Date(jd.intimationDateTime).getTime()
     : (c.intimation_date ? new Date(c.intimation_date).getTime() : Date.now());
-  const deadline48h = intimTs + (48 * 60 * 60 * 1000);
+  const base48h    = intimTs + (48 * 60 * 60 * 1000);
+  // effectiveDeadline: use extended current_deadline if available; null means overridden (no deadline)
+  const effectiveDl = (dl_type === 'overridden')
+    ? null
+    : (dl_state && dl_state.current_deadline)
+      ? dl_state.current_deadline
+      : base48h;
   const now         = Date.now();
-  const hoursLeft   = Math.max(0, Math.floor((deadline48h - now) / 3600000));
-  const minutesLeft = Math.max(0, Math.floor(((deadline48h - now) % 3600000) / 60000));
-  const isMissed    = now > deadline48h;
-  const isUrgent    = hoursLeft < 6;
-  const barClass    = isMissed ? 'missed' : isUrgent ? 'urgent' : hoursLeft < 24 ? 'warning' : 'ok';
-  const timerText   = isMissed ? 'DEADLINE PASSED' : hoursLeft + 'h ' + minutesLeft + 'm remaining';
-  const timerColor  = (isMissed || isUrgent) ? 'var(--red)' : 'var(--amber)';
+  const isMissed    = effectiveDl !== null && now > effectiveDl;
+  const hoursLeft   = effectiveDl !== null ? Math.max(0, Math.floor((effectiveDl - now) / 3600000)) : 0;
+  const minutesLeft = effectiveDl !== null ? Math.max(0, Math.floor(((effectiveDl - now) % 3600000) / 60000)) : 0;
+  const isUrgent    = effectiveDl !== null && !isMissed && hoursLeft < 6;
+  const barClass    = dl_type === 'overridden' ? 'overridden'
+                    : dl_type === 'extended'   ? (isMissed ? 'missed' : isUrgent ? 'urgent' : hoursLeft < 24 ? 'warning' : 'ok')
+                    : isMissed ? 'missed' : isUrgent ? 'urgent' : hoursLeft < 24 ? 'warning' : 'ok';
+  const timerText   = dl_type === 'overridden' ? '\u2713 OVERRIDDEN'
+                    : isMissed ? 'DEADLINE PASSED'
+                    : hoursLeft + 'h ' + minutesLeft + 'm remaining';
+  const timerColor  = dl_type === 'overridden' ? 'var(--teal)'
+                    : (isMissed || isUrgent) ? 'var(--red)' : 'var(--amber)';
   const ma = document.getElementById('pip-mainArea');
   if (!ma) return;
   ma.innerHTML =
@@ -3396,17 +3434,27 @@ function pip_renderSpot() {
       '</div>' +
     '</div>' +
     '<div class="countdown-bar ' + barClass + '">' +
-      '<div class="countdown-icon">' + (isMissed?'\ud83d\udea8':isUrgent?'\u23f0':'\u23f1') + '</div>' +
+      '<div class="countdown-icon">' +
+        (dl_type==='overridden' ? '\u2713' : isMissed ? '\ud83d\udea8' : isUrgent ? '\u23f0' : '\u23f1') +
+      '</div>' +
       '<div class="countdown-text">' +
         '<div class="countdown-title" style="color:' + timerColor + ';">' +
-          (isMissed ? 'SPOT REPORT DEADLINE MISSED' : 'SUBMISSION DEADLINE') + '</div>' +
-        '<div class="countdown-sub">48 hours from intimation \u00b7 ' + new Date(deadline48h).toLocaleString('en-IN') + '</div>' +
+          (dl_type==='overridden' ? 'DEADLINE OVERRIDDEN \u2014 CONTINUE' :
+           dl_type==='extended' && isMissed ? 'EXTENDED DEADLINE PASSED' :
+           isMissed ? 'SPOT REPORT DEADLINE MISSED' : 'SUBMISSION DEADLINE') + '</div>' +
+        '<div class="countdown-sub">' +
+          (dl_type==='overridden'
+            ? ('Override reason: ' + ((dl_state && dl_state.override_reason ? dl_state.override_reason.slice(0,60) : 'Approved')))
+            : (dl_type==='extended'
+                ? ('Extended to \u00b7 ' + new Date(effectiveDl).toLocaleString('en-IN'))
+                : ('48 hours from intimation \u00b7 ' + (effectiveDl !== null ? new Date(effectiveDl).toLocaleString('en-IN') : '\u2014')))) +
+        '</div>' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">' +
         '<div class="countdown-timer" style="color:' + timerColor + ';">' + timerText + '</div>' +
-        (isMissed ? '<div style="display:flex;gap:5px;">' +
-          '<button class="dl-override-btn dl-extend-btn" onclick="dlOpenModal(\'spot\',' + deadline48h + ')">\u23f0 Extend</button>' +
-          '<button class="dl-override-btn dl-override-btn-go" onclick="dlOpenModal(\'spot\',' + deadline48h + ',true)">\u2713 Override</button>' +
+        (isMissed && dl_type !== 'overridden' ? '<div style="display:flex;gap:5px;">' +
+          '<button class="dl-override-btn dl-extend-btn" onclick="dlOpenModal(\'spot\',' + base48h + ')">\u23f0 Extend</button>' +
+          '<button class="dl-override-btn dl-override-btn-go" onclick="dlOpenModal(\'spot\',' + base48h + ',true)">\u2713 Override</button>' +
         '</div>' : '') +
       '</div>' +
     '</div>' +
@@ -4206,7 +4254,9 @@ function pip_updateSpotDeadline(intimTs) {
   const ts = typeof intimTs === 'number' ? intimTs : new Date(intimTs).getTime();
   // Check for extended/overridden deadline from claimState
   const dlState = claimState._deadlines && claimState._deadlines['spot'];
-  const effectiveDeadline = (dlState && dlState.current_deadline) ? dlState.current_deadline
+  // For override: current_deadline is null — handled by dlType guard above before reaching here
+  const effectiveDeadline = (dlState && dlState.current_deadline)
+    ? dlState.current_deadline
     : ts + (48 * 60 * 60 * 1000);
   const dlType = (dlState && dlState.deadline_type) || 'fixed';
   const panel  = document.getElementById('pip-spotDeadlinePanel');
@@ -4328,7 +4378,7 @@ async function dlConfirmAction() {
   const payload = {
     deadline_type:      dlType,
     original_deadline:  _dlOriginalDeadline,
-    current_deadline:   _dlIsOverride ? _dlOriginalDeadline : newDeadlineMs,
+    current_deadline:   _dlIsOverride ? null : newDeadlineMs,  // null = deadline not applicable (overridden)
     extended_deadline:  !_dlIsOverride ? newDeadlineMs : null,
     extension_reason:   !_dlIsOverride ? reason : null,
     override_reason:    _dlIsOverride  ? reason : null,
