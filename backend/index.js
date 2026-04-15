@@ -1025,7 +1025,9 @@ export default {
                          'claim_status','priority','surveyor_id','incident_date','survey_date',
                          'fir_number','police_station','legal_section','circumstances',
                          'security_measures','assessment_data','warranty_breaches',
-                         'settlement_amount','settlement_percentage'];
+                         'settlement_amount','settlement_percentage',
+                         'current_stage','claim_number','insured_address',
+                         'fsr_ready','insured_phone','insured_email'];
         const fields = []; const vals = [];
         for (const k of allowed) {
           if (d[k] !== undefined) {
@@ -2246,6 +2248,123 @@ Return ONLY valid JSON (no markdown):
         await env.DB.prepare('UPDATE vault_entries SET last_accessed_by=?,last_accessed_at=?,access_count=access_count+1 WHERE id=?')
           .bind(user.id, Date.now(), entryId).run();
         return jsonResponse({ entry });
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // STAGE DEADLINES — get, extend, override
+      // ════════════════════════════════════════════════════════════════════
+
+      // GET /api/claims/:id/deadlines — fetch all stage deadlines for a claim
+      if (path.match(/^\/api\/claims\/[^\/]+\/deadlines$/) && method === 'GET') {
+        const claimId = path.split('/')[3];
+        const rows = await env.DB.prepare(
+          'SELECT * FROM stage_deadlines WHERE claim_id=? AND tenant_id=? ORDER BY created_at ASC'
+        ).bind(claimId, user.tenantId).all();
+        return jsonResponse({ deadlines: rows.results || [] });
+      }
+
+      // POST /api/claims/:id/deadlines/:stage — upsert a stage deadline
+      if (path.match(/^\/api\/claims\/[^\/]+\/deadlines\/[^\/]+$/) && method === 'POST') {
+        const parts = path.split('/');
+        const claimId = parts[3];
+        const stage   = parts[5];
+        const VALID_STAGES = ['jir','spot','lor','psr','interim','fsr'];
+        if (!VALID_STAGES.includes(stage)) return errorResponse('Invalid stage', 400);
+        const claim = await env.DB.prepare('SELECT id FROM claims WHERE id=? AND tenant_id=?').bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+        const body = await request.json();
+        const {
+          deadline_type, original_deadline, current_deadline,
+          extended_deadline, extension_reason, override_reason, status
+        } = body;
+        const existing = await env.DB.prepare(
+          'SELECT id FROM stage_deadlines WHERE claim_id=? AND stage=? AND tenant_id=?'
+        ).bind(claimId, stage, user.tenantId).first();
+        if (existing) {
+          await env.DB.prepare(
+            `UPDATE stage_deadlines SET deadline_type=?,current_deadline=?,extended_deadline=?,
+             extension_reason=?,override_reason=?,override_approved_by=?,status=?,updated_at=?
+             WHERE id=?`
+          ).bind(
+            deadline_type||'fixed', current_deadline||null, extended_deadline||null,
+            extension_reason||null, override_reason||null,
+            (deadline_type==='overridden'?user.id:null), status||'active',
+            Date.now(), existing.id
+          ).run();
+        } else {
+          const dlId = generateUUID();
+          await env.DB.prepare(
+            `INSERT INTO stage_deadlines
+             (id,claim_id,tenant_id,stage,deadline_type,original_deadline,current_deadline,
+              extended_deadline,extension_reason,override_reason,override_approved_by,
+              status,created_by,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+          ).bind(
+            dlId, claimId, user.tenantId, stage,
+            deadline_type||'fixed', original_deadline||null, current_deadline||null,
+            extended_deadline||null, extension_reason||null, override_reason||null,
+            (deadline_type==='overridden'?user.id:null),
+            status||'active', user.id, Date.now(), Date.now()
+          ).run();
+        }
+        await auditLog(env, user.tenantId, user.id,
+          `deadline_${deadline_type||'set'}`, 'stage_deadlines', claimId, clientIP,
+          null, { stage, deadline_type, extension_reason, override_reason });
+        return jsonResponse({ success: true });
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // STAGE SNAPSHOTS — versioned save per stage
+      // ════════════════════════════════════════════════════════════════════
+
+      // GET /api/claims/:id/snapshots/:stage — list all snapshots for a stage
+      if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+$/) && method === 'GET') {
+        const parts = path.split('/');
+        const claimId = parts[3];
+        const stage   = parts[5];
+        const rows = await env.DB.prepare(
+          'SELECT id,version,status,saved_by,note,created_at FROM stage_snapshots WHERE claim_id=? AND stage=? AND tenant_id=? ORDER BY version DESC'
+        ).bind(claimId, stage, user.tenantId).all();
+        return jsonResponse({ snapshots: rows.results || [] });
+      }
+
+      // POST /api/claims/:id/snapshots/:stage — create versioned snapshot
+      if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+$/) && method === 'POST') {
+        const parts = path.split('/');
+        const claimId = parts[3];
+        const stage   = parts[5];
+        const VALID_STAGES = ['jir','spot','lor','psr','interim','fsr'];
+        if (!VALID_STAGES.includes(stage)) return errorResponse('Invalid stage', 400);
+        const claim = await env.DB.prepare('SELECT id FROM claims WHERE id=? AND tenant_id=?').bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+        const body = await request.json();
+        const { snapshot_data, status, note } = body;
+        // Get next version number
+        const vRow = await env.DB.prepare(
+          'SELECT MAX(version) AS max_v FROM stage_snapshots WHERE claim_id=? AND stage=? AND tenant_id=?'
+        ).bind(claimId, stage, user.tenantId).first();
+        const nextVersion = (vRow?.max_v || 0) + 1;
+        const snapId = generateUUID();
+        await env.DB.prepare(
+          `INSERT INTO stage_snapshots (id,claim_id,tenant_id,stage,version,snapshot_data,status,saved_by,note,created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?)`
+        ).bind(snapId, claimId, user.tenantId, stage, nextVersion,
+               snapshot_data||null, status||'saved', user.id, note||null, Date.now()).run();
+        // Update current_stage on claim
+        await env.DB.prepare('UPDATE claims SET current_stage=?,updated_at=? WHERE id=?')
+          .bind(stage, Date.now(), claimId).run();
+        return jsonResponse({ success: true, snapshot_id: snapId, version: nextVersion });
+      }
+
+      // GET /api/claims/:id/snapshots/:stage/latest — restore latest snapshot data
+      if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+\/latest$/) && method === 'GET') {
+        const parts = path.split('/');
+        const claimId = parts[3];
+        const stage   = parts[5];
+        const snap = await env.DB.prepare(
+          'SELECT * FROM stage_snapshots WHERE claim_id=? AND stage=? AND tenant_id=? ORDER BY version DESC LIMIT 1'
+        ).bind(claimId, stage, user.tenantId).first();
+        return jsonResponse({ snapshot: snap || null });
       }
 
       // ════ DEFAULT 404 ══════════════════════════════════════════════════

@@ -344,6 +344,11 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
 .countdown-bar.warning{background:var(--amber-glow);border:1px solid rgba(232,160,32,0.25);}
 .countdown-bar.ok{background:var(--green-dim);border:1px solid rgba(94,198,122,0.25);}
 .countdown-bar.missed{background:var(--red-dim);border:1px solid rgba(232,85,85,0.4);}
+.countdown-bar.extended{background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);}
+.countdown-bar.overridden{background:rgba(34,196,160,0.06);border:1px solid rgba(34,196,160,0.25);}
+.dl-override-btn{font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:4px;cursor:pointer;border:1px solid;transition:all 0.15s;white-space:nowrap;}
+.dl-extend-btn{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.4);color:var(--purple);}
+.dl-override-btn-go{background:rgba(34,196,160,0.08);border-color:rgba(34,196,160,0.3);color:var(--teal);}
 .countdown-icon{font-size:20px;}
 .countdown-text{flex:1;}
 .countdown-title{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.06em;}
@@ -893,6 +898,17 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     <!-- LEFT -->
     <div class="pip-left">
       <div class="lp-section">
+        <div class="lp-label">Claims</div>
+        <div style="padding:8px 10px;display:flex;flex-direction:column;gap:5px;">
+          <button onclick="openNewClaimModal()" style="width:100%;padding:7px 10px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.35);color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;letter-spacing:0.04em;display:flex;align-items:center;justify-content:center;gap:5px;">
+            <span style="font-size:13px;line-height:1;">+</span> New Claim
+          </button>
+          <button onclick="switchModule('myclaims')" style="width:100%;padding:7px 10px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);color:var(--text-sec);font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:0.04em;display:flex;align-items:center;justify-content:center;gap:5px;">
+            ☰ My Claims
+          </button>
+        </div>
+      </div>
+      <div class="lp-section">
         <div class="lp-label">Report Pipeline</div>
         <div class="report-nav-item active" id="nav-jir" onclick="pip_showReport('jir')">
           <div class="rni-icon">📝</div>
@@ -982,6 +998,26 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
     </div>
   </div>
 </div><!-- end view-pipeline -->
+
+<!-- ════════════════════════════════════════════════════════════════
+     VIEW: MY CLAIMS
+════════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-myclaims">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;padding:0 20px;height:48px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;gap:12px;">
+    <div style="font-family:var(--display);font-weight:800;font-size:14px;color:var(--amber);">☰ My Claims</div>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn-small primary" onclick="openNewClaimModal()">+ New Claim</button>
+      <button class="btn-small" onclick="switchModule('pipeline')">← Back to Pipeline</button>
+    </div>
+  </div>
+  <!-- Claims list -->
+  <div style="flex:1;overflow-y:auto;padding:20px;">
+    <div id="mc-list">
+      <div style="padding:40px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Loading claims…</div>
+    </div>
+  </div>
+</div><!-- end view-myclaims -->
 
 <!-- RIGHT PANEL (workbench) -->
 <div class="right-panel">
@@ -1219,6 +1255,61 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
         <button class="btn-modal-close" onclick="ncSkipPhotos()">Skip — Go to Claim</button>
         <button class="btn-modal-confirm" id="ncOcrBtn" onclick="ncProcessAllFiles()" disabled>🔍 Process &amp; Classify Files</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     DEADLINE OVERRIDE / EXTENSION MODAL
+════════════════════════════════════════════════════════════════ -->
+<div class="pip-modal-overlay" id="dlOverrideModal" style="z-index:2200;">
+  <div class="pip-modal-box" style="width:500px;">
+    <div class="pip-modal-title" id="dlOverrideTitle">⏱ Deadline Action Required</div>
+    <div class="pip-modal-sub" id="dlOverrideSub">MANDATORY REASON · AUDIT LOGGED</div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);margin-bottom:6px;" id="dlOverrideContext"></div>
+      <div id="dlOriginalDeadlineRow" style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;">
+        <span style="color:var(--text-sec);">Original deadline</span>
+        <span style="font-family:var(--mono);color:var(--red);" id="dlOriginalDeadlineVal">—</span>
+      </div>
+    </div>
+
+    <!-- Action type selector -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="dlBtnExtend" onclick="dlSelectAction('extend')"
+        style="flex:1;padding:9px;border-radius:7px;border:1px solid rgba(167,139,250,0.4);background:rgba(167,139,250,0.1);color:var(--purple);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;transition:all 0.15s;">
+        ⏰ Extend Deadline
+      </button>
+      <button id="dlBtnOverride" onclick="dlSelectAction('override')"
+        style="flex:1;padding:9px;border-radius:7px;border:1px solid rgba(34,196,160,0.3);background:rgba(34,196,160,0.06);color:var(--teal);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;transition:all 0.15s;">
+        ✓ Override & Continue
+      </button>
+    </div>
+
+    <!-- Extend: new deadline date -->
+    <div id="dlExtendFields" style="display:none;margin-bottom:12px;">
+      <div class="field">
+        <label>New Deadline Date &amp; Time</label>
+        <input type="datetime-local" id="dlNewDeadline" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;">
+      </div>
+    </div>
+
+    <!-- Mandatory reason (both actions) -->
+    <div id="dlReasonBlock" style="display:none;margin-bottom:12px;">
+      <div class="field">
+        <label id="dlReasonLabel">Reason (mandatory)</label>
+        <textarea id="dlReasonText" rows="3"
+          style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:9px 12px;outline:none;resize:vertical;"
+          placeholder="Provide a clear reason — this will be audit-logged and visible to insurer..."></textarea>
+      </div>
+    </div>
+
+    <div id="dlErrorMsg" style="display:none;background:rgba(232,85,85,0.08);border:1px solid rgba(232,85,85,0.2);border-radius:6px;padding:8px 12px;color:var(--red);font-family:var(--mono);font-size:10px;margin-bottom:10px;"></div>
+
+    <div class="pip-modal-footer">
+      <button class="btn-modal-close" onclick="pip_closeModal('dlOverrideModal')">Cancel</button>
+      <button class="btn-modal-confirm" id="dlConfirmBtn" onclick="dlConfirmAction()" disabled>Confirm</button>
     </div>
   </div>
 </div>
@@ -1561,12 +1652,15 @@ function switchModule(name) {
     pip_insurerRules = state.insurerRules;
     pip_syncClaimContext();
   }
+  if (name === 'myclaims') {
+    loadMyClaims();
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   state.activeModule = name;
   document.querySelectorAll('.dept-btn, .pip-nav-btn').forEach(b => b.classList.remove('active'));
   // Pipeline-mode: give full width to pipeline view, hide sidebar + right panel
-  document.querySelector('.shell').classList.toggle('pipeline-mode', name === 'pipeline');
+  document.querySelector('.shell').classList.toggle('pipeline-mode', name === 'pipeline' || name === 'myclaims');
   // Active state on topnav pipeline button
   var pipelineTopBtn = document.getElementById('d-pipeline');
   if (pipelineTopBtn) {
@@ -1734,6 +1828,112 @@ async function switchDept(dept) {
 }
 
 // ── Claims sidebar ────────────────────────────────────────────────────
+// ── My Claims ─────────────────────────────────────────────────────────
+async function loadMyClaims() {
+  const listEl = document.getElementById('mc-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Loading…</div>';
+
+  const r = await api('GET', '/api/claims?limit=100');
+  const claims = (r && r.claims) || [];
+
+  if (!claims.length) {
+    listEl.innerHTML =
+      '<div style="padding:40px;text-align:center;">' +
+        '<div style="font-size:32px;margin-bottom:12px;">📋</div>' +
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">No claims yet.</div>' +
+        '<button onclick="openNewClaimModal()" style="margin-top:14px;padding:8px 18px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.35);color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;">+ New Claim</button>' +
+      '</div>';
+    return;
+  }
+
+  const stageLabel = { jir:'JIR', spot:'Spot', lor:'LOR', psr:'PSR', interim:'Int.', fsr:'FSR' };
+  const stMap = {
+    draft:'status-intimated', intimated:'status-intimated',
+    in_progress:'status-inprogress', ready_for_fsr:'status-submitted',
+    submitted:'status-submitted', settled:'status-settled'
+  };
+  const stLabel = {
+    draft:'Draft', intimated:'Intimated', in_progress:'In Progress',
+    ready_for_fsr:'Ready for FSR', submitted:'Submitted', settled:'Settled'
+  };
+
+  listEl.innerHTML =
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+      '<thead>' +
+        '<tr style="background:var(--bg2);border-bottom:1px solid var(--border2);">' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">CLAIM ID</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">INSURED</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">INSURER</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">DEPT</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">STAGE</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">STATUS</th>' +
+          '<th style="padding:9px 14px;text-align:left;font-family:var(--mono);font-size:9px;color:var(--text-ter);font-weight:500;letter-spacing:0.08em;">UPDATED</th>' +
+          '<th style="padding:9px 14px;"></th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody id="mc-tbody">' +
+      '</tbody>' +
+    '</table>';
+  // Populate rows safely without inline quote escaping issues
+  mc_populateRows(claims, stMap, stLabel, stageLabel);
+}
+
+function mc_populateRows(claims, stMap, stLabel, stageLabel) {
+  var tbody = document.getElementById('mc-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  claims.forEach(function(c) {
+    var updDate = c.updated_at
+      ? new Date(c.updated_at > 1e10 ? c.updated_at : c.updated_at * 1000).toLocaleDateString('en-IN')
+      : (c.created_at
+        ? new Date(c.created_at > 1e10 ? c.created_at : c.created_at * 1000).toLocaleDateString('en-IN')
+        : '—');
+    var stCls  = stMap[c.claim_status]  || 'status-intimated';
+    var stLbl  = stLabel[c.claim_status]|| (c.claim_status||'').replace(/_/g,' ');
+    var stage  = (c.current_stage && stageLabel[c.current_stage]) || 'JIR';
+    var isActive = c.id === state.claimId;
+
+    var tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.12s;' +
+      (isActive ? 'background:var(--amber-glow);' : '');
+    if (isActive) tr.classList.add('mc-active');
+    tr.addEventListener('mouseover', function() {
+      if (!this.classList.contains('mc-active')) this.style.background = 'var(--bg2)';
+    });
+    tr.addEventListener('mouseout', function() {
+      if (!this.classList.contains('mc-active')) this.style.background = '';
+    });
+    tr.addEventListener('click', function() { mc_resumeClaim(c.id); });
+
+    tr.innerHTML =
+      '<td style="padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:600;">'  + (c.claim_number || '—') + '</td>' +
+      '<td style="padding:10px 14px;color:var(--text-pri);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (c.insured_name || '—') + '</td>' +
+      '<td style="padding:10px 14px;color:var(--text-sec);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (c.insurer_name || '—') + '</td>' +
+      '<td style="padding:10px 14px;"><span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--bg3);color:var(--text-sec);">' + (c.department||'—').toUpperCase() + '</span></td>' +
+      '<td style="padding:10px 14px;"><span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--purple-dim);color:var(--purple);">' + stage + '</span></td>' +
+      '<td style="padding:10px 14px;"><span class="status ' + stCls + '">' + stLbl + '</span></td>' +
+      '<td style="padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">' + updDate + '</td>' +
+      '<td style="padding:10px 14px;"><button style="font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:4px;background:var(--teal-dim);border:1px solid rgba(34,196,160,0.3);color:var(--teal);cursor:pointer;">Resume →</button></td>';
+
+    var resumeBtn = tr.querySelector('button');
+    resumeBtn.addEventListener('click', function(e) { e.stopPropagation(); mc_resumeClaim(c.id); });
+    tbody.appendChild(tr);
+  });
+}
+
+async function mc_resumeClaim(claimId) {
+  // Reset pipeline state so previous claim data doesn't bleed into new claim
+  ['jir','spot','lor','psr','interim','fsr'].forEach(function(t) {
+    claimState[t] = { status:'draft', data:{}, id:null, _snapVersion:0 };
+  });
+  claimState._deadlines = {};
+  // Load the claim (restores form fields, documents, checklist, insurer rules)
+  await loadClaim(claimId);
+  // Switch to pipeline — pip_loadSavedReports is called inside switchModule → pip_loadSavedReports
+  switchModule('pipeline');
+}
+
 async function loadClaimsSidebar() {
   const r    = await api('GET', '/api/claims?department=' + state.dept);
   const list = document.getElementById('claimList');
@@ -2913,6 +3113,7 @@ function pip_updateNavBadge() {
 async function pip_loadSavedReports() {
   if (!state.claimId) return;
   try {
+    // Load report stages
     const r = await api('GET', '/api/claims/' + state.claimId + '/reports');
     if (r.reports) {
       r.reports.forEach(rep => {
@@ -2920,10 +3121,24 @@ async function pip_loadSavedReports() {
           claimState[rep.report_type].status = rep.status || 'saved';
           claimState[rep.report_type].data   = rep.report_data ? JSON.parse(rep.report_data) : {};
           claimState[rep.report_type].id     = rep.id;
+          claimState[rep.report_type]._snapVersion = rep.version || 1;
         }
       });
       pip_updatePipelineUI();
       pip_updateNavBadge();
+    }
+    // Load stage deadlines (non-blocking)
+    const dl = await api('GET', '/api/claims/' + state.claimId + '/deadlines');
+    if (dl.deadlines && dl.deadlines.length) {
+      if (!claimState._deadlines) claimState._deadlines = {};
+      dl.deadlines.forEach(function(d) {
+        claimState._deadlines[d.stage] = d;
+      });
+    }
+    // Navigate to current_stage if claim has one saved
+    const currentStage = pip_claim && pip_claim.current_stage;
+    if (currentStage && claimState[currentStage]) {
+      pip_showReport(currentStage);
     }
   } catch {}
 }
@@ -3187,7 +3402,13 @@ function pip_renderSpot() {
           (isMissed ? 'SPOT REPORT DEADLINE MISSED' : 'SUBMISSION DEADLINE') + '</div>' +
         '<div class="countdown-sub">48 hours from intimation \u00b7 ' + new Date(deadline48h).toLocaleString('en-IN') + '</div>' +
       '</div>' +
-      '<div class="countdown-timer" style="color:' + timerColor + ';">' + timerText + '</div>' +
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">' +
+        '<div class="countdown-timer" style="color:' + timerColor + ';">' + timerText + '</div>' +
+        (isMissed ? '<div style="display:flex;gap:5px;">' +
+          '<button class="dl-override-btn dl-extend-btn" onclick="dlOpenModal(\'spot\',' + deadline48h + ')">\u23f0 Extend</button>' +
+          '<button class="dl-override-btn dl-override-btn-go" onclick="dlOpenModal(\'spot\',' + deadline48h + ',true)">\u2713 Override</button>' +
+        '</div>' : '') +
+      '</div>' +
     '</div>' +
     '<div class="card"><div class="card-header"><span class="card-title">Spot Report \u2014 Header</span></div><div class="card-body"><div class="form-grid-3">' +
       '<div class="field"><label>Date of Spot Survey</label><input type="date" id="spot-date" value="' + (d.date||jd.surveyDate||pip_todayStr()) + '"></div>' +
@@ -3838,6 +4059,7 @@ async function pip_saveCurrentReport() {
   pip_updateNavBadge();
   if (type === 'jir') pip_autoPopulateFromJIR();
   try {
+    // 1. Upsert into survey_reports_pipeline (existing behavior)
     const r = await api('POST', '/api/claims/' + pip_claim.id + '/reports/' + type, {
       report_type: type,
       report_data: JSON.stringify(claimState[type].data),
@@ -3845,8 +4067,18 @@ async function pip_saveCurrentReport() {
     });
     if (r.success || r.id) {
       claimState[type].id = r.id || claimState[type].id;
-      toast('\u2713 ' + type.toUpperCase() + ' saved', 'success');
     }
+    // 2. Write versioned snapshot (new — non-blocking)
+    api('POST', '/api/claims/' + pip_claim.id + '/snapshots/' + type, {
+      snapshot_data: JSON.stringify(claimState[type].data),
+      status:        'saved',
+      note:          'Manual save v' + ((claimState[type]._snapVersion || 0) + 1)
+    }).then(function(sr) {
+      if (sr && sr.version) {
+        claimState[type]._snapVersion = sr.version;
+      }
+    }).catch(function(){});
+    toast('\u2713 ' + type.toUpperCase() + ' saved', 'success');
   } catch (err) {
     toast('Save failed: ' + err.message, 'error');
   }
@@ -3971,17 +4203,29 @@ function pip_toggleSigType(val) {
 
 // ── 48-hr deadline ────────────────────────────────────────────────────
 function pip_updateSpotDeadline(intimTs) {
-  const ts       = typeof intimTs === 'number' ? intimTs : new Date(intimTs).getTime();
-  const deadline = ts + (48 * 60 * 60 * 1000);
-  const panel    = document.getElementById('pip-spotDeadlinePanel');
+  const ts = typeof intimTs === 'number' ? intimTs : new Date(intimTs).getTime();
+  // Check for extended/overridden deadline from claimState
+  const dlState = claimState._deadlines && claimState._deadlines['spot'];
+  const effectiveDeadline = (dlState && dlState.current_deadline) ? dlState.current_deadline
+    : ts + (48 * 60 * 60 * 1000);
+  const dlType = (dlState && dlState.deadline_type) || 'fixed';
+  const panel  = document.getElementById('pip-spotDeadlinePanel');
   if (!panel) return;
+  if (dlType === 'overridden') {
+    panel.innerHTML =
+      '<div style="font-family:var(--mono);font-size:10px;color:var(--teal);">\u2713 OVERRIDDEN<br>' +
+      '<span style="color:var(--text-ter);font-size:9px;">' +
+        (dlState.override_reason ? dlState.override_reason.slice(0,50) : 'Approved override') + '</span></div>';
+    return;
+  }
   const tick = () => {
     const now    = Date.now();
-    const msLeft = deadline - now;
+    const msLeft = effectiveDeadline - now;
     if (msLeft <= 0) {
       panel.innerHTML =
-        '<div style="font-family:var(--mono);font-size:10px;color:var(--red);">\ud83d\udea8 DEADLINE MISSED<br>' +
-        '<span style="color:var(--text-ter);">' + new Date(deadline).toLocaleString('en-IN') + '</span></div>';
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--red);">\ud83d\udea8 ' +
+        (dlType === 'extended' ? 'EXTENDED DEADLINE MISSED' : 'DEADLINE MISSED') + '<br>' +
+        '<span style="color:var(--text-ter);font-size:9px;">' + new Date(effectiveDeadline).toLocaleString('en-IN') + '</span></div>';
       return;
     }
     const h = Math.floor(msLeft / 3600000);
@@ -3992,11 +4236,133 @@ function pip_updateSpotDeadline(intimTs) {
       '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + color + ';">' +
         String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') +
       '</div>' +
-      '<div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:3px;">Until spot deadline<br>' +
-        new Date(deadline).toLocaleString('en-IN') + '</div>';
+      '<div style="font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:3px;">' +
+        (dlType === 'extended' ? '\u23f0 Extended deadline' : 'Until spot deadline') + '<br>' +
+        new Date(effectiveDeadline).toLocaleString('en-IN') + '</div>';
   };
   tick();
   setInterval(tick, 1000);
+}
+
+// ── Deadline Override / Extension ────────────────────────────────────
+var _dlStage = null, _dlOriginalDeadline = null, _dlIsOverride = false;
+
+function dlOpenModal(stage, originalDeadlineMs, forceOverride) {
+  _dlStage            = stage;
+  _dlOriginalDeadline = originalDeadlineMs;
+  _dlIsOverride       = forceOverride === true;
+  // Reset modal state
+  document.getElementById('dlReasonText').value  = '';
+  document.getElementById('dlNewDeadline').value  = '';
+  document.getElementById('dlErrorMsg').style.display = 'none';
+  document.getElementById('dlReasonBlock').style.display  = 'none';
+  document.getElementById('dlExtendFields').style.display = 'none';
+  document.getElementById('dlConfirmBtn').disabled = true;
+  const stageLabels = { jir:'JIR', spot:'Spot Report', lor:'LOR', psr:'PSR', interim:'Interim', fsr:'FSR' };
+  document.getElementById('dlOverrideTitle').textContent =
+    forceOverride ? '\u2713 Override & Continue — ' + (stageLabels[stage]||stage.toUpperCase())
+                  : '\u23f0 Extend Deadline — ' + (stageLabels[stage]||stage.toUpperCase());
+  document.getElementById('dlOverrideSub').textContent =
+    'MANDATORY REASON \u00b7 AUDIT LOGGED \u00b7 VISIBLE TO INSURER';
+  document.getElementById('dlOverrideContext').textContent =
+    'Claim: ' + ((pip_claim && pip_claim.claim_number) || '\u2014') +
+    ' \u00b7 Stage: ' + (stageLabels[stage]||stage.toUpperCase());
+  document.getElementById('dlOriginalDeadlineVal').textContent =
+    new Date(originalDeadlineMs).toLocaleString('en-IN');
+  // Auto-select action if override mode
+  if (forceOverride) {
+    dlSelectAction('override');
+  } else {
+    dlSelectAction('extend');
+  }
+  document.getElementById('dlOverrideModal').classList.add('show');
+}
+
+function dlSelectAction(action) {
+  _dlIsOverride = (action === 'override');
+  const extBtn = document.getElementById('dlBtnExtend');
+  const ovrBtn = document.getElementById('dlBtnOverride');
+  if (extBtn) {
+    extBtn.style.background = action === 'extend' ? 'rgba(167,139,250,0.25)' : 'rgba(167,139,250,0.1)';
+    extBtn.style.fontWeight  = action === 'extend' ? '700' : '400';
+  }
+  if (ovrBtn) {
+    ovrBtn.style.background = action === 'override' ? 'rgba(34,196,160,0.18)' : 'rgba(34,196,160,0.06)';
+    ovrBtn.style.fontWeight  = action === 'override' ? '700' : '400';
+  }
+  document.getElementById('dlExtendFields').style.display = action === 'extend' ? 'block' : 'none';
+  document.getElementById('dlReasonBlock').style.display  = 'block';
+  document.getElementById('dlReasonLabel').textContent    =
+    action === 'override' ? 'Override reason (mandatory)' : 'Extension reason (mandatory)';
+  document.getElementById('dlConfirmBtn').disabled = true;
+  document.getElementById('dlReasonText').oninput  = dlValidateForm;
+  document.getElementById('dlNewDeadline') && (document.getElementById('dlNewDeadline').oninput = dlValidateForm);
+}
+
+function dlValidateForm() {
+  const reason = (document.getElementById('dlReasonText').value || '').trim();
+  const newDl  = document.getElementById('dlNewDeadline').value;
+  const btn    = document.getElementById('dlConfirmBtn');
+  if (!reason || reason.length < 10) { btn.disabled = true; return; }
+  if (!_dlIsOverride && !newDl)      { btn.disabled = true; return; }
+  btn.disabled = false;
+}
+
+async function dlConfirmAction() {
+  const reason  = (document.getElementById('dlReasonText').value || '').trim();
+  const newDlVal = document.getElementById('dlNewDeadline').value;
+  const errEl   = document.getElementById('dlErrorMsg');
+  if (!reason || reason.length < 10) {
+    errEl.textContent = 'Please enter a reason (minimum 10 characters).';
+    errEl.style.display = 'block'; return;
+  }
+  if (!_dlIsOverride && !newDlVal) {
+    errEl.textContent = 'Please set a new deadline date.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  const btn = document.getElementById('dlConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const newDeadlineMs = newDlVal ? new Date(newDlVal).getTime() : null;
+  const dlType  = _dlIsOverride ? 'overridden' : 'extended';
+  const payload = {
+    deadline_type:      dlType,
+    original_deadline:  _dlOriginalDeadline,
+    current_deadline:   _dlIsOverride ? _dlOriginalDeadline : newDeadlineMs,
+    extended_deadline:  !_dlIsOverride ? newDeadlineMs : null,
+    extension_reason:   !_dlIsOverride ? reason : null,
+    override_reason:    _dlIsOverride  ? reason : null,
+    status:             dlType
+  };
+  try {
+    const r = await api('POST', '/api/claims/' + pip_claim.id + '/deadlines/' + _dlStage, payload);
+    if (r && r.success) {
+      // Update local claimState
+      if (!claimState._deadlines) claimState._deadlines = {};
+      claimState._deadlines[_dlStage] = payload;
+      // Also write audit snapshot
+      api('POST', '/api/claims/' + pip_claim.id + '/snapshots/' + _dlStage, {
+        snapshot_data: JSON.stringify({ deadline_action: dlType, reason, new_deadline: newDeadlineMs }),
+        status: dlType,
+        note: dlType + ': ' + reason.slice(0,80)
+      }).catch(function(){});
+      pip_closeModal('dlOverrideModal');
+      // Re-render current spot report to update countdown bar
+      if (_dlStage === 'spot') pip_renderSpot();
+      if (_dlStage !== 'spot') pip_showReport(_dlStage);
+      // Update right-panel countdown
+      if (pip_claim && pip_claim.intimation_date) pip_updateSpotDeadline(pip_claim.intimation_date);
+      toast('\u2713 Deadline ' + dlType + ' \u2014 audit logged', 'success');
+    } else {
+      errEl.textContent = 'Server error. Try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Confirm';
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Confirm';
+  }
 }
 
 // ── Preview / Print ───────────────────────────────────────────────────
