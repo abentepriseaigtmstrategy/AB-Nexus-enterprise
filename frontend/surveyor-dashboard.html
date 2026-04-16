@@ -2140,9 +2140,11 @@ async function loadClaim(claimId) {
   loadChecklistStatus();
   calcDelay();
   document.getElementById('btnPipeline').disabled = false;
-  // Show status advance button based on current status
   updateStatusAdvanceBtn(c.claim_status);
   pip_updateNavBadge();
+  // If Repository tab is active, refresh it with the newly loaded claim
+  var repoTab = document.getElementById('tab-repository');
+  if (repoTab && repoTab.classList.contains('active')) repo_load();
 }
 
 function updateStatusAdvanceBtn(status) {
@@ -5339,15 +5341,24 @@ var _repoAllSnapshots       = [];   // flat list across all stages
 
 // Called when Repository tab is opened
 async function repo_load() {
-  if (!state.claimId) {
-    document.getElementById('repo-empty').textContent =
-      'Load a claim first, then open the Repository tab.';
-    var wrap = document.getElementById('repo-table-wrap');
-    if (wrap) wrap.innerHTML = '<div style="padding:28px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Load a claim first, then open the Repository tab.</div>';
+  // Resolve active claim — check state.claimId first, then pip_claim as fallback
+  var activeId   = state.claimId || (pip_claim && pip_claim.id) || null;
+  var activeData = state.claimData || pip_claim || null;
+
+  var wrap = document.getElementById('repo-table-wrap');
+  if (!activeId) {
+    if (wrap) wrap.innerHTML =
+      '<div style="padding:28px;text-align:center;">' +
+        '<div style="font-size:24px;margin-bottom:10px;">📋</div>' +
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--text-ter);">Click a claim in the sidebar to view its repository.</div>' +
+      '</div>';
+    var badge = document.getElementById('repo-total-badge');
+    if (badge) badge.textContent = '0 versions';
     return;
   }
-  // Update header meta
-  var c = state.claimData || {};
+
+  // Update header meta from active claim
+  var c = activeData || {};
   var metaEl = document.getElementById('repo-meta');
   if (metaEl) metaEl.textContent =
     (c.claim_number || '—') + '  ·  ' +
@@ -5374,6 +5385,12 @@ async function repo_refresh() {
 async function repo_fetchAndRender(stageFilter) {
   var wrap = document.getElementById('repo-table-wrap');
   if (!wrap) return;
+  // Resolve claimId from state or pip_claim
+  var claimId = state.claimId || (pip_claim && pip_claim.id);
+  if (!claimId) {
+    wrap.innerHTML = '<div style="padding:28px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Click a claim in the sidebar to view its repository.</div>';
+    return;
+  }
   wrap.innerHTML = '<div style="padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);">Loading snapshots…</div>';
 
   var stages = stageFilter ? [stageFilter] : ['jir','spot','lor','psr','interim','fsr'];
@@ -5382,7 +5399,7 @@ async function repo_fetchAndRender(stageFilter) {
   // Fetch each stage in parallel
   await Promise.all(stages.map(async function(stage) {
     try {
-      var r = await api('GET', '/api/claims/' + state.claimId + '/snapshots/' + stage);
+      var r = await api('GET', '/api/claims/' + claimId + '/snapshots/' + stage);
       if (r && r.snapshots && r.snapshots.length) {
         r.snapshots.forEach(function(s) {
           allSnaps.push({
@@ -5511,7 +5528,8 @@ async function repo_viewSnapshot(snap) {
   // Fetch full snapshot_data from backend (list endpoint doesn't include data)
   var fullSnap = snap;
   try {
-    var r = await api('GET', '/api/claims/' + state.claimId + '/snapshots/' + snap.stage + '/' + snap.version);
+    var snapClaimId = state.claimId || (pip_claim && pip_claim.id);
+    var r = await api('GET', '/api/claims/' + snapClaimId + '/snapshots/' + snap.stage + '/' + snap.version);
     if (r && r.snapshot) fullSnap = r.snapshot;
   } catch(e) {}
 
@@ -5585,12 +5603,13 @@ function repo_restoreVersion() {
 }
 
 async function repo_doRestore(stage, version) {
-  if (!state.claimId) { toast('Load a claim first', 'warning'); return; }
+  var claimId = state.claimId || (pip_claim && pip_claim.id);
+  if (!claimId) { toast('Load a claim first', 'warning'); return; }
   toast('Restoring v' + version + ' of ' + stage.toUpperCase() + '…', 'info');
 
   try {
     // 1. POST restore endpoint — sets current_stage, returns payload
-    var r = await api('POST', '/api/claims/' + state.claimId + '/snapshots/' + stage + '/restore', {
+    var r = await api('POST', '/api/claims/' + claimId + '/snapshots/' + stage + '/restore', {
       version: version
     });
     if (!r || r.error) { toast('Restore failed: ' + (r && r.error || 'server error'), 'error'); return; }
