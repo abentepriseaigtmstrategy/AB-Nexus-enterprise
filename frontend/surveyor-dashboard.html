@@ -402,6 +402,174 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 .rp-table th{padding:6px 8px;background:#f5f5f5;border:1px solid #ccc;font-size:10px;font-weight:700;text-transform:uppercase;}
 .rp-section-head{font-weight:700;font-size:12px;color:#e8a020;border-bottom:1px solid #e8a020;padding-bottom:4px;margin:14px 0 8px;}
 .rp-sig-box{border:1px solid #ccc;height:60px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;font-size:10px;}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CLAIM COMMAND CARD — Smart orientation layer on Overview tab
+═══════════════════════════════════════════════════════════════════════ */
+#claimCommandCard {
+  display:none;
+  flex-direction:column;
+  gap:0;
+  background:var(--bg1);
+  border:1px solid var(--border2);
+  border-radius:14px;
+  overflow:hidden;
+  margin-bottom:18px;
+  animation: cardIn 0.3s ease;
+}
+@keyframes cardIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+#claimCommandCard.visible { display:flex; }
+
+/* Identity strip */
+.ccc-identity {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:16px 20px;
+  background:linear-gradient(135deg,rgba(232,160,32,0.07),rgba(34,196,160,0.04));
+  border-bottom:1px solid var(--border);
+}
+.ccc-avatar {
+  width:44px;height:44px;border-radius:11px;
+  background:var(--amber-dim);border:1px solid rgba(232,160,32,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:14px;font-weight:700;color:var(--amber);
+  flex-shrink:0;
+}
+.ccc-id-block { flex:1; min-width:0; }
+.ccc-claim-no { font-family:var(--mono);font-size:13px;color:var(--amber);font-weight:700;letter-spacing:0.04em; }
+.ccc-insured  { font-size:15px;color:var(--text-pri);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.ccc-meta     { display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap; }
+.ccc-pill     { font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:4px;letter-spacing:0.06em;white-space:nowrap; }
+.ccc-pill.insurer  { background:rgba(34,196,160,0.12);color:var(--teal);border:1px solid rgba(34,196,160,0.25); }
+.ccc-pill.dept     { background:var(--amber-dim);color:var(--amber);border:1px solid rgba(232,160,32,0.25); }
+.ccc-pill.status   { background:var(--bg3);color:var(--text-sec);border:1px solid var(--border2); }
+.ccc-pill.status.draft      { background:var(--bg3);color:var(--text-ter); }
+.ccc-pill.status.in-progress{ background:var(--amber-dim);color:var(--amber); }
+.ccc-pill.status.submitted  { background:var(--teal-dim);color:var(--teal); }
+.ccc-pill.status.settled    { background:var(--green-dim);color:var(--green); }
+
+/* Pipeline progress rail */
+.ccc-pipeline {
+  display:flex;align-items:center;
+  padding:10px 20px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  gap:0;overflow-x:auto;
+}
+.ccc-stage {
+  display:flex;align-items:center;gap:0;flex:1;min-width:60px;cursor:pointer;
+}
+.ccc-stage-inner {
+  display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;
+  padding:6px 4px;border-radius:7px;transition:background 0.15s;
+}
+.ccc-stage-inner:hover { background:rgba(255,255,255,0.04); }
+.ccc-stage-dot {
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;font-family:var(--mono);
+  border:2px solid var(--border2);background:var(--bg3);color:var(--text-ter);
+  transition:all 0.2s;flex-shrink:0;
+}
+.ccc-stage-dot.done    { background:var(--green-dim);border-color:var(--green);color:var(--green); }
+.ccc-stage-dot.saved   { background:var(--amber-dim);border-color:var(--amber);color:var(--amber); }
+.ccc-stage-dot.current { background:var(--purple-dim);border-color:var(--purple);color:var(--purple);box-shadow:0 0 8px rgba(167,139,250,0.35); }
+.ccc-stage-lbl {
+  font-family:var(--mono);font-size:8px;letter-spacing:0.08em;
+  color:var(--text-ter);text-transform:uppercase;text-align:center;
+}
+.ccc-stage-lbl.done    { color:var(--green); }
+.ccc-stage-lbl.saved   { color:var(--amber); }
+.ccc-stage-lbl.current { color:var(--purple); }
+.ccc-connector { width:20px;height:2px;background:var(--border2);flex-shrink:0; }
+.ccc-connector.done { background:var(--green); }
+
+/* Next action area */
+.ccc-actions { display:flex;gap:12px;padding:16px 20px;flex-wrap:wrap;align-items:stretch; }
+
+/* Primary action card */
+.ccc-next-action {
+  flex:1;min-width:260px;
+  background:linear-gradient(135deg,rgba(167,139,250,0.1),rgba(167,139,250,0.04));
+  border:1px solid rgba(167,139,250,0.3);
+  border-radius:10px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.ccc-next-label {
+  font-family:var(--mono);font-size:8px;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--purple);font-weight:700;
+}
+.ccc-next-title { font-family:var(--display);font-size:14px;font-weight:700;color:var(--text-pri); }
+.ccc-next-desc  { font-size:12px;color:var(--text-sec);line-height:1.5; }
+.ccc-next-btns  { display:flex;gap:8px;flex-wrap:wrap; }
+
+/* Extract Data hero button */
+.btn-extract-hero {
+  display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,rgba(34,196,160,0.2),rgba(34,196,160,0.1));
+  border:1px solid rgba(34,196,160,0.45);border-radius:8px;
+  color:var(--teal);font-family:var(--display);font-size:12px;font-weight:700;
+  padding:9px 16px;cursor:pointer;letter-spacing:0.04em;
+  transition:all 0.15s;
+}
+.btn-extract-hero:hover {
+  background:rgba(34,196,160,0.28);
+  box-shadow:0 0 16px rgba(34,196,160,0.2);transform:translateY(-1px);
+}
+.btn-extract-hero .extract-icon { font-size:16px; }
+
+/* Manual fill button */
+.btn-manual-fill {
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--bg3);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text-sec);font-family:var(--display);font-size:12px;font-weight:600;
+  padding:9px 14px;cursor:pointer;letter-spacing:0.03em;
+  transition:all 0.15s;
+}
+.btn-manual-fill:hover { background:var(--bg4);color:var(--text-pri);border-color:var(--border2); }
+
+/* Quick actions sidebar */
+.ccc-quick { 
+  display:flex;flex-direction:column;gap:6px;min-width:160px;
+}
+.ccc-quick-title {
+  font-family:var(--mono);font-size:8px;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--text-ter);margin-bottom:2px;
+}
+.ccc-qbtn {
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:7px;
+  cursor:pointer;transition:all 0.12s;text-decoration:none;
+}
+.ccc-qbtn:hover { background:var(--bg3);border-color:var(--border2); }
+.ccc-qbtn-icon { font-size:14px;flex-shrink:0; }
+.ccc-qbtn-text { font-size:11px;color:var(--text-sec);font-weight:500; }
+.ccc-qbtn-sub  { font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:1px; }
+
+/* Extract drop zone inside command card */
+.ccc-drop-zone {
+  display:none;
+  margin:0 20px 16px;
+  border:2px dashed rgba(34,196,160,0.3);
+  border-radius:10px;padding:20px;text-align:center;
+  cursor:pointer;transition:all 0.15s;background:rgba(34,196,160,0.03);
+}
+.ccc-drop-zone.open { display:block; }
+.ccc-drop-zone:hover,.ccc-drop-zone.drag { border-color:rgba(34,196,160,0.6);background:rgba(34,196,160,0.07); }
+.ccc-drop-zone-icon { font-size:28px;margin-bottom:6px; }
+.ccc-drop-zone-text { font-family:var(--mono);font-size:11px;color:var(--teal);font-weight:600; }
+.ccc-drop-zone-sub  { font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:5px;line-height:1.7; }
+
+/* Extract progress strip */
+.ccc-extract-progress {
+  display:none;margin:0 20px 14px;
+  padding:10px 14px;background:rgba(34,196,160,0.08);
+  border:1px solid rgba(34,196,160,0.2);border-radius:8px;
+  font-family:var(--mono);font-size:10px;color:var(--teal);
+}
+.ccc-extract-progress.show { display:block; }
+
 </style>
 </head>
 <body>
@@ -513,6 +681,85 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 
   <!-- TAB: INTAKE -->
   <div class="content-area tab-panel active" id="tab-intake">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       CLAIM COMMAND CARD — Smart orientation layer
+       Shows when a claim is loaded. Guides surveyor to next action.
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="claimCommandCard">
+
+    <!-- Identity strip: who + what + status -->
+    <div class="ccc-identity">
+      <div class="ccc-avatar" id="ccc-avatar">—</div>
+      <div class="ccc-id-block">
+        <div class="ccc-claim-no" id="ccc-claimNo">— Select a claim —</div>
+        <div class="ccc-insured" id="ccc-insured">No claim loaded</div>
+        <div class="ccc-meta">
+          <span class="ccc-pill insurer" id="ccc-insurer" style="display:none;">—</span>
+          <span class="ccc-pill dept"    id="ccc-dept"    style="display:none;">—</span>
+          <span class="ccc-pill status"  id="ccc-status"  style="display:none;">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline progress rail: 6 stages visual -->
+    <div class="ccc-pipeline" id="ccc-pipeline">
+      <!-- Rendered by renderCCC() -->
+    </div>
+
+    <!-- Next action + quick access -->
+    <div class="ccc-actions">
+      <!-- Primary: what to do next -->
+      <div class="ccc-next-action">
+        <div class="ccc-next-label">⚡ YOUR NEXT ACTION</div>
+        <div class="ccc-next-title" id="ccc-nextTitle">Loading…</div>
+        <div class="ccc-next-desc"  id="ccc-nextDesc"></div>
+        <div class="ccc-next-btns" id="ccc-nextBtns"></div>
+      </div>
+      <!-- Quick actions column -->
+      <div class="ccc-quick">
+        <div class="ccc-quick-title">Quick Access</div>
+        <div class="ccc-qbtn" onclick="switchTab('vault', document.querySelector('.tab[onclick*=vault]'))">
+          <span class="ccc-qbtn-icon">📁</span>
+          <div><div class="ccc-qbtn-text">Documents</div><div class="ccc-qbtn-sub" id="ccc-docCount">0 uploaded</div></div>
+        </div>
+        <div class="ccc-qbtn" onclick="switchTab('reports', document.querySelector('.tab[onclick*=reports]'))">
+          <span class="ccc-qbtn-icon">📊</span>
+          <div><div class="ccc-qbtn-text">Reports</div><div class="ccc-qbtn-sub" id="ccc-reportCount">0 saved</div></div>
+        </div>
+        <div class="ccc-qbtn" onclick="switchTab('timeline', document.querySelector('.tab[onclick*=timeline]'));loadClaimTimeline()">
+          <span class="ccc-qbtn-icon">🕐</span>
+          <div><div class="ccc-qbtn-text">Timeline</div><div class="ccc-qbtn-sub">Full activity log</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop zone (shown when Extract Data is clicked) -->
+    <div class="ccc-drop-zone" id="ccc-dropZone"
+      onclick="document.getElementById('ccc-fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="this.classList.remove('drag');cccHandleDrop(event)">
+      <div class="ccc-drop-zone-icon">📤</div>
+      <div class="ccc-drop-zone-text">Click to choose file or drag &amp; drop here</div>
+      <div class="ccc-drop-zone-sub">
+        📷 Photo / Scan &nbsp;·&nbsp; 📄 PDF &nbsp;·&nbsp; 📝 DOC/DOCX &nbsp;·&nbsp; 📋 TXT<br>
+        AI reads your handwritten notes and fills the JIR report automatically
+      </div>
+      <input type="file" id="ccc-fileInput"
+        accept="image/*,.pdf,.doc,.docx,.txt,application/pdf,text/plain"
+        style="display:none;" onchange="cccExtractAndOpen(event)">
+    </div>
+
+    <!-- Extraction progress -->
+    <div class="ccc-extract-progress" id="ccc-extractProgress">
+      ⏳ Reading your notes… AI is extracting data and filling the JIR report.
+    </div>
+
+  </div>
+  <!-- END CLAIM COMMAND CARD -->
+
+
     <div class="ai-insight" id="rulesBanner" style="display:none;border-color:rgba(34,196,160,0.3);">
       <span class="ai-icon">RULES</span>
       <div class="ai-text" id="rulesBannerText">Rules loaded.</div>
@@ -2385,6 +2632,8 @@ async function loadClaim(claimId) {
     pip_insurerRules = state.insurerRules;
     pip_syncClaimContext();
   }
+  // Render the Claim Command Card (smart next-action orientation layer)
+  renderCCC();
   // If Repository tab is active, refresh it with the newly loaded claim
   var repoTab = document.getElementById('tab-repository');
   if (repoTab && repoTab.classList.contains('active')) repo_load();
@@ -3476,6 +3725,7 @@ async function pip_loadSavedReports() {
       });
       pip_updatePipelineUI();
       pip_updateNavBadge();
+      renderCCC();  // refresh rail after reports load
     }
     // Load stage deadlines (non-blocking)
     const dl = await api('GET', '/api/claims/' + state.claimId + '/deadlines');
@@ -4915,6 +5165,215 @@ async function renderReportsVersionHistory(stageFilter) {
     wrap.innerHTML = '<div style="padding:20px;font-family:var(--mono);font-size:10px;color:var(--red);">Failed: ' + escHtml(err.message) + '</div>';
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// CLAIM COMMAND CARD — renderCCC()
+// Called after every loadClaim. Reads claimState + state.claimData
+// to show the right next action. Zero new API calls.
+// ═══════════════════════════════════════════════════════════════════════
+
+function renderCCC() {
+  const c   = state.claimData;
+  const card = document.getElementById('claimCommandCard');
+  if (!c || !state.claimId) { if (card) card.classList.remove('visible'); return; }
+  card.classList.add('visible');
+
+  // ── Identity ──────────────────────────────────────────────────────
+  const initials = (c.insured_name || '?').trim().split(' ').filter(Boolean).map(p=>p[0]).slice(0,2).join('').toUpperCase() || '?';
+  document.getElementById('ccc-avatar').textContent  = initials;
+  document.getElementById('ccc-claimNo').textContent = c.claim_number || c.id || '—';
+  document.getElementById('ccc-insured').textContent = c.insured_name || 'Unnamed Claim';
+
+  const insEl = document.getElementById('ccc-insurer');
+  const dptEl = document.getElementById('ccc-dept');
+  const stEl  = document.getElementById('ccc-status');
+  if (c.insurer_name) { insEl.textContent = c.insurer_name; insEl.style.display = ''; }
+  if (c.department)   { dptEl.textContent = (c.department).replace(/_/g,' ').toUpperCase(); dptEl.style.display = ''; }
+
+  const statusMap = {
+    draft:'Draft', intimated:'Intimated', in_progress:'In Progress',
+    inprogress:'In Progress', ready_for_fsr:'Ready for FSR',
+    submitted:'Submitted', settled:'Settled', closed:'Closed'
+  };
+  const statusCls = {
+    draft:'draft', intimated:'draft', in_progress:'in-progress',
+    inprogress:'in-progress', ready_for_fsr:'in-progress',
+    submitted:'submitted', settled:'settled', closed:'settled'
+  };
+  const st = (c.claim_status || 'draft').toLowerCase().replace(' ','_');
+  stEl.textContent = statusMap[st] || c.claim_status || 'Draft';
+  stEl.className   = 'ccc-pill status ' + (statusCls[st] || 'draft');
+  stEl.style.display = '';
+
+  // ── Pipeline rail ─────────────────────────────────────────────────
+  const stages = [
+    { key:'jir',     label:'JIR',     icon:'📝' },
+    { key:'spot',    label:'Spot',    icon:'🔍' },
+    { key:'lor',     label:'LOR',     icon:'📬' },
+    { key:'psr',     label:'PSR',     icon:'📊' },
+    { key:'interim', label:'Interim', icon:'⏳' },
+    { key:'fsr',     label:'FSR',     icon:'🏆' }
+  ];
+
+  // Determine first incomplete stage
+  var firstPending = stages.find(s => !claimState[s.key] || claimState[s.key].status === 'draft');
+  var currentStage = (firstPending || stages[stages.length-1]).key;
+
+  var pipelineHTML = '';
+  stages.forEach(function(s, i) {
+    var cs  = claimState[s.key];
+    var stt = cs ? cs.status : 'draft';
+    var cls = stt === 'submitted' ? 'done' : stt === 'saved' ? 'saved' : s.key === currentStage ? 'current' : '';
+    var dotLabel = stt === 'submitted' ? '✓' : stt === 'saved' ? '●' : (i+1);
+    var connCls  = (i < stages.length - 1) ? (stt === 'submitted' ? ' done' : '') : '';
+    pipelineHTML +=
+      '<div class="ccc-stage" onclick="openStageFromCCC('' + s.key + '')" title="Open ' + s.label + '">' +
+        '<div class="ccc-stage-inner">' +
+          '<div class="ccc-stage-dot ' + cls + '">' + dotLabel + '</div>' +
+          '<div class="ccc-stage-lbl ' + cls + '">' + s.label + '</div>' +
+        '</div>' +
+      '</div>' +
+      (i < stages.length - 1 ? '<div class="ccc-connector' + connCls + '"></div>' : '');
+  });
+  document.getElementById('ccc-pipeline').innerHTML = pipelineHTML;
+
+  // ── Next action logic ─────────────────────────────────────────────
+  var title, desc, btns;
+  var savedCount    = stages.filter(s => claimState[s.key] && claimState[s.key].status !== 'draft').length;
+  var submittedCount= stages.filter(s => claimState[s.key] && claimState[s.key].status === 'submitted').length;
+  var docCount      = (c.documents || []).length;
+
+  document.getElementById('ccc-docCount').textContent    = docCount + (docCount===1?' document':' documents');
+  document.getElementById('ccc-reportCount').textContent = savedCount + ' saved, ' + submittedCount + ' submitted';
+
+  if (submittedCount === 6 || st === 'settled' || st === 'closed') {
+    // Claim complete
+    title = '🏆 Claim Complete';
+    desc  = 'All reports submitted. Claim is ' + (stEl.textContent) + '.';
+    btns  = '<button class="btn-manual-fill" onclick="switchTab('reports',document.querySelector('.tab[onclick*=reports]'))">View Reports</button>' +
+            '<button class="btn-manual-fill" onclick="generateReport()">📋 Export Final Report</button>';
+  } else if (currentStage === 'jir' && claimState.jir.status === 'draft') {
+    // JIR not started — most common first-visit state
+    title = '📋 Start JIR — Joint Inspection Report';
+    desc  = 'Fill in your field observations from the survey visit. Upload your handwritten notes for instant AI extraction, or fill the form manually.';
+    btns  =
+      '<button class="btn-extract-hero" onclick="cccToggleDropZone()">' +
+        '<span class="extract-icon">📤</span> Upload Handwritten Notes' +
+      '</button>' +
+      '<button class="btn-manual-fill" onclick="openStageFromCCC('jir')">' +
+        '✏ Fill JIR Manually' +
+      '</button>';
+  } else if (claimState.jir.status === 'saved' && claimState.spot.status === 'draft') {
+    title = '🔍 Proceed to Spot Report';
+    desc  = 'JIR saved ✓. Next: complete the Spot Report with physical survey findings and loss quantification.';
+    btns  =
+      '<button class="btn-extract-hero" onclick="openStageFromCCC('spot')">' +
+        '<span class="extract-icon">🔍</span> Open Spot Report' +
+      '</button>' +
+      '<button class="btn-manual-fill" onclick="cccToggleDropZone()">' +
+        '📤 Upload Spot Notes' +
+      '</button>';
+  } else if (claimState.jir.status === 'submitted' && claimState.spot.status !== 'submitted') {
+    var stgName = currentStage.toUpperCase();
+    title = '📊 Continue — ' + stgName + ' Report';
+    desc  = 'JIR submitted ✓. Complete the ' + stgName + ' to keep the claim moving.';
+    btns  =
+      '<button class="btn-extract-hero" onclick="openStageFromCCC('' + currentStage + '')">' +
+        '<span class="extract-icon">→</span> Open ' + stgName + ' Report' +
+      '</button>' +
+      '<button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>';
+  } else {
+    // Generic: in-progress state
+    var stageName = (firstPending ? firstPending.label : 'FSR');
+    title = '📊 Continue — ' + stageName + ' Report';
+    desc  = savedCount + ' of 6 reports complete. Open the pipeline to continue where you left off.';
+    btns  =
+      '<button class="btn-extract-hero" onclick="openStageFromCCC('' + currentStage + '')">' +
+        '<span class="extract-icon">→</span> Continue ' + stageName +
+      '</button>' +
+      '<button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>';
+  }
+
+  document.getElementById('ccc-nextTitle').innerHTML = title;
+  document.getElementById('ccc-nextDesc').textContent  = desc;
+  document.getElementById('ccc-nextBtns').innerHTML    = btns;
+}
+
+// ── Open a pipeline stage directly from command card ──────────────────
+function openStageFromCCC(stage) {
+  pip_claim        = state.claimData;
+  pip_insurerRules = state.insurerRules;
+  switchModule('pipeline');
+  pip_loadSavedReports().then(function() {
+    setTimeout(function() { pip_showReport(stage); }, 250);
+  });
+}
+
+// ── Toggle the drop zone ──────────────────────────────────────────────
+function cccToggleDropZone() {
+  var dz = document.getElementById('ccc-dropZone');
+  dz.classList.toggle('open');
+  if (dz.classList.contains('open')) {
+    dz.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+// ── Handle drag-drop into command card ────────────────────────────────
+function cccHandleDrop(e) {
+  e.preventDefault();
+  var files = e.dataTransfer && e.dataTransfer.files;
+  if (!files || !files.length) return;
+  var fakeEvent = { target: { files: files, value: '' } };
+  cccExtractAndOpen(fakeEvent);
+}
+
+// ── Core: extract file then jump straight to that report ─────────────
+async function cccExtractAndOpen(event) {
+  var file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!state.claimId) { toast('Load a claim first', 'warning'); return; }
+
+  // Close drop zone, show progress
+  document.getElementById('ccc-dropZone').classList.remove('open');
+  var prog = document.getElementById('ccc-extractProgress');
+  prog.classList.add('show');
+  prog.innerHTML = '⏳ Reading <strong>' + file.name + '</strong> — AI is extracting data…';
+
+  try {
+    // Determine which report to target based on pipeline state
+    var targetStage = 'jir';
+    var stages = ['jir','spot','lor','psr','interim','fsr'];
+    for (var i = 0; i < stages.length; i++) {
+      if (!claimState[stages[i]] || claimState[stages[i]].status === 'draft') {
+        targetStage = stages[i]; break;
+      }
+    }
+
+    // Open pipeline to target stage first (renders the form)
+    pip_claim        = state.claimData;
+    pip_insurerRules = state.insurerRules;
+    switchModule('pipeline');
+    await pip_loadSavedReports();
+    await new Promise(function(r){ setTimeout(r, 300); });
+    pip_showReport(targetStage);
+    await new Promise(function(r){ setTimeout(r, 400); });
+
+    // Now run extraction — reuse existing pip_extractData logic
+    var fakeEvent = { target: { files: [file], value: '' } };
+    await pip_extractData(fakeEvent);
+
+    prog.classList.remove('show');
+    // Reset file input
+    if (event.target && event.target.value !== undefined) event.target.value = '';
+
+    toast('✓ Data extracted and applied to ' + targetStage.toUpperCase() + ' — review and save', 'success');
+  } catch(err) {
+    prog.classList.remove('show');
+    toast('Extract failed: ' + err.message, 'error');
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // PHASE 5 — FLEXIBLE DATA ENTRY
