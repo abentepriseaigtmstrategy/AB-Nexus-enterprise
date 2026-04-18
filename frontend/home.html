@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AB Nexus '26 — Home</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #0a0c0f;
+    --bg1: #111318;
+    --bg2: #181c24;
+    --bg3: #1e2330;
+    --bg4: #242938;
+    --border:  rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --amber:     #e8a020;
+    --amber-dim: rgba(232,160,32,0.15);
+    --amber-glow:rgba(232,160,32,0.06);
+    --teal:      #22c4a0;
+    --teal-dim:  rgba(34,196,160,0.12);
+    --red:       #e85555;
+    --green:     #5ec67a;
+    --blue:      #5b9cf6;
+    --blue-dim:  rgba(91,156,246,0.12);
+    --text-pri:  #e8eaf0;
+    --text-sec:  #8892aa;
+    --text-ter:  #505870;
+    --mono:    'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body:    'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg0);
+    color: var(--text-pri);
+    font-family: var(--body);
+    font-size: 13px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,160,32,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,160,32,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Top glow */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -240px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(232,160,32,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Topbar ────────────────────────────────────────────────────────── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    height: 56px;
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--amber);
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--amber-dim);
+    border: 1px solid rgba(232,160,32,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .logo span { color: var(--text-sec); font-weight: 400; font-size: 13px; margin-left: 4px; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 5px 10px 5px 6px;
+  }
+  .user-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--amber-dim);
+    border: 1px solid rgba(232,160,32,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .user-name { font-size: 12px; color: var(--text-sec); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-role { font-family: var(--mono); font-size: 9px; color: var(--text-ter); letter-spacing: 0.08em; }
+
+  .btn-logout {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text-ter);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.06em;
+  }
+  .btn-logout:hover { color: var(--red); border-color: rgba(232,85,85,0.35); background: rgba(232,85,85,0.06); }
+
+  /* ── Main ──────────────────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Hero heading */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--text-ter);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .hero-title {
+    font-family: var(--display);
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--text-pri);
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  .hero-title .accent { color: var(--amber); }
+  .hero-sub {
+    font-size: 14px;
+    color: var(--text-sec);
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  /* ── Action Cards ──────────────────────────────────────────────────── */
+  .action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 720px;
+  }
+
+  .action-card {
+    position: relative;
+    background: var(--bg1);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 32px 28px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+  }
+
+  .action-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .action-card.primary::before  { background: radial-gradient(ellipse at top left, rgba(232,160,32,0.08) 0%, transparent 70%); }
+  .action-card.secondary::before { background: radial-gradient(ellipse at top left, rgba(34,196,160,0.06) 0%, transparent 70%); }
+
+  .action-card:hover { transform: translateY(-2px); }
+  .action-card.primary:hover  { border-color: rgba(232,160,32,0.45); box-shadow: 0 8px 32px rgba(232,160,32,0.1); }
+  .action-card.secondary:hover { border-color: rgba(34,196,160,0.4); box-shadow: 0 8px 32px rgba(34,196,160,0.08); }
+  .action-card:hover::before { opacity: 1; }
+
+  .card-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.2s;
+  }
+  .action-card:hover .card-icon { transform: scale(1.08); }
+  .primary  .card-icon { background: var(--amber-dim);  border: 1px solid rgba(232,160,32,0.3); }
+  .secondary .card-icon { background: var(--teal-dim); border: 1px solid rgba(34,196,160,0.3); }
+
+  .card-content { position: relative; z-index: 1; }
+  .card-title {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .primary  .card-title { color: var(--amber); }
+  .secondary .card-title { color: var(--teal); }
+
+  .card-desc { font-size: 13px; color: var(--text-sec); line-height: 1.6; }
+
+  .card-arrow {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    font-family: var(--mono);
+    font-size: 18px;
+    opacity: 0.25;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .action-card:hover .card-arrow { opacity: 0.7; transform: translateX(3px); }
+  .primary  .card-arrow { color: var(--amber); }
+  .secondary .card-arrow { color: var(--teal); }
+
+  .card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+    margin-top: 2px;
+    align-self: flex-start;
+  }
+  .primary  .card-badge { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(232,160,32,0.2); }
+  .secondary .card-badge { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(34,196,160,0.2); }
+  .dot { width: 5px; height: 5px; border-radius: 50%; animation: blink 2s ease-in-out infinite; }
+  .primary  .dot { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+  .secondary .dot { background: var(--teal); box-shadow: 0 0 4px var(--teal); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── Stats row ─────────────────────────────────────────────────────── */
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 40px;
+    width: 100%;
+    max-width: 720px;
+    justify-content: center;
+  }
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 16px;
+  }
+  .stat-num { font-family: var(--display); font-size: 18px; font-weight: 700; }
+  .stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-ter); text-transform: uppercase; }
+  .stat-sep { width: 1px; height: 20px; background: var(--border2); }
+
+  /* ── Footer ────────────────────────────────────────────────────────── */
+  .footer {
+    padding: 18px 28px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-ter);
+    letter-spacing: 0.08em;
+    position: relative;
+    z-index: 1;
+  }
+  .footer-right { display: flex; gap: 16px; align-items: center; }
+  .s-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .s-dot.green { background: var(--green); box-shadow: 0 0 4px var(--green); animation: blink 2s ease-in-out infinite; }
+
+  /* ── Responsive ────────────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .action-grid { grid-template-columns: 1fr; }
+    .hero-title { font-size: 26px; }
+    .stats-row { flex-wrap: wrap; gap: 10px; }
+    .topbar { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ──────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">⛯</div>
+    AB <span>Nexus</span>
+  </div>
+  <div class="topbar-right">
+    <div class="user-chip">
+      <div class="user-avatar" id="userAvatar">--</div>
+      <div>
+        <div class="user-name" id="userName">Loading…</div>
+        <div class="user-role" id="userRole">SURVEYOR</div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">SIGN OUT</button>
+  </div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-eyebrow">AB Nexus Enterprise · 2026</div>
+    <h1 class="hero-title">Command <span class="accent">Center</span></h1>
+    <p class="hero-sub">Manage insurance claims end-to-end. Start a new claim or resume an existing one.</p>
+  </div>
+
+  <div class="action-grid">
+    <!-- New Claim -->
+    <a class="action-card primary" href="surveyor-dashboard.html?new=1" id="btnNewClaim">
+      <div class="card-icon">📋</div>
+      <div class="card-content">
+        <div class="card-title">New Claim</div>
+        <div class="card-desc">Register a fresh claim intimation — capture insured details, incident date, department, and upload site photos for AI-OCR processing.</div>
+      </div>
+      <div class="card-badge"><div class="dot"></div>LIVE CREATION</div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <!-- My Claims -->
+    <a class="action-card secondary" href="my-claims.html" id="btnMyClaims">
+      <div class="card-icon">🗂️</div>
+      <div class="card-content">
+        <div class="card-title">My Claims</div>
+        <div class="card-desc">Browse, search, and resume all your assigned claims. Jump directly into any claim's full pipeline, documents, and AI tools.</div>
+      </div>
+      <div class="card-badge"><div class="dot"></div>ALL CLAIMS</div>
+      <div class="card-arrow">→</div>
+    </a>
+  </div>
+
+  <!-- Quick stats (populated live) -->
+  <div class="stats-row" id="statsRow" style="opacity:0;transition:opacity 0.4s;">
+    <div class="stat-pill">
+      <div>
+        <div class="stat-num amber" id="statTotal">—</div>
+        <div class="stat-label">Total Claims</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div>
+        <div class="stat-num" id="statActive" style="color:var(--amber);">—</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+      <div class="stat-sep"></div>
+      <div>
+        <div class="stat-num" id="statSettled" style="color:var(--green);">—</div>
+        <div class="stat-label">Settled</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Footer ──────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <span>MCL-PUN-26 · SurveyorOS 2026</span>
+  <div class="footer-right">
+    <span><span class="s-dot green"></span>API ONLINE</span>
+    <span id="clock" style="color:var(--text-sec);"></span>
+  </div>
+</footer>
+
+<script>
+  const API_URL = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
+
+  // Guard — must be logged in
+  (function() {
+    if (!localStorage.getItem('nexus_token')) {
+      window.location.replace('index.html');
+    }
+  })();
+
+  // Populate user info
+  (function() {
+    try {
+      const u = JSON.parse(localStorage.getItem('nexus_user') || '{}');
+      if (u.name) {
+        document.getElementById('userName').textContent = u.name;
+        const parts = u.name.trim().split(' ');
+        const ini   = parts.length >= 2 ? parts[0][0]+parts[1][0] : parts[0].slice(0,2);
+        document.getElementById('userAvatar').textContent = ini.toUpperCase();
+      }
+      if (u.role) {
+        document.getElementById('userRole').textContent = (u.role || 'SURVEYOR').replace('_',' ').toUpperCase();
+      }
+    } catch {}
+  })();
+
+  // Clock
+  (function tick() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) + ' IST';
+    setTimeout(tick, 1000);
+  })();
+
+  // Load quick stats
+  (async function loadStats() {
+    try {
+      const token = localStorage.getItem('nexus_token');
+      const r = await fetch(API_URL + '/api/claims?limit=200', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!r.ok) return;
+      const data = await r.json();
+      const claims = Array.isArray(data) ? data : (data.claims || data.data || []);
+      const total    = claims.length;
+      const settled  = claims.filter(c => c.claim_status === 'settled').length;
+      const active   = claims.filter(c => c.claim_status && c.claim_status !== 'settled').length;
+      document.getElementById('statTotal').textContent   = total;
+      document.getElementById('statActive').textContent  = active;
+      document.getElementById('statSettled').textContent = settled;
+      document.getElementById('statsRow').style.opacity  = '1';
+    } catch {}
+  })();
+
+  function doLogout() {
+    if (!confirm('Sign out of AB Nexus?')) return;
+    fetch(API_URL + '/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('nexus_token') || '') }
+    }).catch(() => {});
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  }
+</script>
+
+</body>
+</html>

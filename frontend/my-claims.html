@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AB Nexus \'26 — My Claims</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#0a0c0f;--bg1:#111318;--bg2:#181c24;--bg3:#1e2330;--bg4:#242938;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);--amber:#e8a020;--amber-dim:rgba(232,160,32,0.15);--amber-glow:rgba(232,160,32,0.06);--teal:#22c4a0;--teal-dim:rgba(34,196,160,0.12);--red:#e85555;--red-dim:rgba(232,85,85,0.12);--blue:#5b9cf6;--blue-dim:rgba(91,156,246,0.12);--green:#5ec67a;--green-dim:rgba(94,198,122,0.1);--purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);--text-pri:#e8eaf0;--text-sec:#8892aa;--text-ter:#505870;--mono:'IBM Plex Mono',monospace;--display:'Syne',sans-serif;--body:'DM Sans',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-size:13px;min-height:100vh;display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,32,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,32,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:56px;background:var(--bg1);border-bottom:1px solid var(--border);}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.logo{font-family:var(--display);font-weight:800;font-size:17px;color:var(--amber);letter-spacing:0.04em;display:flex;align-items:center;gap:10px;}
+.logo-icon{width:32px;height:32px;border-radius:9px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;}
+.logo span{color:var(--text-sec);font-weight:400;font-size:13px;margin-left:4px;}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-ter);}
+.breadcrumb a{color:var(--text-ter);text-decoration:none;transition:color 0.15s;}
+.breadcrumb a:hover{color:var(--amber);}
+.breadcrumb .current{color:var(--text-sec);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.btn-new-claim{display:flex;align-items:center;gap:6px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.35);border-radius:8px;color:var(--amber);font-family:var(--display);font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;text-decoration:none;transition:all 0.15s;}
+.btn-new-claim:hover{background:rgba(232,160,32,0.22);box-shadow:0 0 18px rgba(232,160,32,0.12);}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:5px 10px 5px 6px;}
+.user-avatar{width:26px;height:26px;border-radius:6px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.25);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--amber);}
+.user-name{font-size:12px;color:var(--text-sec);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-logout{background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text-ter);font-family:var(--mono);font-size:10px;padding:5px 10px;cursor:pointer;transition:all 0.15s;}
+.btn-logout:hover{color:var(--red);border-color:rgba(232,85,85,0.35);background:rgba(232,85,85,0.06);}
+/* PAGE */
+.page{flex:1;display:flex;flex-direction:column;position:relative;z-index:1;max-width:1200px;width:100%;margin:0 auto;padding:28px;}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;}
+.page-title{font-family:var(--display);font-size:26px;font-weight:800;}
+.page-subtitle{font-family:var(--mono);font-size:10px;color:var(--text-ter);letter-spacing:0.1em;margin-top:4px;}
+/* INFOGRAPHICS PANEL */
+.infograph-panel{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-bottom:18px;}
+.infograph-left{background:var(--bg1);border:1px solid var(--border2);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;}
+.infograph-left::before{content:'';position:absolute;top:-50px;right:-50px;width:160px;height:160px;background:radial-gradient(circle,rgba(232,160,32,0.07) 0%,transparent 70%);pointer-events:none;}
+.infograph-left-title{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;color:var(--text-ter);text-transform:uppercase;font-weight:700;}
+.donut-wrap{display:flex;align-items:center;gap:18px;}
+.donut-svg-wrap{position:relative;width:96px;height:96px;flex-shrink:0;}
+.donut-svg-wrap svg{transform:rotate(-90deg);}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-pct{font-family:var(--display);font-size:19px;font-weight:800;color:var(--amber);line-height:1;}
+.donut-pct-label{font-family:var(--mono);font-size:8px;color:var(--text-ter);margin-top:2px;}
+.donut-legend{display:flex;flex-direction:column;gap:7px;flex:1;}
+.legend-row{display:flex;align-items:center;gap:7px;}
+.legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.legend-label{font-family:var(--mono);font-size:10px;color:var(--text-sec);flex:1;}
+.legend-val{font-family:var(--display);font-size:14px;font-weight:700;}
+.ta-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ta-card{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+.ta-label{font-family:var(--mono);font-size:9px;color:var(--text-ter);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:4px;}
+.edit-icon{cursor:pointer;opacity:0.4;transition:opacity 0.15s;font-size:10px;}
+.edit-icon:hover{opacity:1;}
+.ta-value{font-family:var(--display);font-size:22px;font-weight:800;}
+.ta-value.amber{color:var(--amber);}
+.ta-value.green{color:var(--green);}
+.ta-input{font-family:var(--display);font-size:22px;font-weight:800;color:var(--amber);background:transparent;border:none;border-bottom:1px solid rgba(232,160,32,0.4);outline:none;width:100%;padding:0;}
+.ta-sub{font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:2px;}
+.progress-bar-wrap{display:flex;flex-direction:column;gap:4px;}
+.progress-bar-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text-ter);}
+.progress-bar-track{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.progress-bar-fill{height:100%;border-radius:3px;transition:width 0.9s cubic-bezier(.22,1,.36,1);}
+/* STAT CARDS */
+.infograph-right{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.stat-card{background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden;}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;border-radius:0 0 12px 12px;}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+.active-card::after{background:var(--amber);}
+.pending-card::after{background:var(--blue);}
+.closed-card::after{background:var(--green);}
+.active-card:hover{box-shadow:0 4px 20px rgba(232,160,32,0.1);border-color:rgba(232,160,32,0.3);}
+.pending-card:hover{box-shadow:0 4px 20px rgba(91,156,246,0.1);border-color:rgba(91,156,246,0.3);}
+.closed-card:hover{box-shadow:0 4px 20px rgba(94,198,122,0.1);border-color:rgba(94,198,122,0.3);}
+.active-card.selected{background:rgba(232,160,32,0.05);border-color:rgba(232,160,32,0.4);}
+.pending-card.selected{background:rgba(91,156,246,0.05);border-color:rgba(91,156,246,0.4);}
+.closed-card.selected{background:rgba(94,198,122,0.05);border-color:rgba(94,198,122,0.4);}
+.stat-card-icon{font-size:18px;margin-bottom:8px;}
+.stat-card-num{font-family:var(--display);font-size:30px;font-weight:800;line-height:1;margin-bottom:3px;}
+.active-card .stat-card-num{color:var(--amber);}
+.pending-card .stat-card-num{color:var(--blue);}
+.closed-card .stat-card-num{color:var(--green);}
+.stat-card-label{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--text-sec);text-transform:uppercase;}
+.stat-card-sub{font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:5px;line-height:1.5;}
+.stat-card-badge{position:absolute;top:12px;right:12px;font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:3px;}
+.active-card .stat-card-badge{background:var(--amber-dim);color:var(--amber);}
+.pending-card .stat-card-badge{background:var(--blue-dim);color:var(--blue);}
+.closed-card .stat-card-badge{background:var(--green-dim);color:var(--green);}
+/* FILTER BAR */
+.filter-bar{display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;flex-wrap:wrap;}
+.search-wrap{position:relative;flex:1;min-width:200px;}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-ter);font-size:12px;pointer-events:none;}
+.search-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:8px 12px 8px 32px;outline:none;transition:border-color 0.15s;}
+.search-input:focus{border-color:rgba(232,160,32,0.4);box-shadow:0 0 0 2px rgba(232,160,32,0.06);}
+.search-input::placeholder{color:var(--text-ter);}
+.filter-sep{width:1px;height:20px;background:var(--border2);flex-shrink:0;}
+.tab-pills{display:flex;gap:3px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:3px;}
+.tab-pill{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;padding:5px 12px;border-radius:5px;cursor:pointer;border:none;background:transparent;color:var(--text-sec);transition:all 0.15s;white-space:nowrap;}
+.tab-pill:hover{color:var(--text-pri);}
+.tab-pill.active{background:var(--bg3);color:var(--amber);box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+.filter-select{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-sec);font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none;cursor:pointer;-webkit-appearance:none;}
+.filter-select:focus{border-color:rgba(232,160,32,0.4);}
+.results-count{font-family:var(--mono);font-size:10px;color:var(--text-ter);white-space:nowrap;margin-left:auto;}
+/* GROUPS */
+.group-section{margin-bottom:18px;}
+.group-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px 10px 0 0;cursor:pointer;user-select:none;}
+.group-header.collapsed{border-radius:10px;}
+.group-chevron{font-size:10px;color:var(--text-ter);transition:transform 0.2s;flex-shrink:0;}
+.group-chevron.open{transform:rotate(90deg);}
+.group-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.g-active .group-dot{background:var(--amber);box-shadow:0 0 5px var(--amber);}
+.g-pending .group-dot{background:var(--blue);}
+.g-closed .group-dot{background:var(--green);}
+.group-label{font-family:var(--display);font-size:13px;font-weight:700;flex:1;}
+.g-active .group-label{color:var(--amber);}
+.g-pending .group-label{color:var(--blue);}
+.g-closed .group-label{color:var(--green);}
+.group-count{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:4px;}
+.g-active .group-count{background:var(--amber-dim);color:var(--amber);}
+.g-pending .group-count{background:var(--blue-dim);color:var(--blue);}
+.g-closed .group-count{background:var(--green-dim);color:var(--green);}
+.group-body{border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;}
+.table-head{display:grid;grid-template-columns:120px 155px 125px 80px 100px 105px 90px 1fr;gap:8px;padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;letter-spacing:0.12em;color:var(--text-ter);text-transform:uppercase;align-items:center;}
+.claim-row{display:grid;grid-template-columns:120px 155px 125px 80px 100px 105px 90px 1fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;transition:background 0.1s;}
+.claim-row:last-child{border-bottom:none;}
+.claim-row:hover{background:rgba(255,255,255,0.02);}
+.c-id{font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.c-insured{font-size:12px;color:var(--text-pri);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.c-insured-sub{font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.c-insurer{font-size:12px;color:var(--text-sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.c-dept{font-family:var(--mono);font-size:9px;color:var(--text-sec);text-transform:uppercase;}
+.c-updated{font-family:var(--mono);font-size:9px;color:var(--text-ter);}
+.stage-pill{display:inline-flex;align-items:center;font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:4px;white-space:nowrap;background:var(--purple-dim);color:var(--purple);}
+.s-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:4px;font-family:var(--mono);font-size:9px;font-weight:500;white-space:nowrap;}
+.s-chip::before{content:'';width:4px;height:4px;border-radius:50%;}
+.s-draft{background:var(--bg3);color:var(--text-sec);} .s-draft::before{background:var(--text-ter);}
+.s-intimated{background:var(--blue-dim);color:var(--blue);} .s-intimated::before{background:var(--blue);}
+.s-inprogress{background:var(--amber-dim);color:var(--amber);} .s-inprogress::before{background:var(--amber);animation:blink 2s ease-in-out infinite;}
+.s-submitted{background:var(--teal-dim);color:var(--teal);} .s-submitted::before{background:var(--teal);}
+.s-settled{background:var(--green-dim);color:var(--green);} .s-settled::before{background:var(--green);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}}
+.actions-cell{display:flex;align-items:center;gap:5px;justify-content:flex-end;}
+.act-btn{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.03em;padding:5px 9px;border-radius:6px;cursor:pointer;border:1px solid;transition:all 0.15s;white-space:nowrap;text-decoration:none;}
+.act-continue{background:var(--amber-dim);border-color:rgba(232,160,32,0.4);color:var(--amber);}
+.act-continue:hover{background:rgba(232,160,32,0.25);box-shadow:0 0 10px rgba(232,160,32,0.15);}
+.act-view{background:var(--bg3);border-color:var(--border2);color:var(--text-sec);}
+.act-view:hover{background:var(--bg4);color:var(--text-pri);}
+.act-download{background:var(--bg3);border-color:var(--border2);color:var(--text-sec);}
+.act-download:hover{background:var(--teal-dim);border-color:rgba(34,196,160,0.4);color:var(--teal);}
+.act-reopen{background:var(--bg3);border-color:var(--border2);color:var(--text-ter);}
+.act-reopen:hover{background:var(--blue-dim);border-color:rgba(91,156,246,0.4);color:var(--blue);}
+.group-empty{padding:24px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text-ter);letter-spacing:0.06em;}
+/* STATES */
+.state-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:72px 24px;gap:12px;}
+.state-icon{font-size:34px;opacity:0.4;}
+.state-msg{font-size:14px;color:var(--text-ter);}
+.state-sub{font-family:var(--mono);font-size:10px;color:var(--text-ter);text-align:center;}
+.spinner{width:28px;height:28px;border:2px solid var(--border2);border-top-color:var(--amber);border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* TOAST */
+.toast-bar{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);opacity:0;transition:all 0.25s;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:9px 16px;font-family:var(--mono);font-size:11px;color:var(--text-sec);z-index:9999;pointer-events:none;white-space:nowrap;}
+.toast-bar.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast-bar.success{color:var(--green);border-color:rgba(94,198,122,0.3);}
+.toast-bar.info{color:var(--amber);border-color:rgba(232,160,32,0.3);}
+/* FOOTER */
+.footer{padding:12px 28px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text-ter);position:relative;z-index:1;}
+.s-dot-g{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);display:inline-block;margin-right:4px;animation:blink 2s ease-in-out infinite;}
+@media(max-width:960px){.infograph-panel{grid-template-columns:1fr;}.infograph-right{grid-template-columns:repeat(3,1fr);}.table-head{display:none;}.claim-row{grid-template-columns:1fr auto;}.c-insurer,.c-dept,.stage-pill{display:none;}.actions-cell{flex-direction:column;}}
+@media(max-width:600px){.infograph-right{grid-template-columns:1fr 1fr;}.topbar{padding:0 12px;}.page{padding:14px;}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo"><div class="logo-icon">&#9903;</div>AB <span>Nexus</span></div>
+    <nav class="breadcrumb">
+      <a href="home.html">Home</a>
+      <span style="opacity:.4"> / </span>
+      <span class="current">My Claims</span>
+    </nav>
+  </div>
+  <div class="topbar-right">
+    <a class="btn-new-claim" href="surveyor-dashboard.html?new=1">+ New Claim</a>
+    <div class="user-chip">
+      <div class="user-avatar" id="userAvatar">--</div>
+      <div class="user-name" id="userName">Loading...</div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">SIGN OUT</button>
+  </div>
+</header>
+
+<div class="page">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">My Claims</div>
+      <div class="page-subtitle" id="pageSubtitle">SURVEYOR CLAIM REGISTRY &middot; SurveyorOS 2026</div>
+    </div>
+  </div>
+
+  <!-- INFOGRAPHICS PANEL -->
+  <div class="infograph-panel">
+
+    <!-- LEFT: Donut + Target/Achieved -->
+    <div class="infograph-left">
+      <div class="infograph-left-title">&#128202; Performance Overview</div>
+      <div class="donut-wrap">
+        <div class="donut-svg-wrap">
+          <svg width="96" height="96" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
+            <circle id="donut-closed" cx="50" cy="50" r="38" fill="none" stroke="#5ec67a" stroke-width="10" stroke-dasharray="0 239" stroke-linecap="round" style="transition:stroke-dasharray 0.9s cubic-bezier(.22,1,.36,1);"/>
+            <circle id="donut-active" cx="50" cy="50" r="38" fill="none" stroke="#e8a020" stroke-width="10" stroke-dasharray="0 239" stroke-linecap="round" style="transition:stroke-dasharray 0.9s cubic-bezier(.22,1,.36,1) 0.1s;"/>
+            <circle id="donut-pending" cx="50" cy="50" r="38" fill="none" stroke="#5b9cf6" stroke-width="10" stroke-dasharray="0 239" stroke-linecap="round" style="transition:stroke-dasharray 0.9s cubic-bezier(.22,1,.36,1) 0.2s;"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-pct" id="donutPct">0%</div>
+            <div class="donut-pct-label">DONE</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          <div class="legend-row"><div class="legend-dot" style="background:var(--amber);box-shadow:0 0 4px var(--amber);"></div><div class="legend-label">Active</div><div class="legend-val" id="lgActive" style="color:var(--amber);">0</div></div>
+          <div class="legend-row"><div class="legend-dot" style="background:var(--blue);"></div><div class="legend-label">Pending</div><div class="legend-val" id="lgPending" style="color:var(--blue);">0</div></div>
+          <div class="legend-row"><div class="legend-dot" style="background:var(--green);"></div><div class="legend-label">Closed</div><div class="legend-val" id="lgClosed" style="color:var(--green);">0</div></div>
+        </div>
+      </div>
+      <div class="ta-row">
+        <div class="ta-card">
+          <div class="ta-label">Target <span class="edit-icon" onclick="startEditTarget()" title="Edit">&#9998;</span></div>
+          <div class="ta-value amber" id="targetDisplay">20</div>
+          <input class="ta-input" id="targetInput" type="number" min="1" style="display:none;" onblur="saveTarget()" onkeydown="if(event.key==='Enter')saveTarget()">
+          <div class="ta-sub">Claims / month</div>
+        </div>
+        <div class="ta-card">
+          <div class="ta-label">Achieved</div>
+          <div class="ta-value green" id="achievedDisplay">0</div>
+          <div class="ta-sub">Closed this month</div>
+        </div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-label"><span>Progress to target</span><span id="progressPctLabel">0%</span></div>
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill" style="width:0%;background:var(--amber);"></div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Stat cards -->
+    <div class="infograph-right">
+      <div class="stat-card active-card" id="cardActive" onclick="filterGroup('active')">
+        <div class="stat-card-icon">&#9889;</div>
+        <div class="stat-card-num" id="cardActiveNum">0</div>
+        <div class="stat-card-label">Active</div>
+        <div class="stat-card-sub" id="cardActiveSub">In Progress + Intimated</div>
+        <div class="stat-card-badge">LIVE</div>
+      </div>
+      <div class="stat-card pending-card" id="cardPending" onclick="filterGroup('pending')">
+        <div class="stat-card-icon">&#128336;</div>
+        <div class="stat-card-num" id="cardPendingNum">0</div>
+        <div class="stat-card-label">Pending</div>
+        <div class="stat-card-sub" id="cardPendingSub">Draft &mdash; awaiting action</div>
+        <div class="stat-card-badge">QUEUED</div>
+      </div>
+      <div class="stat-card closed-card" id="cardClosed" onclick="filterGroup('closed')">
+        <div class="stat-card-icon">&#9989;</div>
+        <div class="stat-card-num" id="cardClosedNum">0</div>
+        <div class="stat-card-label">Closed</div>
+        <div class="stat-card-sub" id="cardClosedSub">Settled + Submitted</div>
+        <div class="stat-card-badge">DONE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input class="search-input" type="text" id="searchInput" placeholder="Search Claim #, Insured, Insurer, Policy..." oninput="renderAll()">
+    </div>
+    <div class="filter-sep"></div>
+    <div class="tab-pills">
+      <button class="tab-pill active" id="tabAll"     onclick="setTab('all')">All</button>
+      <button class="tab-pill"        id="tabActive"  onclick="setTab('active')">Active</button>
+      <button class="tab-pill"        id="tabPending" onclick="setTab('pending')">Pending</button>
+      <button class="tab-pill"        id="tabClosed"  onclick="setTab('closed')">Closed</button>
+    </div>
+    <div class="filter-sep"></div>
+    <select class="filter-select" id="filterDept" onchange="renderAll()">
+      <option value="">All Depts</option>
+      <option value="fire">Fire</option>
+      <option value="burglary">Burglary</option>
+      <option value="marine">Marine</option>
+      <option value="motor">Motor</option>
+      <option value="engineering">Engineering</option>
+      <option value="liability">Liability</option>
+      <option value="misc">Misc</option>
+    </select>
+    <span class="results-count" id="resultsCount">&#8212; claims</span>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loadingState">
+    <div class="state-box"><div class="spinner"></div><div class="state-msg">Loading claims...</div></div>
+  </div>
+
+  <!-- CLAIMS BODY -->
+  <div id="claimsBody" style="display:none;"></div>
+
+</div>
+
+<div class="toast-bar" id="toastBar"></div>
+
+<footer class="footer">
+  <span>MCL-PUN-26 &middot; SurveyorOS 2026</span>
+  <span><span class="s-dot-g"></span>API ONLINE &middot; <span id="clock"></span></span>
+</footer>
+
+<script>
+'use strict';
+var API_URL = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
+var allClaims = [];
+var activeTab = 'all';
+var collapsedGroups = {};
+var CIRC = 2 * Math.PI * 38;
+
+(function(){ if (!localStorage.getItem('nexus_token')) window.location.replace('index.html'); })();
+
+(function(){
+  try {
+    var u = JSON.parse(localStorage.getItem('nexus_user') || '{}');
+    if (u.name) {
+      document.getElementById('userName').textContent = u.name;
+      var parts = u.name.trim().split(' ');
+      var ini = parts.length >= 2 ? parts[0][0]+parts[1][0] : parts[0].slice(0,2);
+      document.getElementById('userAvatar').textContent = ini.toUpperCase();
+    }
+  } catch(e){}
+})();
+
+(function tick(){
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) + ' IST';
+  setTimeout(tick, 1000);
+})();
+
+function getTarget(){ return parseInt(localStorage.getItem('nexus_claims_target') || '20', 10); }
+
+function saveTarget(){
+  var v = parseInt(document.getElementById('targetInput').value, 10);
+  if (v > 0) localStorage.setItem('nexus_claims_target', v);
+  document.getElementById('targetInput').style.display = 'none';
+  document.getElementById('targetDisplay').style.display = '';
+  updateInfoGraphics(allClaims);
+}
+
+function startEditTarget(){
+  document.getElementById('targetInput').value = getTarget();
+  document.getElementById('targetInput').style.display = '';
+  document.getElementById('targetDisplay').style.display = 'none';
+  document.getElementById('targetInput').focus();
+  document.getElementById('targetInput').select();
+}
+
+function classifyStatus(c){
+  var s = (c.claim_status || 'draft').toLowerCase();
+  if (s === 'settled' || s === 'submitted' || s === 'closed') return 'closed';
+  if (s === 'draft') return 'pending';
+  return 'active';
+}
+
+function isThisMonth(c){
+  var ts = c.updated_at || c.created_at;
+  if (!ts) return false;
+  var d = new Date(typeof ts === 'number' ? ts : Date.parse(ts));
+  var now = new Date();
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+}
+
+function updateInfoGraphics(claims){
+  var act  = claims.filter(function(c){ return classifyStatus(c) === 'active'; }).length;
+  var pend = claims.filter(function(c){ return classifyStatus(c) === 'pending'; }).length;
+  var clos = claims.filter(function(c){ return classifyStatus(c) === 'closed'; }).length;
+  var total = claims.length;
+  var pct = total > 0 ? Math.round((clos / total) * 100) : 0;
+
+  document.getElementById('lgActive').textContent   = act;
+  document.getElementById('lgPending').textContent  = pend;
+  document.getElementById('lgClosed').textContent   = clos;
+  document.getElementById('cardActiveNum').textContent  = act;
+  document.getElementById('cardPendingNum').textContent = pend;
+  document.getElementById('cardClosedNum').textContent  = clos;
+  document.getElementById('cardActiveSub').textContent  = act + ' claim' + (act!==1?'s':'') + ' in motion';
+  document.getElementById('cardPendingSub').textContent = pend + ' awaiting action';
+  document.getElementById('cardClosedSub').textContent  = clos + ' completed claim' + (clos!==1?'s':'');
+
+  var closedLen  = total > 0 ? (clos  / total) * CIRC : 0;
+  var activeLen  = total > 0 ? (act   / total) * CIRC : 0;
+  var pendingLen = total > 0 ? (pend  / total) * CIRC : 0;
+
+  var dC = document.getElementById('donut-closed');
+  var dA = document.getElementById('donut-active');
+  var dP = document.getElementById('donut-pending');
+  dC.setAttribute('stroke-dasharray', closedLen  + ' ' + (CIRC - closedLen));
+  dC.setAttribute('stroke-dashoffset', '0');
+  dA.setAttribute('stroke-dasharray', activeLen  + ' ' + (CIRC - activeLen));
+  dA.setAttribute('stroke-dashoffset', -closedLen);
+  dP.setAttribute('stroke-dasharray', pendingLen + ' ' + (CIRC - pendingLen));
+  dP.setAttribute('stroke-dashoffset', -(closedLen + activeLen));
+
+  document.getElementById('donutPct').textContent = pct + '%';
+
+  var target   = getTarget();
+  var achieved = claims.filter(function(c){ return classifyStatus(c) === 'closed' && isThisMonth(c); }).length;
+  document.getElementById('targetDisplay').textContent   = target;
+  document.getElementById('achievedDisplay').textContent = achieved;
+
+  var pp = target > 0 ? Math.min(100, Math.round((achieved / target) * 100)) : 0;
+  document.getElementById('progressFill').style.width = pp + '%';
+  document.getElementById('progressPctLabel').textContent = pp + '%';
+  document.getElementById('progressFill').style.background =
+    pp >= 100 ? 'var(--green)' :
+    pp >= 60  ? 'linear-gradient(90deg,var(--amber),var(--green))' :
+                'var(--amber)';
+
+  document.getElementById('pageSubtitle').textContent =
+    'TOTAL ' + total + ' CLAIMS \u00b7 ' + act + ' ACTIVE \u00b7 ' + pend + ' PENDING \u00b7 ' + clos + ' CLOSED';
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function fmtDate(ts){
+  if (!ts) return '--';
+  var d = new Date(typeof ts === 'number' ? ts : Date.parse(ts));
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+}
+
+function timeAgo(ts){
+  if (!ts) return '--';
+  var d = new Date(typeof ts === 'number' ? ts : Date.parse(ts));
+  var diff = Date.now() - d;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 2592000000) return Math.floor(diff/86400000) + 'd ago';
+  return fmtDate(ts);
+}
+
+function sClass(s){
+  return {draft:'s-draft',intimated:'s-intimated',inprogress:'s-inprogress',
+    in_progress:'s-inprogress',submitted:'s-submitted',settled:'s-settled'}[s] || 's-draft';
+}
+
+function stageLabel(c){
+  var map = {intake:'INTAKE',jir:'JIR',fsr:'FSR',report:'REPORT',survey:'SURVEY',submitted:'SUBMITTED',settled:'SETTLED'};
+  return map[(c.current_stage||'').toLowerCase()] || (c.current_stage||'INTAKE').toUpperCase();
+}
+
+function setTab(t){
+  activeTab = t;
+  ['all','active','pending','closed'].forEach(function(id){
+    document.getElementById('tab'+id.charAt(0).toUpperCase()+id.slice(1))
+      .classList.toggle('active', id === t);
+  });
+  ['active','pending','closed'].forEach(function(id){
+    document.getElementById('card'+id.charAt(0).toUpperCase()+id.slice(1))
+      .classList.toggle('selected', id === t);
+  });
+  renderAll();
+}
+
+function filterGroup(group){
+  setTab(group);
+  setTimeout(function(){
+    var el = document.getElementById('group-'+group);
+    if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  }, 80);
+}
+
+function applyFilters(list){
+  var q    = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  var dept = (document.getElementById('filterDept').value  || '').toLowerCase();
+  return list.filter(function(c){
+    if (activeTab !== 'all' && classifyStatus(c) !== activeTab) return false;
+    if (dept && (c.department||'').toLowerCase() !== dept) return false;
+    if (q) {
+      var hay = [c.claim_number, c.insured_name, c.policy_number, c.insurer_name, c.id]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function claimRowHTML(c, group){
+  var claimNo = esc(c.claim_number || c.id || '--');
+  var insured  = esc(c.insured_name || '--');
+  var insurer  = esc(c.insurer_name || '--');
+  var dept     = esc((c.department||'').replace(/_/g,' ').toUpperCase() || '--');
+  var stage    = esc(stageLabel(c));
+  var status   = (c.claim_status||'draft').toLowerCase();
+  var statusLbl= esc(status.replace(/_/g,' ').toUpperCase());
+  var sc       = sClass(status);
+  var updated  = esc(timeAgo(c.updated_at || c.created_at));
+  var sub      = c.policy_number ? 'Policy: '+c.policy_number : (c.insured_address||'');
+  var url      = 'surveyor-dashboard.html?claimId='+encodeURIComponent(c.id);
+
+  var actions = group === 'closed'
+    ? '<a class="act-btn act-view" href="'+url+'">&#128065; View</a>'
+      + '<button class="act-btn act-download" onclick="downloadClaim(\''+esc(c.id)+'\',event)" title="Download">&#8595; DL</button>'
+      + '<button class="act-btn act-reopen"   onclick="reopenClaim(\''+esc(c.id)+'\',\''+esc(c.insured_name||'')+'\',event)">&#8635; Reopen</button>'
+    : '<a class="act-btn act-continue" href="'+url+'">&rarr; Continue</a>';
+
+  return '<div class="claim-row">'
+    + '<div><div class="c-id">'+claimNo+'</div></div>'
+    + '<div><div class="c-insured">'+insured+'</div><div class="c-insured-sub">'+esc(sub)+'</div></div>'
+    + '<div class="c-insurer">'+insurer+'</div>'
+    + '<div class="c-dept">'+dept+'</div>'
+    + '<div><span class="stage-pill">'+stage+'</span></div>'
+    + '<div><span class="s-chip '+sc+'">'+statusLbl+'</span></div>'
+    + '<div class="c-updated">'+updated+'</div>'
+    + '<div class="actions-cell">'+actions+'</div>'
+    + '</div>';
+}
+
+function groupHTML(id, label, cssClass, icon, list){
+  var collapsed = !!collapsedGroups[id];
+  var chevron = '<span class="group-chevron' + (collapsed ? '' : ' open') + '">&blacktriangleright;</span>';
+  var hdrClass = 'group-header' + (collapsed ? ' collapsed' : '');
+  var body = '';
+  if (!collapsed) {
+    if (!list.length) {
+      body = '<div class="group-body"><div class="group-empty">No '+label.toLowerCase()+' claims match your filters.</div></div>';
+    } else {
+      body = '<div class="group-body">'
+        + '<div class="table-head"><div>Claim #</div><div>Insured</div><div>Insurer</div>'
+        + '<div>Dept</div><div>Stage</div><div>Status</div><div>Updated</div><div style="text-align:right">Actions</div></div>'
+        + list.map(function(c){ return claimRowHTML(c, id); }).join('')
+        + '</div>';
+    }
+  }
+  return '<div class="group-section '+cssClass+'" id="group-'+id+'">'
+    + '<div class="'+hdrClass+'" onclick="toggleGroup(\''+id+'\')">'
+    + chevron
+    + '<span class="group-dot"></span>'
+    + '<span class="group-label">'+icon+' '+label+'</span>'
+    + '<span class="group-count">'+list.length+'</span>'
+    + '</div>'+body+'</div>';
+}
+
+function toggleGroup(id){
+  collapsedGroups[id] = !collapsedGroups[id];
+  renderAll();
+}
+
+function renderAll(){
+  var filtered = applyFilters(allClaims);
+  var active  = filtered.filter(function(c){ return classifyStatus(c) === 'active'; });
+  var pending = filtered.filter(function(c){ return classifyStatus(c) === 'pending'; });
+  var closed  = filtered.filter(function(c){ return classifyStatus(c) === 'closed'; });
+
+  document.getElementById('resultsCount').textContent =
+    filtered.length + ' claim' + (filtered.length !== 1 ? 's' : '');
+
+  var body = document.getElementById('claimsBody');
+
+  if (allClaims.length === 0) {
+    body.innerHTML = '<div class="state-box"><div class="state-icon">&#128237;</div>'
+      + '<div class="state-msg">No claims yet</div>'
+      + '<div class="state-sub">Hit &ldquo;+ New Claim&rdquo; to create your first.</div></div>';
+    return;
+  }
+  if (filtered.length === 0) {
+    body.innerHTML = '<div class="state-box"><div class="state-icon">&#128269;</div>'
+      + '<div class="state-msg">No matching claims</div>'
+      + '<div class="state-sub">Try a different search term or filter.</div></div>';
+    return;
+  }
+
+  var html = '';
+  if (activeTab === 'all' || activeTab === 'active')  html += groupHTML('active',  'Active',  'g-active',  '&#9889;', active);
+  if (activeTab === 'all' || activeTab === 'pending') html += groupHTML('pending', 'Pending', 'g-pending', '&#128336;', pending);
+  if (activeTab === 'all' || activeTab === 'closed')  html += groupHTML('closed',  'Closed',  'g-closed',  '&#9989;', closed);
+
+  body.innerHTML = html;
+}
+
+async function loadClaims(){
+  try {
+    var token = localStorage.getItem('nexus_token');
+    var r = await fetch(API_URL + '/api/claims?limit=500', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (r.status === 401) { window.location.href = 'index.html'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    allClaims = Array.isArray(data) ? data : (data.claims || data.data || []);
+    allClaims.sort(function(a,b){ return (b.updated_at||b.created_at||0) - (a.updated_at||a.created_at||0); });
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('claimsBody').style.display   = '';
+    updateInfoGraphics(allClaims);
+    renderAll();
+  } catch(err){
+    document.getElementById('loadingState').innerHTML =
+      '<div class="state-box"><div class="state-icon">&#9888;&#65039;</div>'
+      + '<div class="state-msg">Failed to load claims</div>'
+      + '<div class="state-sub">Check your connection and try refreshing.</div></div>';
+  }
+}
+
+function downloadClaim(id, e){
+  e.preventDefault(); e.stopPropagation();
+  showToast('&#8595; Opening claim for download...', 'info');
+  window.open('surveyor-dashboard.html?claimId=' + encodeURIComponent(id), '_blank');
+}
+
+function reopenClaim(id, name, e){
+  // Phase 7: redirect to dashboard with reopen=1 param; modal handled there
+  e.preventDefault(); e.stopPropagation();
+  window.location.href = 'surveyor-dashboard.html?claimId=' + encodeURIComponent(id) + '&reopen=1';
+}
+
+var _toastTimer;
+function showToast(msg, type){
+  var el = document.getElementById('toastBar');
+  el.innerHTML = msg;
+  el.className = 'toast-bar ' + (type||'') + ' show';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3000);
+}
+
+function doLogout(){
+  if (!confirm('Sign out of AB Nexus?')) return;
+  fetch(API_URL + '/api/auth/logout', {
+    method:'POST',
+    headers:{'Authorization':'Bearer '+(localStorage.getItem('nexus_token')||'')}
+  }).catch(function(){});
+  localStorage.clear(); sessionStorage.clear();
+  window.location.href = 'index.html';
+}
+
+loadClaims();
+</script>
+</body>
+</html>
