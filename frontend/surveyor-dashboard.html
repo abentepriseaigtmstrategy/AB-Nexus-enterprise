@@ -1842,33 +1842,57 @@ function setSyncChip(s) {
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────
+// Graceful degradation: app works fully without WS (offline/free plan).
+// Exponential backoff: 5s → 10s → 20s → 40s → 60s max. Stops after 8 failures.
+var _wsRetryCount    = 0;
+var _wsRetryTimer    = null;
+var _wsPingInterval  = null;
+var _wsMaxRetries    = 8;
+
 function connectWebSocket() {
   if (!auth.token || !auth.user) return;
+  // Stop retrying after max failures — WS is optional (realtime updates only)
+  if (_wsRetryCount >= _wsMaxRetries) {
+    const b = document.getElementById('wsBadge');
+    if (b) { b.textContent = 'WS OFF'; b.title = 'Realtime updates unavailable — app works normally'; }
+    return;
+  }
+  // Clear any previous ping interval before creating a new connection
+  if (_wsPingInterval) { clearInterval(_wsPingInterval); _wsPingInterval = null; }
+
   const wsUrl = API.replace('https://','wss://').replace('http://','ws://') +
     '/api/realtime?token=' + encodeURIComponent(auth.token) +
-    '&tenantId=' + encodeURIComponent(auth.user.tenantId || '') +
-    '&userId='   + encodeURIComponent(auth.user.id || '');
+    '&tenantId=' + encodeURIComponent((auth.user && auth.user.tenantId) || '') +
+    '&userId='   + encodeURIComponent((auth.user && auth.user.id) || '');
   try {
     state.ws = new WebSocket(wsUrl);
     state.ws.onopen = () => {
+      _wsRetryCount = 0;  // reset on successful connection
       const b = document.getElementById('wsBadge');
-      b.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--green-dim);color:var(--green);';
-      b.textContent = 'WS LIVE';
+      if (b) { b.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--green-dim);color:var(--green);'; b.textContent = 'WS LIVE'; }
       if (state.claimId)
         state.ws.send(JSON.stringify({ type:'subscribe_claim', claimId:state.claimId }));
+      // Single ping interval per connection — cleared on close
+      _wsPingInterval = setInterval(() => {
+        if (state.ws && state.ws.readyState === WebSocket.OPEN)
+          state.ws.send(JSON.stringify({ type:'ping' }));
+      }, 30000);
     };
     state.ws.onmessage = e => { try { handleWsMessage(JSON.parse(e.data)); } catch {} };
+    state.ws.onerror   = () => {};  // suppress console error — onclose handles it
     state.ws.onclose   = () => {
+      if (_wsPingInterval) { clearInterval(_wsPingInterval); _wsPingInterval = null; }
       const b = document.getElementById('wsBadge');
-      b.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--bg3);color:var(--text-ter);';
-      b.textContent = 'WS OFF';
-      setTimeout(connectWebSocket, 5000);
+      if (b) { b.style.cssText = 'font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--bg3);color:var(--text-ter);'; b.textContent = 'WS OFF'; }
+      _wsRetryCount++;
+      if (_wsRetryCount < _wsMaxRetries) {
+        // Exponential backoff: 5s, 10s, 20s, 40s, 60s cap
+        const delay = Math.min(5000 * Math.pow(2, _wsRetryCount - 1), 60000);
+        if (_wsRetryTimer) clearTimeout(_wsRetryTimer);
+        _wsRetryTimer = setTimeout(connectWebSocket, delay);
+      }
     };
-    setInterval(() => {
-      if (state.ws && state.ws.readyState === WebSocket.OPEN)
-        state.ws.send(JSON.stringify({ type:'ping' }));
-    }, 30000);
-  } catch {}
+  } catch { _wsRetryCount++; }
 }
 
 function handleWsMessage(msg) {
@@ -5273,8 +5297,8 @@ function dlValidateForm() {
   const reason = (document.getElementById('dlReasonText').value || '').trim();
   const newDl  = document.getElementById('dlNewDeadline').value;
   const btn    = document.getElementById('dlConfirmBtn');
-  if (!reason || reason.length < 10) { btn.disabled = true; return; }
-  if (!_dlIsOverride && !newDl)      { btn.disabled = true; return; }
+  if (!reason || reason.length < 3) { btn.disabled = true; return; }
+  if (!_dlIsOverride && !newDl)     { btn.disabled = true; return; }
   btn.disabled = false;
 }
 
@@ -5282,8 +5306,8 @@ async function dlConfirmAction() {
   const reason  = (document.getElementById('dlReasonText').value || '').trim();
   const newDlVal = document.getElementById('dlNewDeadline').value;
   const errEl   = document.getElementById('dlErrorMsg');
-  if (!reason || reason.length < 10) {
-    errEl.textContent = 'Please enter a reason (minimum 10 characters).';
+  if (!reason || reason.length < 3) {
+    errEl.textContent = 'Please enter a reason (minimum 3 characters).';
     errEl.style.display = 'block'; return;
   }
   if (!_dlIsOverride && !newDlVal) {
