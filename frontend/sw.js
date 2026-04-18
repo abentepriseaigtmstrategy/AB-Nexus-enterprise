@@ -3,9 +3,11 @@
 // v6 — FIXES: cache version bump forces old broken SW replacement,
 //      guaranteed Response returns, cross-origin skip, redirect:follow
 
-const CACHE  = 'nexus-v8';  // bumped: fixes Response.clone() + redirected response errors
+const CACHE  = 'nexus-v9';  // bumped: Phase 4-9 — home.html, my-claims.html added
 const STATIC = [
   '/index.html',
+  '/home.html',
+  '/my-claims.html',
   '/surveyor-dashboard.html',
   '/hrms-dashboard.html',
   '/manifest.json'
