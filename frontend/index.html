@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -282,10 +282,10 @@
   // in the dashboard, causing an infinite reload loop on Cloudflare Pages (HTTPS).
   // Individual SW updates are handled gracefully by the dashboard itself.
 
-  // Already logged in → skip to app
+  // Already logged in → go to home screen (not directly to dashboard)
   (function() {
     if (localStorage.getItem('nexus_token')) {
-      window.location.replace('/surveyor-dashboard.html');
+      window.location.replace('/home.html');
     }
   })();
 
@@ -326,7 +326,8 @@
         if (role === 'hr_admin' || role === 'employee') {
           window.location.href = '/hrms-dashboard.html';
         } else {
-          window.location.href = '/surveyor-dashboard.html';
+          // Surveyor/admin → go to home screen first (claim-centric flow)
+          window.location.href = '/home.html';
         }
       } else {
         showError(data.error || 'Invalid credentials. Please try again.');
