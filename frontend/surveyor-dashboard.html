@@ -1623,7 +1623,7 @@ function pushURL() {
     const activeTabEl = document.querySelector('.tab.active');
     const tabMatch    = activeTabEl && (activeTabEl.getAttribute('onclick') || '').match(/switchTab\('(\w+)'/);
     const subTab      = tabMatch ? tabMatch[1] : 'intake';
-    params.set('tab',   subTab === 'intake' ? 'workbench' : subTab);
+    params.set('tab',   subTab);  // FIX B6: preserve actual tab name
     params.set('stage', state.dept || 'burglary');
   }
   window.history.replaceState({}, document.title, '?' + params.toString());
@@ -1742,7 +1742,7 @@ async function api(method, path, body, isForm) {
   idb = await openIDB().catch(() => null);
   startClock();
   connectWebSocket();
-  loadInsurers();
+  await loadInsurers();
   loadClaimsSidebar();
   (function checkURLClaim() {
     const p      = new URLSearchParams(window.location.search);
@@ -1769,9 +1769,10 @@ async function api(method, path, body, isForm) {
         } else {
           const dept = urlStage || (state.claimData && state.claimData.department) || state.dept;
           await switchDept(dept);
-          if (urlTab && urlTab !== 'workbench') {
-            const tabEl = document.querySelector('.tab[onclick*="switchTab(\'' + urlTab + '\'"]');
-            switchTab(urlTab, tabEl);
+          // FIX B6: restore the actual tab (intake is the default; all names are now real)
+          if (urlTab && urlTab !== 'intake') {
+            const tabEl = document.querySelector('.tab[onclick*="switchTab(\'' + urlTab + '\')"]');
+            switchTab(urlTab, tabEl || null);
           }
         }
       }, 1200);
@@ -2213,7 +2214,7 @@ async function mc_resumeClaim(claimId) {
 }
 
 async function loadClaimsSidebar() {
-  const r    = await api('GET', '/api/claims?department=' + state.dept);
+  const r    = await api('GET', '/api/claims?limit=50');  // FIX B5: show all depts
   const list = document.getElementById('claimList');
   if (!r.claims || !r.claims.length) {
     list.innerHTML = '<div style="padding:12px 16px;font-family:var(--mono);font-size:9px;color:var(--text-ter);">No active claims</div>';
@@ -2275,7 +2276,7 @@ async function loadClaim(claimId) {
   document.getElementById('v-stolen').value = c.loss_amount || '';
   document.getElementById('v-gross').value  = c.loss_amount || '';
 
-  const initials = c.insured_name.trim().split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+  const initials = (c.insured_name || '?').trim().split(' ').filter(p=>p).map(p => p[0]).slice(0,2).join('').toUpperCase() || '?';  // FIX B9
   document.getElementById('rpClaimAvatar').textContent    = initials || '?';
   document.getElementById('rpClaimName').textContent      = c.insured_name;
   document.getElementById('rpClaimId').textContent        = c.claim_number;
@@ -2317,11 +2318,31 @@ async function loadClaim(claimId) {
   if (state.ws && state.ws.readyState === WebSocket.OPEN)
     state.ws.send(JSON.stringify({ type:'subscribe_claim', claimId }));
 
-  if (c.insurer_id && c.insurer_id !== state.insurerId) {
-    document.getElementById('insurerSel').value = c.insurer_id;
+  // FIX B2/B3/B4/B8: always sync insurer regardless of previous state;
+  // inject option into dropdown if it isn't there yet (handles race + new claims)
+  if (c.insurer_id) {
+    const sel = document.getElementById('insurerSel');
+    // Ensure the option exists in the dropdown (may not be there if API was slow)
+    if (!sel.querySelector('option[value="' + c.insurer_id + '"]')) {
+      const opt = document.createElement('option');
+      opt.value = c.insurer_id;
+      opt.textContent = c.insurer_name || c.insurer_id;
+      opt.dataset.code = c.insurer_code || c.insurer_id;
+      opt.dataset.name = c.insurer_name || c.insurer_id;
+      sel.appendChild(opt);
+    }
+    sel.value = c.insurer_id;
     state.insurerId   = c.insurer_id;
     state.insurerName = c.insurer_name || '';
     state.insurerCode = c.insurer_code || '';
+    // Always update the f-insurer readonly field in Intake tab
+    const fIns = document.getElementById('f-insurer');
+    if (fIns) fIns.value = state.insurerName;
+    // FIX: enable action buttons that onInsurerChange enables but loadClaim missed
+    const bv = document.getElementById('btnVerify');
+    const br = document.getElementById('btnReport');
+    if (bv) bv.disabled = false;
+    if (br) br.disabled = false;
     if (c.department) state.dept = c.department;
     await loadInsurerRules(c.insurer_id, c.department || state.dept);
   }
@@ -2332,6 +2353,14 @@ async function loadClaim(claimId) {
   if (sf) sf.disabled = false;  // Phase 5: enable partial save button
   updateStatusAdvanceBtn(c.claim_status);
   pip_updateNavBadge();
+  // Reload sidebar so current claim is highlighted regardless of dept filter
+  loadClaimsSidebar();  // FIX B5b
+  // Keep pip_claim in sync so pipeline context bar stays accurate
+  if (state.activeModule === 'pipeline') {
+    pip_claim        = state.claimData;
+    pip_insurerRules = state.insurerRules;
+    pip_syncClaimContext();
+  }
   // If Repository tab is active, refresh it with the newly loaded claim
   var repoTab = document.getElementById('tab-repository');
   if (repoTab && repoTab.classList.contains('active')) repo_load();
@@ -5423,12 +5452,18 @@ var _ncPhotos    = [];
 var _ncOcrResult = null;
 
 function openNewClaimModal() {
-  // Populate insurer dropdown from existing list
+  // Populate insurer dropdown — FIX B7: refresh from API if srcSel is still empty
   var srcSel  = document.getElementById('insurerSel');
   var destSel = document.getElementById('nc-insurer');
+  var populated = Array.from(srcSel.options).filter(function(o){ return o.value; });
+  if (!populated.length) {
+    // insurers not yet loaded — load now then reopen
+    loadInsurers().then(function() { openNewClaimModal(); });
+    return;
+  }
   destSel.innerHTML = '<option value="">— Select Insurance Company —</option>';
-  Array.from(srcSel.options).forEach(function(o) {
-    if (o.value) destSel.innerHTML += '<option value="' + o.value + '">' + o.text + '</option>';
+  populated.forEach(function(o) {
+    destSel.innerHTML += '<option value="' + o.value + '">' + o.text + '</option>';
   });
   // Pre-select current insurer if one is already chosen
   if (state.insurerId) destSel.value = state.insurerId;
