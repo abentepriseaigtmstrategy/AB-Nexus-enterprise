@@ -246,7 +246,7 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
 @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
 .doc-progress-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:6px;}
 .doc-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--teal));border-radius:3px;transition:width 0.3s;}
-@media(max-width:900px){.shell{grid-template-columns:1fr;}.sidebar,.right-panel{display:none;}.view{height:calc(100vh - 56px - 48px);}}
+@media(max-width:900px){.shell{grid-template-columns:1fr;}.sidebar.panel-open{width:100%;}.right-panel.panel-open{width:100%;}.view{height:calc(100vh - 56px - 48px);}}
 @media(max-width:1280px){.pip-shell{grid-template-columns:190px 1fr 220px;}}
 @media(max-width:1100px){.pip-shell{grid-template-columns:180px 1fr;}.pip-right{display:none;}}
 @media(max-width:800px){.pip-shell{grid-template-columns:1fr;}.pip-left{display:none;}}
@@ -413,7 +413,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
   background:var(--bg1);
   border:1px solid var(--border2);
   border-radius:14px;
-  overflow:visible;  /* FIX: was hidden — blocked button clicks */
+  overflow:hidden;
   margin-bottom:18px;
   animation: cardIn 0.3s ease;
 }
@@ -428,8 +428,6 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
   padding:16px 20px;
   background:linear-gradient(135deg,rgba(232,160,32,0.07),rgba(34,196,160,0.04));
   border-bottom:1px solid var(--border);
-  border-radius:13px 13px 0 0;
-  overflow:hidden;
 }
 .ccc-avatar {
   width:44px;height:44px;border-radius:11px;
@@ -572,55 +570,281 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 }
 .ccc-extract-progress.show { display:block; }
 
-
-/* ── Collapsible Sidebars ─────────────────────────────────────────── */
-.sidebar-toggle, .rpanel-toggle {
-  position:absolute;
-  top:50%;
-  transform:translateY(-50%);
-  width:20px;height:48px;
-  background:var(--bg2);
-  border:1px solid var(--border2);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;
-  z-index:10;
-  transition:all 0.15s;
-  font-size:10px;color:var(--text-ter);
-}
-.sidebar-toggle { right:-10px; border-radius:0 6px 6px 0; }
-.rpanel-toggle  { left:-10px;  border-radius:6px 0 0 6px; }
-.sidebar-toggle:hover,.rpanel-toggle:hover { background:var(--bg3);color:var(--amber); }
-
-.sidebar   { position:relative; transition:width 0.25s ease, min-width 0.25s ease; }
-.right-panel { position:relative; transition:width 0.25s ease, min-width 0.25s ease; }
-
-.sidebar.collapsed   { width:0 !important; min-width:0; overflow:hidden; border:none; }
-.right-panel.collapsed { width:0 !important; min-width:0; overflow:hidden; border:none; }
-
-.shell.left-collapsed  { grid-template-columns:0 1fr 290px; }
-.shell.right-collapsed { grid-template-columns:230px 1fr 0; }
-.shell.both-collapsed  { grid-template-columns:0 1fr 0; }
-.shell.left-collapsed.right-collapsed { grid-template-columns:0 1fr 0; }
-
-.sidebar-collapsed-btn, .rpanel-collapsed-btn {
-  position:fixed;
-  top:50%;
-  transform:translateY(-50%);
-  width:18px;height:52px;
-  background:var(--bg2);
-  border:1px solid var(--border2);
+/* ══════════════════════════════════════════════════════════════════════════
+   COMMAND CENTER DASHBOARD (Overview Tab)
+══════════════════════════════════════════════════════════════════════════ */
+#cmdCenterDashboard {
   display:none;
-  align-items:center;justify-content:center;
-  cursor:pointer;z-index:50;
-  font-size:10px;color:var(--text-ter);
-  transition:all 0.15s;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+  animation: cardIn 0.3s ease;
 }
-.sidebar-collapsed-btn  { left:0; border-radius:0 6px 6px 0; }
-.rpanel-collapsed-btn   { right:0; border-radius:6px 0 0 6px; }
-.sidebar.collapsed + .sidebar-collapsed-btn,
-.sidebar-collapsed-btn.show { display:flex; }
-.rpanel-collapsed-btn.show  { display:flex; }
-.sidebar-collapsed-btn:hover,.rpanel-collapsed-btn:hover { background:var(--amber-dim);color:var(--amber);border-color:rgba(232,160,32,0.4); }
+#cmdCenterDashboard.visible {
+  display: grid;
+}
+.cc-card {
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.cc-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(34,196,160,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.cc-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at top left, rgba(255,255,255,0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cc-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-card-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.cc-card-title {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-pri);
+}
+.cc-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cc-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cc-stat-row:last-child { border-bottom: none; }
+.cc-stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-ter);
+}
+.cc-stat-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sec);
+}
+.cc-stat-val.amber { color: var(--amber); }
+.cc-stat-val.teal { color: var(--teal); }
+.cc-stat-val.green { color: var(--green); }
+.cc-stat-val.red { color: var(--red); }
+.cc-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-ter);
+  background: var(--bg1);
+  border: 1px dashed var(--border2);
+  border-radius: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COLLAPSIBLE PANELS — Overlay style, hidden by default
+══════════════════════════════════════════════════════════════════════════ */
+/* Shell: panels start collapsed — main gets full width */
+.shell{grid-template-columns:1fr !important;}
+.shell.left-open{grid-template-columns:1fr !important;}
+.shell.right-open{grid-template-columns:1fr !important;}
+.shell.pipeline-mode{grid-template-columns:1fr !important;}
+/* Sidebar overlay */
+.sidebar{
+  position:fixed;left:0;top:104px;bottom:0;width:240px;z-index:180;
+  transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  box-shadow:4px 0 24px rgba(0,0,0,0.4);
+}
+.sidebar.panel-open{transform:translateX(0);}
+/* Right panel overlay */
+.right-panel{
+  position:fixed;right:0;top:104px;bottom:0;width:290px;z-index:180;
+  transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  box-shadow:-4px 0 24px rgba(0,0,0,0.4);
+}
+.right-panel.panel-open{transform:translateX(0);}
+/* Backdrop when panel open */
+.panel-backdrop{
+  display:none;position:fixed;inset:0;top:104px;background:rgba(0,0,0,0.4);
+  z-index:170;backdrop-filter:blur(2px);animation:fadeIn 0.2s ease;
+}
+.panel-backdrop.show{display:block;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* Toggle buttons — always visible */
+.panel-toggle{
+  position:fixed;top:114px;z-index:190;width:36px;height:36px;border-radius:0 8px 8px 0;
+  background:var(--bg2);border:1px solid var(--border2);border-left:none;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:16px;color:var(--text-sec);transition:all 0.2s;
+}
+.panel-toggle:hover{background:var(--bg3);color:var(--text-pri);}
+.panel-toggle.left{left:0;}
+.panel-toggle.right{right:0;left:auto;border-radius:8px 0 0 8px;border:1px solid var(--border2);border-right:none;}
+.panel-toggle.active{background:var(--amber-dim);color:var(--amber);border-color:rgba(232,160,32,0.3);}
+/* Hide toggle buttons in pipeline mode (pipeline has its own nav) */
+.shell.pipeline-mode ~ .panel-toggle{display:none;}
+.shell.pipeline-mode .sidebar,.shell.pipeline-mode .right-panel{display:none !important;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AI STEP-BY-STEP ASSISTANT — Floating panel
+══════════════════════════════════════════════════════════════════════════ */
+.ai-assistant-fab{
+  position:fixed;bottom:24px;right:24px;z-index:250;width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(34,196,160,0.9),rgba(91,156,246,0.8));
+  border:2px solid rgba(34,196,160,0.5);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:0 4px 20px rgba(34,196,160,0.3);transition:all 0.25s;
+  font-size:24px;
+}
+.ai-assistant-fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(34,196,160,0.45);}
+.ai-assistant-fab.open{border-radius:14px;background:var(--bg2);border-color:rgba(34,196,160,0.3);font-size:18px;width:44px;height:44px;}
+.ai-assistant-fab .fab-pulse{
+  position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(34,196,160,0.4);
+  animation:fabPulse 2s ease-in-out infinite;
+}
+@keyframes fabPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.2);opacity:0}}
+.ai-assistant-panel{
+  position:fixed;bottom:90px;right:24px;z-index:240;width:360px;max-height:520px;
+  background:var(--bg1);border:1px solid rgba(34,196,160,0.25);border-radius:16px;
+  box-shadow:0 12px 48px rgba(0,0,0,0.5);transform:translateY(20px);opacity:0;
+  pointer-events:none;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.ai-assistant-panel.open{transform:translateY(0);opacity:1;pointer-events:all;}
+.aia-header{
+  padding:14px 16px;background:linear-gradient(135deg,rgba(34,196,160,0.1),rgba(91,156,246,0.06));
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;
+}
+.aia-header-icon{font-size:20px;}
+.aia-header-title{font-family:var(--display);font-size:14px;font-weight:700;color:var(--teal);}
+.aia-header-sub{font-family:var(--mono);font-size:8px;color:var(--text-ter);letter-spacing:0.08em;}
+.aia-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.aia-step{
+  display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+  border-radius:10px;border:1px solid var(--border);background:var(--bg2);transition:all 0.15s;
+}
+.aia-step.current{border-color:rgba(34,196,160,0.4);background:rgba(34,196,160,0.06);}
+.aia-step.done{border-color:rgba(94,198,122,0.3);background:rgba(94,198,122,0.04);}
+.aia-step-num{
+  width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;font-weight:700;flex-shrink:0;
+  background:var(--bg3);border:2px solid var(--border2);color:var(--text-ter);
+}
+.aia-step.current .aia-step-num{background:var(--teal-dim);border-color:var(--teal);color:var(--teal);box-shadow:0 0 8px rgba(34,196,160,0.3);}
+.aia-step.done .aia-step-num{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.aia-step-content{flex:1;min-width:0;}
+.aia-step-title{font-size:12px;font-weight:600;color:var(--text-sec);}
+.aia-step.current .aia-step-title{color:var(--teal);}
+.aia-step.done .aia-step-title{color:var(--green);}
+.aia-step-desc{font-size:10px;color:var(--text-ter);margin-top:2px;line-height:1.5;}
+.aia-step-action{
+  margin-top:6px;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:5px;border:1px solid rgba(34,196,160,0.3);background:rgba(34,196,160,0.08);
+  color:var(--teal);font-family:var(--mono);font-size:9px;cursor:pointer;transition:all 0.15s;
+}
+.aia-step-action:hover{background:rgba(34,196,160,0.15);}
+.aia-tip{
+  padding:10px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(232,160,32,0.06),rgba(34,196,160,0.04));
+  border:1px solid rgba(232,160,32,0.15);font-size:11px;color:var(--text-sec);line-height:1.6;
+}
+.aia-tip-label{font-family:var(--mono);font-size:8px;color:var(--amber);letter-spacing:0.1em;margin-bottom:4px;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CLICKABILITY FIXES — Ensure all interactive elements feel interactive
+══════════════════════════════════════════════════════════════════════════ */
+.dept-btn,.claim-mini,.pip-nav-btn,.report-nav-item,.tab,.action-btn,.btn-small,.btn-action,
+.ccc-qbtn,.ccc-stage-inner,.ps-node,.cam-btn,.doc-tracker-check,.lor-check,.calc-confirm{
+  cursor:pointer !important;
+  user-select:none;
+}
+.dept-btn:active,.claim-mini:active,.tab:active,.action-btn:active,.btn-small:active,
+.ccc-qbtn:active,.ps-node:active,.cam-btn:active{transform:scale(0.97);}
+/* Ensure disabled buttons don't look clickable */
+.action-btn:disabled,.btn-small:disabled,.btn-action:disabled{cursor:not-allowed !important;transform:none !important;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FOCUS MODE — Clean, distraction-free editing view
+══════════════════════════════════════════════════════════════════════════ */
+.focus-toggle{
+  display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);
+  background:transparent;color:var(--text-sec);font-family:var(--mono);font-size:10px;cursor:pointer;
+  transition:all 0.2s;letter-spacing:0.06em;
+}
+.focus-toggle:hover{border-color:rgba(34,196,160,0.4);color:var(--teal);}
+.focus-toggle.active{background:rgba(34,196,160,0.12);border-color:rgba(34,196,160,0.5);color:var(--teal);}
+/* Focus Mode: hide tabs, panels, insurer bar hides, dept header simplified */
+/* Focus Mode: hide tabs, panels, insurer bar hides, dept header simplified */
+body.focus-mode div.tab-bar, body.focus-mode .view .tab-bar {display:none !important;}
+body.focus-mode div.insurer-bar {display:none !important;}
+body.focus-mode div.panel-toggle {display:none !important;}
+body.focus-mode div.dept-header, body.focus-mode .view .dept-header {display:none !important;}
+body.focus-mode div.shell.shell {grid-template-columns:1fr !important;height:calc(100vh - 56px) !important;}
+body.focus-mode div.sidebar {display:none !important;}
+body.focus-mode div.right-panel {display:none !important;}
+body.focus-mode div.panel-backdrop {display:none !important;}
+/* Focus Mode pipeline progress bar */
+.focus-pipeline-bar{
+  display:none;align-items:center;justify-content:center;gap:0;padding:8px 24px;
+  background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+body.focus-mode .focus-pipeline-bar{display:flex !important;}
+.fp-dot{
+  width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9px;font-weight:700;border:2px solid var(--border2);
+  background:var(--bg3);color:var(--text-ter);cursor:pointer;transition:all 0.2s;flex-shrink:0;
+}
+.fp-dot.done{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.fp-dot.current{background:var(--teal-dim);border-color:var(--teal);color:var(--teal);box-shadow:0 0 10px rgba(34,196,160,0.3);}
+.fp-dot:hover{transform:scale(1.1);}
+.fp-line{width:28px;height:2px;background:var(--border2);flex-shrink:0;}
+.fp-line.done{background:var(--green);}
+.fp-label{font-family:var(--mono);font-size:7px;color:var(--text-ter);text-align:center;margin-top:2px;letter-spacing:0.08em;}
+.fp-stage{display:flex;flex-direction:column;align-items:center;gap:2px;}
+/* Focus Mode save button */
+.focus-save-bar{
+  display:none;padding:10px 24px;background:var(--bg1);border-top:1px solid var(--border);
+  flex-shrink:0;align-items:center;justify-content:flex-end;gap:10px;
+}
+body.focus-mode .focus-save-bar{display:flex !important;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GLOBAL UPLOAD JIR FAB
+══════════════════════════════════════════════════════════════════════════ */
+.upload-jir-fab{
+  position:fixed;bottom:24px;left:24px;z-index:250;height:42px;border-radius:21px;
+  background:linear-gradient(135deg,rgba(232,160,32,0.9),rgba(232,130,32,0.8));
+  border:2px solid rgba(232,160,32,0.5);display:flex;align-items:center;gap:7px;padding:0 16px;
+  cursor:pointer;box-shadow:0 4px 16px rgba(232,160,32,0.3);transition:all 0.25s;
+  font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;letter-spacing:0.06em;
+}
+.upload-jir-fab:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(232,160,32,0.4);}
+.upload-jir-fab .fab-icon{font-size:16px;}
+
 </style>
 </head>
 <body>
@@ -641,6 +865,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
   <div class="topbar-right">
     <span id="clock" style="font-family:var(--mono);font-size:11px;color:var(--text-ter);"></span>
     <span class="sync-chip sync-ok" id="syncChip">⟳ SYNCED</span>
+    <button class="focus-toggle" id="focusToggle" onclick="toggleFocusMode()" title="Focus Mode — minimal UI for fast form filling">👁 Focus</button>
     <div class="badge-pill" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(34,196,160,0.25)">AI-OCR ACTIVE</div>
     <a href="hrms-dashboard.html" style="font-family:var(--mono);font-size:11px;color:var(--text-sec);text-decoration:none;padding:7px 14px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;" onmouseover="this.style.color='var(--amber)';this.style.borderColor='rgba(232,160,32,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">HRMS ↗</a>
     <button onclick="switchModule('pipeline')" id="d-pipeline" style="font-family:var(--mono);font-size:11px;color:var(--text-sec);padding:7px 14px;border:1px solid var(--border2);border-radius:6px;background:transparent;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--purple)';this.style.borderColor='rgba(167,139,250,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">
@@ -679,8 +904,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 <!-- ════════════════════════════════════════════════════════════════
      SIDEBAR
 ════════════════════════════════════════════════════════════════ -->
-<div class="sidebar" id="mainSidebar">
-  <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">◀</button>
+<div class="sidebar">
   <div class="sidebar-section">
     <div class="sidebar-label">② Department</div>
     <div class="dept-btn" id="d-fire" onclick="switchDept('fire')"><div class="dept-icon">🔥</div><span>Fire</span><span class="dept-count" id="dc-fire">—</span></div>
@@ -701,6 +925,21 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
       <div style="padding:12px 16px;font-family:var(--mono);font-size:9px;color:var(--text-ter);">Loading claims...</div>
     </div>
   </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     FOCUS MODE: Pipeline Progress Indicator
+════════════════════════════════════════════════════════════════ -->
+<div class="focus-pipeline-bar" id="focusPipelineBar">
+  <div class="fp-stage"><div class="fp-dot current" onclick="focusPipGo('jir')">JIR</div><div class="fp-label">STEP 1</div></div>
+  <div class="fp-line" id="fp-line-1"></div>
+  <div class="fp-stage"><div class="fp-dot" id="fp-dot-spot" onclick="focusPipGo('spot')">SPT</div><div class="fp-label">STEP 2</div></div>
+  <div class="fp-line" id="fp-line-2"></div>
+  <div class="fp-stage"><div class="fp-dot" id="fp-dot-lor" onclick="focusPipGo('lor')">LOR</div><div class="fp-label">STEP 3</div></div>
+  <div class="fp-line" id="fp-line-3"></div>
+  <div class="fp-stage"><div class="fp-dot" id="fp-dot-psr" onclick="focusPipGo('psr')">PSR</div><div class="fp-label">STEP 4</div></div>
+  <div class="fp-line" id="fp-line-4"></div>
+  <div class="fp-stage"><div class="fp-dot" id="fp-dot-fsr" onclick="focusPipGo('fsr')">FSR</div><div class="fp-label">FINAL</div></div>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════
@@ -810,6 +1049,13 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 
   </div>
   <!-- END CLAIM COMMAND CARD -->
+
+  <!-- ════════════════════════════════════════════════════════════════
+       COMMAND CENTER DASHBOARD (KPI Summary Cards)
+  ════════════════════════════════════════════════════════════════════ -->
+  <div id="cmdCenterDashboard">
+    <div class="cc-empty-state">No claim loaded. Select a claim from the sidebar to view metrics.</div>
+  </div>
 
 
     <div class="ai-insight" id="rulesBanner" style="display:none;border-color:rgba(34,196,160,0.3);">
@@ -1454,8 +1700,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 </div><!-- end view-myclaims -->
 
 <!-- RIGHT PANEL (workbench) -->
-<div class="right-panel" id="mainRPanel">
-  <button class="rpanel-toggle" onclick="toggleRPanel()" title="Collapse panel">▶</button>
+<div class="right-panel">
   <div class="rp-section">
     <div class="rp-title">Claim Snapshot</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -1503,6 +1748,46 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
   </div>
 </div>
 </div><!-- end .shell -->
+
+<!-- Panel Toggle Buttons -->
+<div class="panel-toggle left" id="leftPanelToggle" onclick="togglePanel('left')" title="Toggle sidebar (departments & claims)">☰</div>
+<div class="panel-toggle right" id="rightPanelToggle" onclick="togglePanel('right')" title="Toggle info panel (claim snapshot)">📊</div>
+<div class="panel-backdrop" id="panelBackdrop" onclick="closeAllPanels()"></div>
+
+<!-- ══ AI STEP-BY-STEP ASSISTANT ══════════════════════════════════ -->
+<div class="ai-assistant-fab" id="aiaFab" onclick="toggleAIAssistant()" title="AI Step-by-Step Guide">
+  🤖
+  <div class="fab-pulse"></div>
+</div>
+<div class="ai-assistant-panel" id="aiaPanel">
+  <div class="aia-header">
+    <span class="aia-header-icon">🤖</span>
+    <div>
+      <div class="aia-header-title">AI Assistant</div>
+      <div class="aia-header-sub">STEP-BY-STEP CLAIM GUIDANCE</div>
+    </div>
+  </div>
+  <div class="aia-body" id="aiaBody">
+    <!-- Populated dynamically by updateAIAssistant() -->
+    <div style="text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--text-ter);">
+      Loading guidance...
+    </div>
+  </div>
+</div>
+
+<!-- Global Upload JIR FAB -->
+<div class="upload-jir-fab" id="uploadJirFab" onclick="globalUploadJIR()" title="Quick upload: scan a handwritten JIR">
+  <span class="fab-icon">📤</span> Upload JIR
+</div>
+<input type="file" id="globalJirFileInput" accept="image/*,.pdf" style="display:none;" onchange="globalJirFileSelected(event)">
+
+<!-- Focus Mode: Save & Continue bar (at bottom of screen) -->
+<div class="focus-save-bar" id="focusSaveBar">
+  <span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);letter-spacing:0.08em;">FOCUS MODE</span>
+  <span style="flex:1;"></span>
+  <button class="action-btn" onclick="toggleFocusMode()" style="font-size:11px;padding:6px 14px;">👁 Exit Focus</button>
+  <button class="action-btn primary" onclick="focusSaveAndContinue()" style="font-size:12px;padding:8px 20px;font-weight:700;">💾 Save &amp; Continue →</button>
+</div>
 
 <!-- ══ REOPEN / REVISION MODAL (Phase 7) ══════════════════════════ -->
 <div class="pip-modal-overlay" id="reopenModal" style="z-index:2400;">
@@ -2027,244 +2312,6 @@ async function api(method, path, body, isForm) {
   }
 }
 
-
-// ══════════════════════════════════════════════════════════════════════
-// COLLAPSIBLE SIDEBARS
-// ══════════════════════════════════════════════════════════════════════
-var _leftCollapsed  = false;
-var _rightCollapsed = false;
-
-function toggleSidebar() {
-  _leftCollapsed = !_leftCollapsed;
-  var sb   = document.getElementById('mainSidebar');
-  var btn  = document.querySelector('.sidebar-toggle');
-  var rbtn = document.getElementById('sidebarRestoreBtn');
-  var shell= document.querySelector('.shell');
-  if (!sb || !shell) return;
-
-  sb.classList.toggle('collapsed', _leftCollapsed);
-  if (btn) btn.textContent = _leftCollapsed ? '▶' : '◀';
-  if (rbtn) rbtn.style.display = _leftCollapsed ? 'flex' : 'none';
-
-  // Update grid
-  updateShellGrid();
-  // Store preference
-  try { localStorage.setItem('nexus_sidebar_left', _leftCollapsed ? '1' : '0'); } catch{}
-}
-
-function toggleRPanel() {
-  _rightCollapsed = !_rightCollapsed;
-  var rp   = document.getElementById('mainRPanel');
-  var btn  = document.querySelector('.rpanel-toggle');
-  var rbtn = document.getElementById('rpanelRestoreBtn');
-  if (!rp) return;
-
-  rp.classList.toggle('collapsed', _rightCollapsed);
-  if (btn) btn.textContent = _rightCollapsed ? '◀' : '▶';
-  if (rbtn) rbtn.style.display = _rightCollapsed ? 'flex' : 'none';
-
-  updateShellGrid();
-  try { localStorage.setItem('nexus_sidebar_right', _rightCollapsed ? '1' : '0'); } catch{}
-}
-
-function updateShellGrid() {
-  var shell = document.querySelector('.shell');
-  if (!shell) return;
-  var lw = _leftCollapsed  ? '0' : '230px';
-  var rw = _rightCollapsed ? '0' : '290px';
-  shell.style.gridTemplateColumns = lw + ' 1fr ' + rw;
-}
-
-function restoreSidebarPrefs() {
-  try {
-    if (localStorage.getItem('nexus_sidebar_left')  === '1') toggleSidebar();
-    if (localStorage.getItem('nexus_sidebar_right') === '1') toggleRPanel();
-  } catch {}
-}
-
-// ══════════════════════════════════════════════════════════════════════
-// AI STEP GUIDE
-// ══════════════════════════════════════════════════════════════════════
-var _guideOpen = false;
-
-// Steps definition — driven by real Bridgestone-style claim workflow
-var GUIDE_STEPS = [
-  {
-    id:'intake',
-    title:'1. Claim Intake — Basic Details',
-    desc:'Fill in Insured Name, Policy Number, Insurer, and department. These are the minimum required fields.',
-    action:'Go to Overview',
-    fn: function() { switchTab('intake', document.querySelector('.tab[onclick*=intake]')); toggleAIGuide(); }
-  },
-  {
-    id:'insurer',
-    title:'2. Select Insurer & Load Rules',
-    desc:'Choose the insurance company from the top bar. This auto-loads deductibles, SLA, penalties and document requirements.',
-    action:'Select Insurer',
-    fn: function() { document.getElementById('insurerSel').focus(); toggleAIGuide(); }
-  },
-  {
-    id:'jir',
-    title:'3. Upload Notes → Fill JIR',
-    desc:'Back from site visit? Upload your handwritten notes or photos. AI extracts and fills the JIR form automatically.',
-    action:'Upload & Fill JIR',
-    fn: function() { cccToggleDropZone(); toggleAIGuide(); }
-  },
-  {
-    id:'documents',
-    title:'4. Upload Supporting Documents',
-    desc:'Add Policy copy, FIR, invoices, stock registers, survey photos. Each document improves your claim quality score.',
-    action:'Go to Documents',
-    fn: function() { switchTab('vault', document.querySelector('.tab[onclick*=vault]')); toggleAIGuide(); }
-  },
-  {
-    id:'spot',
-    title:'5. Spot Report — Physical Findings',
-    desc:'Record your on-site observations: entry point, damage extent, stock affected, photographs taken.',
-    action:'Open Spot Report',
-    fn: function() { openStageFromCCC('spot'); toggleAIGuide(); }
-  },
-  {
-    id:'lor',
-    title:'6. LOR — List of Requirements',
-    desc:'Generate and send the LOR to the insured. Sets deadlines for pending documents.',
-    action:'Open LOR',
-    fn: function() { openStageFromCCC('lor'); toggleAIGuide(); }
-  },
-  {
-    id:'assessment',
-    title:'7. Financial Assessment',
-    desc:'Enter claimed amounts, apply depreciation, deductibles, and penalties. Use AI Assist for calculation support.',
-    action:'Open Assessment',
-    fn: function() { switchTab('assessment', document.querySelector('.tab[onclick*=assessment]')); toggleAIGuide(); }
-  },
-  {
-    id:'fsr',
-    title:'8. Final Survey Report (FSR)',
-    desc:'Complete the FSR with gross assessed loss, settlement computation, and surveyor recommendation. Use AI Assist.',
-    action:'Open FSR',
-    fn: function() { openStageFromCCC('fsr'); toggleAIGuide(); }
-  },
-  {
-    id:'submit',
-    title:'9. Submit & Close',
-    desc:'Submit the FSR to the insurer. Mark the claim settled once insurer confirms.',
-    action:'Go to Reports',
-    fn: function() { switchTab('reports', document.querySelector('.tab[onclick*=reports]')); toggleAIGuide(); }
-  }
-];
-
-function toggleAIGuide() {
-  _guideOpen = !_guideOpen;
-  var btn   = document.getElementById('aiGuideBtn');
-  var panel = document.getElementById('aiGuidePanel');
-  if (!btn || !panel) return;
-  btn.classList.toggle('open', _guideOpen);
-  panel.classList.toggle('open', _guideOpen);
-  if (_guideOpen) renderGuide();
-}
-
-function renderGuide() {
-  var steps = document.getElementById('guideSteps');
-  var prog  = document.getElementById('guideProgressTxt');
-  if (!steps) return;
-
-  // Determine completion state for each step
-  var c = state.claimData || {};
-  var stageMap = {
-    jir:     claimState.jir  && claimState.jir.status  !== 'draft',
-    spot:    claimState.spot && claimState.spot.status !== 'draft',
-    lor:     claimState.lor  && claimState.lor.status  !== 'draft',
-    fsr:     claimState.fsr  && claimState.fsr.status  !== 'draft',
-    intake:  !!(c.insured_name || c.policy_number),
-    insurer: !!state.insurerId,
-    documents: !!(c.documents && c.documents.length > 0),
-    assessment: !!(c.sum_insured || c.loss_amount),
-    submit: c.claim_status === 'submitted' || c.claim_status === 'settled'
-  };
-
-  // Find current step (first incomplete)
-  var currentIdx = 0;
-  for (var i = 0; i < GUIDE_STEPS.length; i++) {
-    if (!stageMap[GUIDE_STEPS[i].id]) { currentIdx = i; break; }
-    if (i === GUIDE_STEPS.length - 1) currentIdx = i;
-  }
-
-  var done = GUIDE_STEPS.filter(function(s){ return stageMap[s.id]; }).length;
-  if (prog) prog.textContent = done + ' of ' + GUIDE_STEPS.length + ' steps complete';
-
-  steps.innerHTML = GUIDE_STEPS.map(function(s, i) {
-    var isDone    = stageMap[s.id];
-    var isCurrent = !isDone && i === currentIdx;
-    var cls = isDone ? 'guide-step done' : isCurrent ? 'guide-step current' : 'guide-step';
-    var numLabel = isDone ? '✓' : (i + 1);
-    return '<div class="' + cls + '" onclick="guideStepClick(' + i + ')">' +
-      '<div class="guide-step-num">' + numLabel + '</div>' +
-      '<div class="guide-step-body">' +
-        '<div class="guide-step-title">' + s.title + '</div>' +
-        '<div class="guide-step-desc">'  + s.desc  + '</div>' +
-        '<div class="guide-step-action">' +
-          '<button class="guide-action-btn" onclick="event.stopPropagation();guideStepClick(' + i + ')">' +
-            '→ ' + s.action +
-          '</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-function guideStepClick(idx) {
-  var step = GUIDE_STEPS[idx];
-  if (step && step.fn) step.fn();
-}
-
-async function guideAsk() {
-  var inp = document.getElementById('guideAskInput');
-  if (!inp || !inp.value.trim()) return;
-  var q = inp.value.trim();
-  inp.value = '';
-
-  if (!state.claimId) {
-    showGuideReply('Load a claim first, then I can answer specific questions about it.');
-    return;
-  }
-
-  showGuideReply('⏳ Thinking…');
-  try {
-    var context = 'Claim: ' + (state.claimData && state.claimData.claim_number || 'Unknown') +
-      ' | Insurer: ' + (state.insurerName || 'Unknown') +
-      ' | Dept: ' + (state.dept || 'Unknown') +
-      ' | Status: ' + (state.claimData && state.claimData.claim_status || 'draft') +
-      ' | Current stage: ' + pip_currentReport;
-    var r = await api('POST', '/api/chat', {
-      message: q,
-      context: context,
-      insurerId: state.insurerId,
-      dept: state.dept,
-      claimId: state.claimId
-    });
-    var reply = (r && (r.reply || r.message || r.content)) || 'I could not get a response. Check your OpenAI API key.';
-    showGuideReply(reply);
-  } catch(err) {
-    showGuideReply('Error: ' + err.message);
-  }
-}
-
-function showGuideReply(msg) {
-  var steps = document.getElementById('guideSteps');
-  if (!steps) return;
-  // Remove previous reply bubble
-  var prev = document.getElementById('guideReplyBubble');
-  if (prev) prev.remove();
-  var bubble = document.createElement('div');
-  bubble.id = 'guideReplyBubble';
-  bubble.style.cssText = 'background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-sec);line-height:1.6;margin-top:4px;';
-  bubble.innerHTML = '<span style="font-family:var(--mono);font-size:9px;color:var(--purple);display:block;margin-bottom:5px;">🤖 AI GUIDE</span>' + msg;
-  steps.appendChild(bubble);
-  bubble.scrollIntoView({ behavior:'smooth', block:'nearest' });
-}
-
-
 // ── Init ──────────────────────────────────────────────────────────────
 (async function init() {
   if (!auth.token) { window.location.replace('index.html'); return; }
@@ -2282,7 +2329,6 @@ function showGuideReply(msg) {
   connectWebSocket();
   await loadInsurers();
   loadClaimsSidebar();
-  restoreSidebarPrefs();  // restore sidebar collapse state
   (function checkURLClaim() {
     const p      = new URLSearchParams(window.location.search);
     const id     = p.get('claimId');
@@ -3000,6 +3046,7 @@ async function advanceClaimStatus() {
     updateStatusAdvanceBtn(nextStatus);
     loadClaimsSidebar();
   }
+  if (typeof renderCommandCenterDashboard === 'function') renderCommandCenterDashboard();
 }
 
 // ── Document checklist ────────────────────────────────────────────────
@@ -3106,6 +3153,7 @@ async function loadChecklistStatus() {
     if (i !== -1) cl[i].status = pd.status;
   });
   renderDocChecklist(cl);
+  if (typeof renderCommandCenterDashboard === 'function') renderCommandCenterDashboard();
 }
 
 // ── Uploaded docs ─────────────────────────────────────────────────────
@@ -4033,6 +4081,7 @@ async function pip_loadSavedReports() {
       pip_showReport(currentStage);
     }
   } catch {}
+  if (typeof renderCommandCenterDashboard === 'function') renderCommandCenterDashboard();
 }
 
 function pip_updatePipelineUI() {
@@ -5238,6 +5287,7 @@ async function loadClaimTimeline() {
   } catch(err) {
     body.innerHTML = '<div style="padding:20px;font-family:var(--mono);font-size:10px;color:var(--red);">Failed to load timeline: ' + escHtml(err.message) + '</div>';
   }
+  if (typeof renderCommandCenterDashboard === 'function') renderCommandCenterDashboard();
 }
 
 function timelineIcon(type) {
@@ -5590,8 +5640,173 @@ function renderCCC() {
   document.getElementById('ccc-nextTitle').innerHTML = title;
   document.getElementById('ccc-nextDesc').textContent  = desc;
   document.getElementById('ccc-nextBtns').innerHTML    = btns;
-  // Refresh guide if open
-  if (_guideOpen) renderGuide();
+
+  // Render Dashboard KPI Cards below CCC
+  renderCommandCenterDashboard();
+}
+
+// ── Command Center Dashboard ──────────────────────────────────────────────
+function renderCommandCenterDashboard() {
+  const dash = document.getElementById('cmdCenterDashboard');
+  if (!dash) return;
+  
+  dash.classList.add('visible'); // keep always visible for layout stability
+  
+  dash.innerHTML = 
+    renderCCClaimSummary() +
+    renderCCSlaTat() +
+    renderCCReports() +
+    renderCCDocuments() +
+    renderCCActivity();
+}
+
+function renderCCClaimSummary() {
+  const c = state.claimData;
+  if (!c || !state.claimId) {
+    return `<div class="cc-card">
+      <div class="cc-card-header"><div class="cc-card-icon" style="color:var(--amber);">📑</div><div class="cc-card-title">Claim Summary</div></div>
+      <div class="cc-card-body"><div class="cc-stat-row"><span class="cc-stat-val" style="color:var(--text-ter);font-weight:400;">Load a claim to view summary</span></div></div>
+    </div>`;
+  }
+  return `
+    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'intake\\']')?.click()">
+      <div class="cc-card-header">
+        <div class="cc-card-icon" style="color:var(--amber);">📑</div>
+        <div class="cc-card-title">Claim Summary</div>
+      </div>
+      <div class="cc-card-body">
+        <div class="cc-stat-row"><span class="cc-stat-label">Claim #</span><span class="cc-stat-val" style="color:var(--amber);">${c.claim_number || c.id || '—'}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Insured</span><span class="cc-stat-val" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.insured_name || '—'}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Status</span><span class="cc-stat-val teal">${(c.claim_status || 'Draft').toUpperCase()}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Priority</span><span class="cc-stat-val amber">${c.priority ? c.priority.toUpperCase() : 'NORMAL'}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Surveyor</span><span class="cc-stat-val">${c.surveyor_name || 'Unassigned'}</span></div>
+      </div>
+    </div>`;
+}
+
+function renderCCSlaTat() {
+  const c = state.claimData;
+  if (!c || !state.claimId) {
+     return `<div class="cc-card">
+      <div class="cc-card-header"><div class="cc-card-icon" style="color:var(--red);">⏱</div><div class="cc-card-title">SLA & Deadlines</div></div>
+      <div class="cc-card-body"><div class="cc-stat-row"><span class="cc-stat-val" style="color:var(--text-ter);font-weight:400;">No SLA available</span></div></div>
+    </div>`;
+  }
+  let slaDays = c.sla_days_remaining, slaStr = 'SLA not available', slaCol = '';
+  if (slaDays !== undefined && slaDays !== null) {
+     slaStr = slaDays + ' Days';
+     slaCol = slaDays < 3 ? 'red' : slaDays < 7 ? 'amber' : 'green';
+  } else if (claimState._deadlines && claimState._deadlines.length) {
+     let dl = claimState._deadlines[0];
+     slaDays = dl.limit - dl.days;
+     slaStr = dl.limit ? (slaDays + ' Days') : 'Overrun';
+     slaCol = slaDays < 0 ? 'red' : slaDays < 3 ? 'amber' : 'green';
+  }
+  
+  return `
+    <div class="cc-card" onclick="if(document.getElementById('dlOverrideModal')) pip_closeModal('dlOverrideModal')">
+      <div class="cc-card-header">
+        <div class="cc-card-icon" style="color:var(--red);">⏱</div>
+        <div class="cc-card-title">SLA & Deadlines</div>
+      </div>
+      <div class="cc-card-body">
+        <div class="cc-stat-row"><span class="cc-stat-label">SLA Remaining</span><span class="cc-stat-val ${slaCol}">${slaStr}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Incident Date</span><span class="cc-stat-val">${c.incident_date ? new Date(c.incident_date).toLocaleDateString('en-IN') : '—'}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Survey Date</span><span class="cc-stat-val">${c.survey_date ? new Date(c.survey_date).toLocaleDateString('en-IN') : '—'}</span></div>
+      </div>
+    </div>`;
+}
+
+function renderCCReports() {
+  const c = state.claimData;
+  if (!c || !state.claimId) {
+    return `<div class="cc-card">
+      <div class="cc-card-header"><div class="cc-card-icon" style="color:var(--purple);">📊</div><div class="cc-card-title">Reports Progress</div></div>
+      <div class="cc-card-body"><div class="cc-stat-row"><span class="cc-stat-val" style="color:var(--text-ter);font-weight:400;">No reports loaded</span></div></div>
+    </div>`;
+  }
+  let stages = ['jir','spot','lor','psr','interim','fsr'];
+  let compCount = 0, savedCount = 0;
+  stages.forEach(s => {
+    let st = claimState[s] ? claimState[s].status : 'draft';
+    if (st === 'submitted') compCount++;
+    else if (st === 'saved') savedCount++;
+  });
+  let repPct = Math.round((compCount / stages.length) * 100);
+  return `
+    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'reports\\']')?.click()">
+      <div class="cc-card-header">
+        <div class="cc-card-icon" style="color:var(--purple);">📊</div>
+        <div class="cc-card-title">Reports Progress</div>
+      </div>
+      <div class="cc-card-body">
+        <div class="cc-stat-row"><span class="cc-stat-label">Completion</span><span class="cc-stat-val">${repPct}%</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Submitted</span><span class="cc-stat-val green">${compCount} Reports</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Draft / Saved</span><span class="cc-stat-val amber">${savedCount} Reports</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Status</span><span class="cc-stat-val teal">Open Pipeline →</span></div>
+      </div>
+    </div>`;
+}
+
+function renderCCDocuments() {
+  const c = state.claimData;
+  if (!c || !state.claimId) {
+    return `<div class="cc-card">
+      <div class="cc-card-header"><div class="cc-card-icon" style="color:var(--teal);">📁</div><div class="cc-card-title">Documents</div></div>
+      <div class="cc-card-body"><div class="cc-stat-row"><span class="cc-stat-val" style="color:var(--text-ter);font-weight:400;">No documents loaded</span></div></div>
+    </div>`;
+  }
+  let docs = c.documents || [];
+  let upCount = docs.length;
+  // Use explicit fallback format requested by user
+  let pendingEl = document.getElementById('checklistList');
+  let pendingCount = pendingEl ? pendingEl.querySelectorAll('.doc-tracker-check:not(.verified):not(.submitted)').length : '—';
+  let ocrCount = docs.filter(d => d.ocr_status === 'completed').length;
+  
+  return `
+    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'vault\\']')?.click()">
+      <div class="cc-card-header">
+        <div class="cc-card-icon" style="color:var(--teal);">📁</div>
+        <div class="cc-card-title">Documents</div>
+      </div>
+      <div class="cc-card-body">
+        <div class="cc-stat-row"><span class="cc-stat-label">Total Uploaded</span><span class="cc-stat-val">${upCount} Docs</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Pending Checklist</span><span class="cc-stat-val amber">${pendingCount !== '—' ? pendingCount + ' Items' : '—'}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">AI Processed (OCR)</span><span class="cc-stat-val teal">${ocrCount || 0} Docs</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Action</span><span class="cc-stat-val amber">Manage Vault →</span></div>
+      </div>
+    </div>`;
+}
+
+function renderCCActivity() {
+  const c = state.claimData;
+  if (!c || !state.claimId) {
+    return `<div class="cc-card">
+      <div class="cc-card-header"><div class="cc-card-icon" style="color:var(--blue);">🕐</div><div class="cc-card-title">Activity & Audit</div></div>
+      <div class="cc-card-body"><div class="cc-stat-row"><span class="cc-stat-val" style="color:var(--text-ter);font-weight:400;">No activity yet</span></div></div>
+    </div>`;
+  }
+  let lastAct = `Status updated to ${c.claim_status || 'Draft'}`;
+  let lastSync = '—';
+  if (c.updated_at) {
+    let d = new Date(c.updated_at > 1e10 ? c.updated_at : c.updated_at * 1000);
+    lastSync = d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+    let diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (diffMins < 60) lastAct = `State refreshed ${diffMins} mins ago`;
+  }
+  
+  return `
+    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'timeline\\']')?.click();loadClaimTimeline();">
+      <div class="cc-card-header">
+        <div class="cc-card-icon" style="color:var(--blue);">🕐</div>
+        <div class="cc-card-title">Activity & Audit</div>
+      </div>
+      <div class="cc-card-body">
+        <div class="cc-stat-row"><span class="cc-stat-label">Last Saved</span><span class="cc-stat-val">${lastSync}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Latest Event</span><span class="cc-stat-val" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${lastAct}</span></div>
+        <div class="cc-stat-row"><span class="cc-stat-label">Timeline</span><span class="cc-stat-val blue">View Full Log →</span></div>
+      </div>
+    </div>`;
 }
 
 // ── Open a pipeline stage directly from command card ──────────────────
@@ -5744,6 +5959,7 @@ async function saveClaimFields(silent) {
   } catch (err) {
     if (!silent) toast('Save error: ' + err.message, 'error');
   }
+  if (typeof renderCommandCenterDashboard === 'function') renderCommandCenterDashboard();
 }
 
 // ── Auto-save debounce (silent, fires 1.5s after last keystroke) ──────
@@ -6711,18 +6927,9 @@ async function laWs_aiGenerate() {
       '"deductions":{"disallowed":0,"qtyVar":0,"rateVar":0,"depn":0,"salvage":0,"excess":0},' +
       '"basis":"1-line explanation of assessment approach"}';
 
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    var data = await resp.json();
-    var raw  = data.content && data.content[0] && data.content[0].text || '{}';
-    var parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    // Note: This direct call was replaced by the backend AI routing fix 
+    // to ensure provider consistency and security. See fixLaWsAI() at bottom.
+    var data = { content: [{ text: '{}' }] };
 
     _laWsItems = (parsed.items || []).map(function(item) {
       return {
@@ -6961,136 +7168,7 @@ function pip_printReport() {
     '.rp-section-head{font-weight:700;font-size:12px;color:#e8a020;border-bottom:1px solid #e8a020;padding-bottom:4px;margin:14px 0 8px;}' +
     '.rp-sig-box{border:1px solid #ccc;height:60px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;font-size:10px;}' +
     '.report-preview{background:#fff;color:#1a1a1a;}p{font-size:11px;line-height:1.6;margin-bottom:8px;}' +
-    '
-/* ── AI Step Guide ────────────────────────────────────────────────── */
-#aiGuideBtn {
-  position:fixed;
-  bottom:28px;right:28px;
-  width:52px;height:52px;
-  border-radius:50%;
-  background:linear-gradient(135deg,var(--purple),rgba(167,139,250,0.7));
-  border:none;
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;cursor:pointer;
-  box-shadow:0 4px 20px rgba(167,139,250,0.4);
-  z-index:1500;
-  transition:all 0.2s;
-  animation:guidePulse 3s ease-in-out infinite;
-}
-@keyframes guidePulse {
-  0%,100% { box-shadow:0 4px 20px rgba(167,139,250,0.4); }
-  50%      { box-shadow:0 4px 28px rgba(167,139,250,0.7); transform:scale(1.05); }
-}
-#aiGuideBtn:hover { transform:scale(1.12); }
-#aiGuideBtn.open  { animation:none; background:var(--bg3); border:1px solid var(--purple); }
-
-#aiGuidePanel {
-  position:fixed;
-  bottom:92px;right:24px;
-  width:320px;
-  background:var(--bg1);
-  border:1px solid rgba(167,139,250,0.35);
-  border-radius:14px;
-  box-shadow:0 8px 40px rgba(0,0,0,0.5);
-  z-index:1499;
-  display:none;
-  flex-direction:column;
-  overflow:hidden;
-  animation:guideIn 0.2s ease;
-}
-@keyframes guideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-#aiGuidePanel.open { display:flex; }
-
-.guide-header {
-  padding:14px 16px 10px;
-  background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(167,139,250,0.04));
-  border-bottom:1px solid rgba(167,139,250,0.2);
-  display:flex;align-items:center;justify-content:space-between;
-}
-.guide-header-title {
-  font-family:var(--display);font-size:13px;font-weight:700;color:var(--purple);
-  display:flex;align-items:center;gap:7px;
-}
-.guide-close { background:none;border:none;color:var(--text-ter);cursor:pointer;font-size:16px;line-height:1;padding:2px; }
-.guide-close:hover { color:var(--text-pri); }
-
-.guide-steps { padding:12px;display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto; }
-
-.guide-step {
-  display:flex;gap:10px;padding:10px 12px;
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:8px;cursor:pointer;transition:all 0.15s;
-  align-items:flex-start;
-}
-.guide-step:hover { border-color:rgba(167,139,250,0.4);background:rgba(167,139,250,0.06); }
-.guide-step.done  { border-color:rgba(94,198,122,0.3);background:rgba(94,198,122,0.04); }
-.guide-step.current { border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.08); box-shadow:0 0 8px rgba(167,139,250,0.15); }
-.guide-step-num {
-  width:22px;height:22px;border-radius:50%;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:10px;font-weight:700;
-  background:var(--bg3);border:1px solid var(--border2);color:var(--text-ter);
-}
-.guide-step.done .guide-step-num    { background:var(--green-dim);border-color:var(--green);color:var(--green); }
-.guide-step.current .guide-step-num { background:var(--purple-dim);border-color:var(--purple);color:var(--purple); }
-.guide-step-body { flex:1;min-width:0; }
-.guide-step-title { font-size:12px;color:var(--text-pri);font-weight:600;margin-bottom:2px; }
-.guide-step.done .guide-step-title  { color:var(--green); }
-.guide-step.current .guide-step-title { color:var(--purple); }
-.guide-step-desc  { font-size:11px;color:var(--text-ter);line-height:1.5; }
-.guide-step-action { display:none;margin-top:8px; }
-.guide-step.current .guide-step-action { display:block; }
-.guide-action-btn {
-  font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:5px;
-  background:var(--purple-dim);border:1px solid rgba(167,139,250,0.4);color:var(--purple);
-  cursor:pointer;font-weight:700;transition:all 0.15s;
-}
-.guide-action-btn:hover { background:rgba(167,139,250,0.2); }
-
-.guide-footer {
-  padding:10px 12px;border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-}
-.guide-progress-txt { font-family:var(--mono);font-size:9px;color:var(--text-ter); }
-.guide-ask-input {
-  display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);
-}
-.guide-ask-input input {
-  flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;
-  color:var(--text-pri);font-family:var(--body);font-size:12px;padding:6px 10px;outline:none;
-}
-.guide-ask-input input:focus { border-color:rgba(167,139,250,0.4); }
-.guide-send { font-family:var(--mono);font-size:10px;padding:6px 10px;border-radius:5px;
-  background:var(--purple-dim);border:1px solid rgba(167,139,250,0.4);color:var(--purple);cursor:pointer;font-weight:700; }
-</style></head><body>' + content + '
-<!-- ═══════════════════════════════════════════════════════════
-     AI STEP GUIDE — Floating assistant
-═══════════════════════════════════════════════════════════ -->
-<button id="aiGuideBtn" onclick="toggleAIGuide()" title="AI Step Guide">🤖</button>
-
-<div id="aiGuidePanel">
-  <div class="guide-header">
-    <div class="guide-header-title">🤖 AI Step Guide</div>
-    <button class="guide-close" onclick="toggleAIGuide()">✕</button>
-  </div>
-  <div class="guide-steps" id="guideSteps">
-    <!-- Rendered by renderGuide() -->
-  </div>
-  <div class="guide-footer">
-    <span class="guide-progress-txt" id="guideProgressTxt">—</span>
-    <span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Click any step to jump</span>
-  </div>
-  <div class="guide-ask-input">
-    <input type="text" id="guideAskInput" placeholder="Ask about this claim or step…" onkeydown="if(event.key==='Enter')guideAsk()">
-    <button class="guide-send" onclick="guideAsk()">ASK</button>
-  </div>
-</div>
-
-<!-- Collapsed sidebar restore buttons -->
-<button class="sidebar-collapsed-btn" id="sidebarRestoreBtn" onclick="toggleSidebar()" style="display:none;" title="Show sidebar">▶</button>
-<button class="rpanel-collapsed-btn"  id="rpanelRestoreBtn"  onclick="toggleRPanel()"  style="display:none;" title="Show panel">◀</button>
-
-</body></html>'
+    '</style></head><body>' + content + '</body></html>'
   );
   w.document.close();
   w.print();
@@ -7424,34 +7502,575 @@ async function repo_doRestore(stage, version) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// COLLAPSIBLE PANELS — Overlay with toggle buttons
+// ══════════════════════════════════════════════════════════════════════
+
+function togglePanel(side) {
+  var sidebar = document.querySelector('.sidebar');
+  var rightPanel = document.querySelector('.right-panel');
+  var backdrop = document.getElementById('panelBackdrop');
+  var leftBtn = document.getElementById('leftPanelToggle');
+  var rightBtn = document.getElementById('rightPanelToggle');
+
+  if (side === 'left') {
+    var isOpen = sidebar.classList.contains('panel-open');
+    // Close right if open
+    rightPanel.classList.remove('panel-open');
+    rightBtn.classList.remove('active');
+    if (isOpen) {
+      sidebar.classList.remove('panel-open');
+      leftBtn.classList.remove('active');
+      backdrop.classList.remove('show');
+      localStorage.setItem('nexus_left_panel', 'closed');
+    } else {
+      sidebar.classList.add('panel-open');
+      leftBtn.classList.add('active');
+      backdrop.classList.add('show');
+      localStorage.setItem('nexus_left_panel', 'open');
+    }
+  } else {
+    var isOpen = rightPanel.classList.contains('panel-open');
+    // Close left if open
+    sidebar.classList.remove('panel-open');
+    leftBtn.classList.remove('active');
+    if (isOpen) {
+      rightPanel.classList.remove('panel-open');
+      rightBtn.classList.remove('active');
+      backdrop.classList.remove('show');
+      localStorage.setItem('nexus_right_panel', 'closed');
+    } else {
+      rightPanel.classList.add('panel-open');
+      rightBtn.classList.add('active');
+      backdrop.classList.add('show');
+      localStorage.setItem('nexus_right_panel', 'open');
+    }
+  }
+}
+
+function closeAllPanels() {
+  var sidebar = document.querySelector('.sidebar');
+  var rightPanel = document.querySelector('.right-panel');
+  var backdrop = document.getElementById('panelBackdrop');
+  var leftBtn = document.getElementById('leftPanelToggle');
+  var rightBtn = document.getElementById('rightPanelToggle');
+  sidebar.classList.remove('panel-open');
+  rightPanel.classList.remove('panel-open');
+  backdrop.classList.remove('show');
+  leftBtn.classList.remove('active');
+  rightBtn.classList.remove('active');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// AI STEP-BY-STEP ASSISTANT — Contextual guidance
+// ══════════════════════════════════════════════════════════════════════
+
+var _aiaOpen = false;
+
+function toggleAIAssistant() {
+  _aiaOpen = !_aiaOpen;
+  var fab = document.getElementById('aiaFab');
+  var panel = document.getElementById('aiaPanel');
+  if (_aiaOpen) {
+    fab.classList.add('open');
+    fab.innerHTML = '✕';
+    panel.classList.add('open');
+    updateAIAssistant();
+  } else {
+    fab.classList.remove('open');
+    fab.innerHTML = '🤖<div class="fab-pulse"></div>';
+    panel.classList.remove('open');
+  }
+}
+
+function updateAIAssistant() {
+  var body = document.getElementById('aiaBody');
+  if (!body) return;
+
+  // Determine current state
+  var hasInsurer = !!state.insurerId;
+  var hasClaim = !!state.claimId;
+  var hasJIR = claimState.jir && claimState.jir.status !== 'draft';
+  var hasSpot = claimState.spot && claimState.spot.status !== 'draft';
+  var hasDocs = false;
+  try { hasDocs = parseInt((document.getElementById('docUploadedCount') || {}).textContent) > 0; } catch(e){}
+  var hasFSR = claimState.fsr && claimState.fsr.status !== 'draft';
+  var hasLOR = claimState.lor && claimState.lor.status !== 'draft';
+
+  var steps = [
+    {
+      num: 1, title: 'Select Insurance Company',
+      desc: 'Choose the insurer from the top bar. This loads insurer-specific rules, warranties, and document checklists.',
+      done: hasInsurer,
+      action: hasInsurer ? null : { label: 'SELECT INSURER ↗', fn: "document.getElementById('insurerSel').focus()" }
+    },
+    {
+      num: 2, title: 'Create or Load a Claim',
+      desc: 'Create a new claim from the sidebar or load an existing one. Fill insured name, department, and loss date.',
+      done: hasClaim,
+      action: hasClaim ? null : { label: '+ NEW CLAIM', fn: "openNewClaimModal()" }
+    },
+    {
+      num: 3, title: 'Fill Joint Inspection Report (JIR)',
+      desc: 'Complete the JIR with loss details, FIR info, and survey observations. You can upload handwritten notes for AI-OCR extraction.',
+      done: hasJIR,
+      action: (hasClaim && !hasJIR) ? { label: 'OPEN JIR →', fn: "switchModule('pipeline');pip_showReport('jir')" } : null
+    },
+    {
+      num: 4, title: 'Upload Documents',
+      desc: 'Upload claim documents — FIR copy, policy, stock register, photos. Use the Documents tab to manage files.',
+      done: hasDocs,
+      action: (hasClaim && !hasDocs) ? { label: 'DOCUMENTS TAB →', fn: "switchTab('vault', document.querySelector('.tab[onclick*=vault]'))" } : null
+    },
+    {
+      num: 5, title: 'Complete Report Pipeline',
+      desc: 'Fill Spot Report → LOR → PSR → Interim (optional) → Final Survey Report (FSR). Each stage can be auto-populated from JIR data.',
+      done: hasFSR,
+      action: (hasClaim && !hasFSR) ? { label: 'OPEN PIPELINE →', fn: "switchModule('pipeline')" } : null
+    },
+    {
+      num: 6, title: 'Submit Final Survey Report',
+      desc: 'Review FSR, preview the report, and submit to the insurer. The settlement calculation is validated with insurer-specific rules.',
+      done: hasFSR && claimState.fsr.status === 'submitted',
+      action: (hasFSR && claimState.fsr.status !== 'submitted') ? { label: 'SUBMIT FSR →', fn: "switchModule('pipeline');pip_showReport('fsr')" } : null
+    }
+  ];
+
+  // Find current step (first non-done)
+  var currentIdx = steps.findIndex(function(s) { return !s.done; });
+  if (currentIdx === -1) currentIdx = steps.length; // all done
+
+  // Build HTML
+  var html = '';
+
+  // Progress indicator
+  var doneCount = steps.filter(function(s) { return s.done; }).length;
+  html += '<div style="padding:8px 12px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);margin-bottom:4px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+    '<span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);letter-spacing:0.08em;">PROGRESS</span>' +
+    '<span style="font-family:var(--mono);font-size:10px;color:var(--teal);font-weight:700;">' + doneCount + '/' + steps.length + '</span>' +
+    '</div>' +
+    '<div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;">' +
+    '<div style="height:100%;width:' + (doneCount/steps.length*100) + '%;background:linear-gradient(90deg,var(--green),var(--teal));border-radius:2px;transition:width 0.3s;"></div>' +
+    '</div></div>';
+
+  // Steps
+  steps.forEach(function(step, i) {
+    var cls = step.done ? 'aia-step done' : (i === currentIdx ? 'aia-step current' : 'aia-step');
+    var icon = step.done ? '✓' : step.num;
+    html += '<div class="' + cls + '">' +
+      '<div class="aia-step-num">' + icon + '</div>' +
+      '<div class="aia-step-content">' +
+      '<div class="aia-step-title">' + step.title + '</div>';
+    if (i === currentIdx || (i === currentIdx + 1 && !step.done)) {
+      html += '<div class="aia-step-desc">' + step.desc + '</div>';
+    }
+    if (step.action && (i === currentIdx)) {
+      html += '<div class="aia-step-action" onclick="' + step.action.fn + ';toggleAIAssistant()">' + step.action.label + '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  // Contextual tip
+  var tips = [
+    'Select the insurer first — this drives all rules, depreciation tables, and document checklists automatically.',
+    'Create a claim by clicking "+ NEW CLAIM" in the sidebar or use the Command Center.',
+    'Tip: Upload a handwritten JIR photo and use "Extract Data" to auto-fill the report with AI-OCR.',
+    'Upload FIR copy, policy, stock register, and photos. Run "AI Verify" to check for missing documents.',
+    'Use "Auto-fill from JIR" to populate downstream reports. AI calculates settlement using insurer rules.',
+    'Preview the FSR before submitting. The system validates all calculations against insurer-specific rules.'
+  ];
+  var tipIdx = Math.min(currentIdx, tips.length - 1);
+  if (tipIdx >= 0) {
+    html += '<div class="aia-tip"><div class="aia-tip-label">💡 PRO TIP</div>' + tips[tipIdx] + '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+// Auto-update AI assistant when claim state changes
+var _origLoadClaim = typeof loadClaim === 'function' ? loadClaim : null;
+// Hook into claim loading to refresh AI assistant
+(function hookAIA() {
+  var origSwitchModule = window.switchModule;
+  if (origSwitchModule) {
+    // Refresh assistant on module switch
+    var _smOrig = origSwitchModule;
+    // Cannot override directly since function declarations hoist — use setTimeout hook instead
+  }
+  // Refresh periodically when open
+  setInterval(function() {
+    if (_aiaOpen) updateAIAssistant();
+  }, 3000);
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// FIX: laWs_aiGenerate — Route through backend AI pipeline
+// ══════════════════════════════════════════════════════════════════════
+// Override the legacy laWs_aiGenerate to use the unified backend AI service
+(function fixLaWsAI() {
+  var origFn = window.laWs_aiGenerate;
+  window.laWs_aiGenerate = async function() {
+    document.getElementById('laWsGenerating').style.display = 'block';
+    document.getElementById('laWsTable').style.display      = 'none';
+
+    var c   = pip_claim || {};
+    var jd  = (claimState.jir && claimState.jir.data) || {};
+    var rules = pip_insurerRules || {};
+
+    var status = document.getElementById('laWsGenStatus');
+    if (status) status.textContent = '\u23f3 Analysing claim data with AI…';
+
+    try {
+      var prompt = 'Generate a Loss Assessment Worksheet for this insurance claim. ' +
+        'Claim: ' + (c.claim_number||'') + ', Insured: ' + (c.insured_name||'') +
+        ', Department: ' + (c.department||'') + ', Insurer: ' + (c.insurer_name||'') +
+        ', Policy SI: Rs.' + ((c.sum_insured||0)).toLocaleString('en-IN') +
+        ', Claimed Loss: Rs.' + ((c.loss_amount||0)).toLocaleString('en-IN') +
+        ', Circumstances: ' + (c.circumstances||jd.narration||'Not provided') +
+        '. Generate 4-8 realistic line items with description, qty, rate, claimed, allowed amounts. ' +
+        'Also suggest deductions: disallowed amount, quantity variation %, rate variation %, depreciation %, salvage, policy excess. ' +
+        'Return ONLY valid JSON: {"items":[{"desc":"","qty":0,"rate":0,"claimed":0,"allowed":0,"remarks":""}],' +
+        '"deductions":{"disallowed":0,"qtyVar":0,"rateVar":0,"depn":0,"salvage":0,"excess":0},' +
+        '"basis":"1-line explanation"}';
+
+      // Use unified backend AI endpoint for processing
+      var resp = await api('POST', '/api/chat', {
+        message: 'insurer_ctx:[Loss Assessment Worksheet Generation] ' + prompt,
+        platform: 'surveyor_ai',
+        sessionId: 'laWs-' + Date.now(),
+        claimId: state.claimId || ''
+      });
+
+      var raw = resp.response || '{}';
+      var parsed = {};
+      try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); }
+      catch(e) {
+        // Try to extract JSON from the response
+        var match = raw.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+      }
+
+      if (parsed.items && parsed.items.length) {
+        _laWsItems = parsed.items.map(function(item) {
+          return {
+            desc: item.desc || '', qty: item.qty || 1, rate: item.rate || 0,
+            claimed: item.claimed || (item.qty * item.rate),
+            allowed: item.allowed || item.claimed || 0,
+            remarks: item.remarks || 'As per AI assessment'
+          };
+        });
+
+        var ded = parsed.deductions || {};
+        document.getElementById('laWs-disallowed').value = ded.disallowed || 0;
+        document.getElementById('laWs-qtyVar').value     = ded.qtyVar || 0;
+        document.getElementById('laWs-rateVar').value    = ded.rateVar || 0;
+        document.getElementById('laWs-depn').value       = ded.depn || 0;
+        document.getElementById('laWs-salvage').value    = ded.salvage || 0;
+        document.getElementById('laWs-excess').value     = ded.excess || (rules.deductible_rules && rules.deductible_rules.fixed) || 5000;
+
+        var basisEl = document.getElementById('laWsAiBasis');
+        if (basisEl) basisEl.textContent = '\u2605 AI basis: ' + (parsed.basis || 'Assessment generated from claim data');
+
+        laWs_renderItems();
+        laWs_computeTotals();
+      } else {
+        throw new Error('No items returned');
+      }
+
+      document.getElementById('laWsGenerating').style.display = 'none';
+      document.getElementById('laWsTable').style.display      = 'block';
+      document.getElementById('laWsApplyBtn').disabled        = false;
+
+    } catch(err) {
+      // Fallback: empty worksheet with defaults
+      _laWsItems = [{ desc: '', qty: 1, rate: 0, claimed: 0, allowed: 0, remarks: '' }];
+      document.getElementById('laWs-excess').value = (rules.deductible_rules && rules.deductible_rules.fixed) || 5000;
+      laWs_renderItems();
+      laWs_computeTotals();
+      document.getElementById('laWsGenerating').style.display = 'none';
+      document.getElementById('laWsTable').style.display      = 'block';
+      document.getElementById('laWsApplyBtn').disabled        = false;
+      var basisEl = document.getElementById('laWsAiBasis');
+      if (basisEl) basisEl.textContent = '\u26a0 AI unavailable — worksheet ready for manual entry. (' + (err.message||'') + ')';
+      toast('AI worksheet generation unavailable — fill manually', 'warning');
+    }
+  };
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// FIX: Enhanced AI Chat error handling
+// ══════════════════════════════════════════════════════════════════════
+(function fixChatErrors() {
+  var origSendChat = window.sendChat;
+  window.sendChat = async function() {
+    var inp = document.getElementById('chatInput');
+    var msg = (inp.value || '').trim();
+    if (!msg) return;
+    if (!state.claimId) {
+      addChatMsg('bot', '<em>Please load a claim first to use the AI assistant.</em><br><span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Click a claim in the sidebar or create a new one.</span>');
+      return;
+    }
+    inp.value = '';
+    addChatMsg('user', msg);
+    var btn = document.getElementById('chatSendBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    var typing = document.createElement('div');
+    typing.className = 'ai-msg bot typing';
+    typing.innerHTML = '<span class="blink">\u27f3 Thinking...</span>';
+    document.getElementById('chatMsgs').appendChild(typing);
+
+    try {
+      var insurerCtx = state.insurerName
+        ? '[Insurer: ' + state.insurerName + ', Dept: ' + state.dept +
+          ', Rules: ' + state.rulesSource + ', Claim: ' + (state.claimId || 'none') + '] '
+        : '';
+      var r = await api('POST', '/api/chat', {
+        message: 'insurer_ctx:' + insurerCtx + msg,
+        platform: 'surveyor',
+        sessionId: 'sess-' + Date.now(),
+        claimId: state.claimId
+      });
+      typing.remove();
+      var response = r.response || r.error || 'AI is currently unavailable. Please try again in a moment.';
+      if (r.error && !r.response) {
+        addChatMsg('bot', '<span style="color:var(--red);">\u26a0 AI Error:</span> ' + response +
+          '<br><span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Check that the API key is configured. Refer to the Surveyor Manual for guidance.</span>');
+      } else {
+        addChatMsg('bot', response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'));
+      }
+    } catch(e) {
+      typing.remove();
+      addChatMsg('bot', '<span style="color:var(--red);">\u26a0 Connection error.</span> Check your network and try again.' +
+        '<br><span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">' + (e.message||'') + '</span>');
+    }
+    btn.disabled = false;
+    btn.textContent = 'SEND';
+  };
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// FOCUS MODE — Toggle and state management
+// ══════════════════════════════════════════════════════════════════════
+
+var _focusMode = sessionStorage.getItem('nexus_focus_mode') === 'true';
+
+function toggleFocusMode() {
+  _focusMode = !_focusMode;
+  applyFocusMode();
+  sessionStorage.setItem('nexus_focus_mode', _focusMode ? 'true' : 'false');
+  if (_focusMode) {
+    toast('Focus Mode ON — distraction-free editing', 'info');
+    closeAllPanels();
+    // If in pipeline, switch to workbench to show forms
+    if (state.activeModule === 'pipeline') {
+      switchModule('workbench');
+    }
+  } else {
+    toast('Focus Mode OFF — full dashboard restored', 'info');
+  }
+}
+
+function applyFocusMode() {
+  document.body.classList.toggle('focus-mode', _focusMode);
+  var btn = document.getElementById('focusToggle');
+  if (btn) {
+    btn.classList.toggle('active', _focusMode);
+    btn.innerHTML = _focusMode ? '👁 Advanced' : '👁 Focus';
+  }
+  updateFocusPipelineDots();
+}
+
+function updateFocusPipelineDots() {
+  var stages = ['jir', 'spot', 'lor', 'psr', 'fsr'];
+  var stageLabels = { jir:'JIR', spot:'SPT', lor:'LOR', psr:'PSR', fsr:'FSR' };
+  var foundCurrent = false;
+
+  stages.forEach(function(stg, i) {
+    var dot = document.getElementById('fp-dot-' + stg);
+    if (!dot && i === 0) {
+      // JIR dot doesn't have an id, it's the first .fp-dot
+      var allDots = document.querySelectorAll('.fp-dot');
+      if (allDots[0]) dot = allDots[0];
+    }
+    if (!dot) return;
+
+    var isDone = claimState[stg] && claimState[stg].status !== 'draft';
+    dot.className = 'fp-dot';
+    if (isDone) {
+      dot.classList.add('done');
+    } else if (!foundCurrent) {
+      dot.classList.add('current');
+      foundCurrent = true;
+    }
+
+    // Update connecting lines
+    if (i > 0) {
+      var line = document.getElementById('fp-line-' + i);
+      if (line) {
+        line.className = 'fp-line';
+        var prevDone = claimState[stages[i-1]] && claimState[stages[i-1]].status !== 'draft';
+        if (prevDone) line.classList.add('done');
+      }
+    }
+  });
+}
+
+function focusPipGo(stage) {
+  if (!state.claimId) {
+    toast('Load a claim first', 'warning');
+    return;
+  }
+  switchModule('pipeline');
+  pip_showReport(stage);
+  // If focus mode, exit focus to show pipeline properly
+  if (_focusMode) {
+    _focusMode = false;
+    applyFocusMode();
+    sessionStorage.setItem('nexus_focus_mode', 'false');
+  }
+}
+
+function focusSaveAndContinue() {
+  if (!state.claimId) {
+    toast('No claim loaded — create or select a claim first', 'warning');
+    return;
+  }
+  // Save current fields
+  if (typeof saveClaimFields === 'function') {
+    saveClaimFields(true); // silent save
+  }
+  // Determine next stage to go to
+  var stages = ['jir', 'spot', 'lor', 'psr', 'fsr'];
+  var currentStage = pip_currentReport || 'jir';
+  var currentIdx = stages.indexOf(currentStage);
+  var nextIdx = currentIdx + 1;
+  if (nextIdx >= stages.length) {
+    toast('🎉 All pipeline stages complete! Review and submit.', 'success');
+    switchModule('pipeline');
+    pip_showReport('fsr');
+    return;
+  }
+  var nextStage = stages[nextIdx];
+  switchModule('pipeline');
+  pip_showReport(nextStage);
+  toast('📋 Moving to ' + nextStage.toUpperCase(), 'info');
+}
+
+// Restore Focus Mode on page load
+if (_focusMode) {
+  applyFocusMode();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// GLOBAL UPLOAD JIR — Quick upload from anywhere
+// ══════════════════════════════════════════════════════════════════════
+
+function globalUploadJIR() {
+  if (!state.claimId) {
+    toast('Create or load a claim first, then upload JIR', 'warning');
+    openNewClaimModal();
+    return;
+  }
+  document.getElementById('globalJirFileInput').click();
+}
+
+async function globalJirFileSelected(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+
+  toast('📤 Processing JIR upload with AI-OCR...', 'info', 6000);
+
+  // Use the existing OCR pipeline
+  if (typeof pip_extractData === 'function') {
+    // Navigate to pipeline JIR first
+    switchModule('pipeline');
+    pip_showReport('jir');
+
+    // Trigger the extraction via the existing pipeline OCR input
+    var ocrInput = document.getElementById('pip-ocrFileInput');
+    if (ocrInput) {
+      // Clone the file to the pipeline input
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      ocrInput.files = dt.files;
+      ocrInput.dispatchEvent(new Event('change'));
+    }
+  } else {
+    toast('Navigate to the JIR in the pipeline to use OCR extraction', 'info');
+    switchModule('pipeline');
+    pip_showReport('jir');
+  }
+
+  // Clear the file input for re-use
+  event.target.value = '';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// URL ROUTING & INITIALIZATION
+// ══════════════════════════════════════════════════════════════════════
+
+(function initFromUrl() {
+  setTimeout(function() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var claimId = params.get('claim');
+      var moduleName = params.get('module');
+      var stage = params.get('stage');
+      var isNew = params.get('new') === '1';
+      var uploadJir = params.get('upload_jir') === '1';
+
+      if (claimId && typeof loadClaim === 'function') {
+        loadClaim(claimId);
+        
+        // Wait a bit for claim to load, then switch module/stage
+        setTimeout(function() {
+          if (moduleName) switchModule(moduleName);
+          if (stage && typeof pip_showReport === 'function') {
+            pip_showReport(stage);
+          }
+        }, 800);
+      }
+      
+      if (isNew && typeof openNewClaimModal === 'function') {
+        openNewClaimModal();
+      }
+
+      if (uploadJir) {
+        setTimeout(function() {
+          globalUploadJIR();
+        }, 1500); 
+      }
+    } catch(e) { console.warn('Error parsing URL params', e); }
+  }, 500);
+})();
+
+// ══════════════════════════════════════════════════════════════════════
+// PERSIST LAST ACTIVE CLAIM — For "Continue Where You Left Off"
+// ══════════════════════════════════════════════════════════════════════
+
+// Save last-active state whenever claim changes
+(function hookPersistClaim() {
+  // Periodically persist current state for the Command Center
+  setInterval(function() {
+    if (state.claimId && state.claimData) {
+      var lastState = {
+        claimId: state.claimId,
+        claimNumber: state.claimData.claim_number || '',
+        insuredName: state.claimData.insured_name || '',
+        department: state.claimData.department || '',
+        insurerName: state.insurerName || '',
+        stage: pip_currentReport || 'jir',
+        module: state.activeModule || 'workbench',
+        focusMode: _focusMode,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('nexus_last_claim', JSON.stringify(lastState));
+    }
+  }, 5000);
+})();
+
 </script>
-
-<!-- ═══════════════════════════════════════════════════════════
-     AI STEP GUIDE — Floating assistant
-═══════════════════════════════════════════════════════════ -->
-<button id="aiGuideBtn" onclick="toggleAIGuide()" title="AI Step Guide">🤖</button>
-
-<div id="aiGuidePanel">
-  <div class="guide-header">
-    <div class="guide-header-title">🤖 AI Step Guide</div>
-    <button class="guide-close" onclick="toggleAIGuide()">✕</button>
-  </div>
-  <div class="guide-steps" id="guideSteps">
-    <!-- Rendered by renderGuide() -->
-  </div>
-  <div class="guide-footer">
-    <span class="guide-progress-txt" id="guideProgressTxt">—</span>
-    <span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Click any step to jump</span>
-  </div>
-  <div class="guide-ask-input">
-    <input type="text" id="guideAskInput" placeholder="Ask about this claim or step…" onkeydown="if(event.key==='Enter')guideAsk()">
-    <button class="guide-send" onclick="guideAsk()">ASK</button>
-  </div>
-</div>
-
-<!-- Collapsed sidebar restore buttons -->
-<button class="sidebar-collapsed-btn" id="sidebarRestoreBtn" onclick="toggleSidebar()" style="display:none;" title="Show sidebar">▶</button>
-<button class="rpanel-collapsed-btn"  id="rpanelRestoreBtn"  onclick="toggleRPanel()"  style="display:none;" title="Show panel">◀</button>
-
 </body>
 </html>
