@@ -6,7 +6,7 @@ import { generateToken, verifyToken, hashPassword, verifyPassword, generateSecur
          sendMagicLink, verifyGoogleToken, createSession, destroySession } from './auth.js';
 import { hasPermission, canAccessResource, filterByTenant,
          getVisibleModules, getRestrictedModules } from './rbac.js';
-import { handleChatRequest, extractTextFromImage,
+import { handleChatRequest, analyzeDocumentContent,
          detectWarrantyBreaches, crossVerifyDocuments,
          computeSettlementFromRules, generateReportDraft } from './openai-chat.js';
 import { sendEmail, sendSMS,
@@ -33,6 +33,22 @@ function jsonResponse(data, status = 200) {
   });
 }
 function errorResponse(msg, status = 400) { return jsonResponse({ error: msg }, status); }
+
+function looksLikeReadableText(s) {
+  if (!s) return false;
+  const len = s.length;
+  if (len < 300) return false;
+  const printable = s.replace(/[\x00-\x1F\x7F]/g, '');
+  return (printable.length / len) > 0.7;
+}
+
+function getMimeFromExtension(filename, defaultMime) {
+  const ext = filename?.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'txt') return 'text/plain';
+  if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext)) return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  return defaultMime;
+}
 
 async function auditLog(env, tenantId, userId, action, resource, resourceId, ip,
                         oldData = null, newData = null) {
@@ -1720,30 +1736,60 @@ Return JSON:
         return stub.fetch(new Request(wsUrl.toString(), request));
       }
 
-      // ════ GPT-4 VISION OCR ════════════════════════════════════════════
+      // ── Unified Document intelligence ─────────────────────────────────
       if (path === '/api/ocr' && method === 'POST') {
-        let imageBase64, mimeType, context;
+        let imageBase64, textContent, mimeType, context, filename;
+        let isTruncated = false;
         const ct = request.headers.get('Content-Type') || '';
+        
         if (ct.includes('multipart/form-data')) {
           const form = await request.formData();
           const file = form.get('file');
           if (!file) return errorResponse('No file provided');
-          mimeType = file.type || 'image/jpeg';
+          filename = file.name;
+          mimeType = getMimeFromExtension(filename, file.type || 'image/jpeg');
           context  = form.get('context') || 'document';
-          const bytes = await file.arrayBuffer();
-          const uint8 = new Uint8Array(bytes);
-          let binary = '';
-          for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
-          imageBase64 = btoa(binary);
+          
+          if (mimeType.startsWith('image/')) {
+            const bytes = await file.arrayBuffer();
+            const uint8 = new Uint8Array(bytes);
+            let binary = '';
+            for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+            imageBase64 = btoa(binary);
+          } else {
+            textContent = await file.text();
+            if (textContent.length > 12000) {
+              textContent = textContent.slice(0, 12000);
+              isTruncated = true;
+            }
+            // PDF Reliability Check
+            if (mimeType === 'application/pdf' && !looksLikeReadableText(textContent)) {
+              console.log(`[OCR] Scanned PDF detected: ${filename}`);
+              return jsonResponse({ 
+                status: "scanned_pdf_detected", 
+                message: "This PDF contains no readable text. Please upload images or a text-based PDF.",
+                action: "convert_to_image_or_upload_images" 
+              });
+            }
+          }
         } else {
           const body = await request.json();
           imageBase64 = body.imageBase64;
+          textContent = body.textContent;
           mimeType    = body.mimeType || 'image/jpeg';
           context     = body.context  || 'document';
+          if (textContent && textContent.length > 12000) {
+            textContent = textContent.slice(0, 12000);
+            isTruncated = true;
+          }
         }
-        if (!imageBase64) return errorResponse('No image data provided');
-        const result  = await extractTextFromImage(env, { imageBase64, mimeType, context });
+        
+        console.log(`[OCR] Processing ${mimeType} | Path: ${imageBase64 ? 'Vision' : 'Text'} | Len: ${textContent?.length || imageBase64?.length}`);
+        
+        if (!imageBase64 && !textContent) return errorResponse('No document content provided');
+        const result  = await analyzeDocumentContent(env, { imageBase64, textContent, mimeType, context, isTruncated });
         const claimId = url.searchParams.get('claimId');
+        
         if (claimId && result.raw_text) {
           const docId = generateUUID();
           const r2Key = `${user.tenantId}/ocr/${claimId}/${Date.now()}-ocr.json`;
@@ -1776,13 +1822,33 @@ Return JSON:
         await env.DOCS.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
         const docId = generateUUID();
         let ocrData = null;
-        if ((runOCR || isHandwritten) && file.type.startsWith('image/')) {
+        const actualMime = getMimeFromExtension(file.name, file.type);
+        const canAnalyze = (runOCR || isHandwritten) && (actualMime.startsWith('image/') || actualMime === 'application/pdf' || actualMime === 'text/plain');
+        if (canAnalyze) {
           try {
-            const bytes = await file.arrayBuffer();
-            const uint8 = new Uint8Array(bytes);
-            let binary = '';
-            for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
-            ocrData = await extractTextFromImage(env, { imageBase64: btoa(binary), mimeType: file.type, context: isHandwritten ? 'handwritten_report' : 'document' });
+            if (actualMime.startsWith('image/')) {
+              const bytes = await file.arrayBuffer();
+              const uint8 = new Uint8Array(bytes);
+              let binary = '';
+              for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+              console.log(`[Upload] Vision path: ${file.name} (${actualMime})`);
+              ocrData = await analyzeDocumentContent(env, { imageBase64: btoa(binary), mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document' });
+            } else {
+              let text = await file.text();
+              let isTruncated = false;
+              if (text.length > 12000) {
+                text = text.slice(0, 12000);
+                isTruncated = true;
+              }
+              // PDF Reliability Fallback
+              if (actualMime === 'application/pdf' && !looksLikeReadableText(text)) {
+                console.log(`[Upload] Scanned PDF fallback triggered: ${file.name}`);
+                ocrData = { status: "scanned_pdf_detected", message: "Scanned PDF (No text layer)" };
+              } else {
+                console.log(`[Upload] Text path: ${file.name} | Len: ${text.length} | Truncated: ${isTruncated}`);
+                ocrData = await analyzeDocumentContent(env, { textContent: text, mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document', isTruncated });
+              }
+            }
           } catch (e) { console.warn('[Upload OCR]', e.message); }
         }
         await env.DB.prepare(
