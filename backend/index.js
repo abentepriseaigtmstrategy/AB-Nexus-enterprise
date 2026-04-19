@@ -964,6 +964,7 @@ export default {
       }
 
       if (path.match(/^\/api\/claims\/[^\/]+$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const claimId = path.split('/').pop();
         const claim = await env.DB.prepare(
           `SELECT c.*, ic.name AS insurer_name, ic.code AS insurer_code,
@@ -985,9 +986,12 @@ export default {
         claim.pending_documents = pdocs.results;
         claim.report            = rpt;
         claim.ai_audit          = aiLog.results;
-        if (claim.warranty_breaches)  claim.warranty_breaches = JSON.parse(claim.warranty_breaches||'[]');
-        if (claim.ai_suggestions)     claim.ai_suggestions    = JSON.parse(claim.ai_suggestions||'[]');
-        if (claim.assessment_data)    claim.assessment_data   = JSON.parse(claim.assessment_data||'{}');
+        
+        try {
+          if (claim.warranty_breaches)  claim.warranty_breaches = JSON.parse(claim.warranty_breaches||'[]');
+          if (claim.ai_suggestions)     claim.ai_suggestions    = JSON.parse(claim.ai_suggestions||'[]');
+          if (claim.assessment_data)    claim.assessment_data   = JSON.parse(claim.assessment_data||'{}');
+        } catch(e) { console.warn('JSON Parse Error on Claim', claimId); }
 
         return jsonResponse({ claim });
       }
@@ -996,6 +1000,8 @@ export default {
         const d = await request.json();
         if (!d.insurer_id) return errorResponse('insurer_id is required (insurer-first architecture)');
         if (!d.department)  return errorResponse('department is required');
+
+        if (!user) return errorResponse('Unauthorized', 401);
 
         const ins = await env.DB.prepare(
           'SELECT * FROM insurance_companies WHERE id=? AND tenant_id=?'
@@ -1113,41 +1119,7 @@ export default {
         return jsonResponse({ success:true });
       }
 
-      if (path.match(/^\/api\/claims\/[^\/]+\/pending-docs\/remind$/) && method === 'POST') {
-        const claimId = path.split('/')[3];
-        const now = Date.now();
-        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-
-        const pendingDocs = await env.DB.prepare(
-          `SELECT * FROM pending_documents
-           WHERE claim_id=? AND status='pending'
-           AND (last_reminder_sent IS NULL OR last_reminder_sent < ?)`
-        ).bind(claimId, now - twoDaysMs).all();
-
-        let reminders = 0;
-        for (const doc of pendingDocs.results) {
-          await env.DB.prepare(
-            `UPDATE pending_documents
-             SET reminder_count=reminder_count+1, last_reminder_sent=?, updated_at=?
-             WHERE id=?`
-          ).bind(now, now, doc.id).run();
-
-          const claim = await env.DB.prepare('SELECT * FROM claims WHERE id=?').bind(claimId).first();
-          await env.DB.prepare(
-            `INSERT INTO notifications
-             (id,tenant_id,user_id,title,message,type,channel,link,created_at)
-             VALUES (?,?,?,?,?,?,?,?,?)`
-          ).bind(generateUUID(), user.tenantId, user.id,
-                 `📋 Doc Pending: ${doc.document_name}`,
-                 `Claim ${claim?.claim_number||claimId}: "${doc.document_name}" is still pending. Reminder #${doc.reminder_count+1}.`,
-                 'warning', 'in_app', `/claims/${claimId}`, now).run();
-
-          reminders++;
-        }
-
-        await auditLog(env, user.tenantId, user.id, 'reminders_sent', 'pending_documents', claimId, clientIP, null, { count: reminders });
-        return jsonResponse({ success:true, reminders_sent: reminders });
-      }
+      // Consolidated Reminders (Logic moved below to line 1937 handler)
 
       // ════════════════════════════════════════════════════════════════════
       // AI ACTIONS
@@ -1319,49 +1291,7 @@ Return JSON:
         return jsonResponse({ logs: logs.results });
       }
 
-      // ════════════════════════════════════════════════════════════════════
-      // DOCUMENT UPLOAD
-      // ════════════════════════════════════════════════════════════════════
-      if (path === '/api/upload' && method === 'POST') {
-        const formData = await request.formData();
-        const file = formData.get('file');
-        const claimId     = formData.get('claimId') || formData.get('entityId');
-        const docType     = formData.get('documentType') || formData.get('document_type');
-        const geoLat      = formData.get('geo_lat');
-        const geoLng      = formData.get('geo_lng');
-        const caption     = formData.get('caption');
-        const isHandwritten = formData.get('is_handwritten') === 'true';
-
-        if (!file) return errorResponse('No file uploaded', 400);
-
-        const key = `${user.tenantId}/${claimId||'general'}/${Date.now()}-${file.name}`;
-        await env.DOCS.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
-
-        const docId = generateUUID();
-        await env.DB.prepare(
-          `INSERT INTO claim_documents
-           (id,claim_id,tenant_id,filename,document_type,r2_key,file_size,mime_type,
-            uploaded_by,geo_lat,geo_lng,geo_timestamp,caption,is_handwritten_upload,created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-        ).bind(docId, claimId||null, user.tenantId, file.name, docType||null, key,
-               file.size, file.type, user.id,
-               geoLat ? parseFloat(geoLat) : null,
-               geoLng ? parseFloat(geoLng) : null,
-               geoLat ? Date.now() : null,
-               caption||null, isHandwritten?1:0, Date.now()).run();
-
-        if (claimId && docType) {
-          await env.DB.prepare(
-            `UPDATE pending_documents
-             SET status='submitted', submitted_doc_id=?, updated_at=?
-             WHERE claim_id=? AND document_type=? AND status='pending'
-             LIMIT 1`
-          ).bind(docId, Date.now(), claimId, docType).run();
-        }
-
-        return jsonResponse({ success:true, documentId:docId, key,
-                              geo_tagged: !!(geoLat && geoLng) });
-      }
+      // Consolidated Upload (Logic moved below to unified 1855 handler)
 
       if (path.match(/^\/api\/download\/[^\/]+$/) && method === 'GET') {
         const docId = path.split('/').pop();
@@ -1380,6 +1310,7 @@ Return JSON:
       // HRMS ROUTES
       // ════════════════════════════════════════════════════════════════════
       if (path === '/api/employees' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         let q = 'SELECT * FROM employees WHERE 1=1'; const p = [];
         if (user.role !== 'super_admin') { q += ' AND tenant_id=?'; p.push(user.tenantId); }
         const search = url.searchParams.get('search');
@@ -1392,7 +1323,8 @@ Return JSON:
       }
 
       if (path.match(/^\/api\/employees\/[^\/]+$/) && method === 'GET') {
-        const empId = path.split('/').pop();
+        if (!user) return errorResponse('Unauthorized', 401);
+       const empId = path.split('/').pop();
         const emp = await env.DB.prepare('SELECT * FROM employees WHERE id=?').bind(empId).first();
         if (!emp) return errorResponse('Employee not found', 404);
         const claims = await env.DB.prepare(
@@ -1402,6 +1334,7 @@ Return JSON:
       }
 
       if (path === '/api/employees' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const d = await request.json();
         const id = generateUUID();
         const code = `EMP${Date.now()}`;
@@ -1418,6 +1351,7 @@ Return JSON:
       }
 
       if (path === '/api/attendance/checkin' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const { claim_id, geo_lat, geo_lng, geo_accuracy } = await request.json();
         const emp = await env.DB.prepare('SELECT * FROM employees WHERE user_id=?').bind(user.id).first();
         if (!emp) return errorResponse('Employee record not found', 404);
@@ -1458,6 +1392,7 @@ Return JSON:
       }
 
       if (path === '/api/leave' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         let q = 'SELECT * FROM leave_requests WHERE 1=1'; const p = [];
         if (user.role !== 'super_admin') { q += ' AND tenant_id=?'; p.push(user.tenantId); }
         q += ' ORDER BY created_at DESC';
@@ -1466,6 +1401,7 @@ Return JSON:
       }
 
       if (path === '/api/leave' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const d = await request.json();
         const emp = await env.DB.prepare('SELECT * FROM employees WHERE user_id=?').bind(user.id).first();
         if (!emp) return errorResponse('Employee not found', 404);
@@ -1480,6 +1416,7 @@ Return JSON:
       }
 
       if (path.match(/^\/api\/leave\/[^\/]+\/approve$/) && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const leaveId = path.split('/')[3];
         const { approved } = await request.json();
         const emp = await env.DB.prepare('SELECT * FROM employees WHERE user_id=?').bind(user.id).first();
@@ -1490,6 +1427,7 @@ Return JSON:
       }
 
       if (path === '/api/expenses' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         let q = 'SELECT * FROM expenses WHERE 1=1'; const p = [];
         if (user.role !== 'super_admin') { q += ' AND tenant_id=?'; p.push(user.tenantId); }
         const claimId = url.searchParams.get('claim_id');
@@ -1500,6 +1438,7 @@ Return JSON:
       }
 
       if (path === '/api/expenses' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const d = await request.json();
         const emp = await env.DB.prepare('SELECT * FROM employees WHERE user_id=?').bind(user.id).first();
         if (!emp) return errorResponse('Employee not found', 404);
@@ -1514,6 +1453,7 @@ Return JSON:
       }
 
       if (path === '/api/payroll' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         let q = 'SELECT * FROM payroll WHERE 1=1'; const p = [];
         if (user.role !== 'super_admin') { q += ' AND tenant_id=?'; p.push(user.tenantId); }
         const month = url.searchParams.get('month');
@@ -1530,6 +1470,7 @@ Return JSON:
       }
 
       if (path === '/api/payroll/process' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const { month, year } = await request.json();
         const emps = await env.DB.prepare(
           "SELECT * FROM employees WHERE tenant_id=? AND status='active'"
@@ -1555,6 +1496,7 @@ Return JSON:
       }
 
       if (path === '/api/performance' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const empId = url.searchParams.get('employee_id');
         let q = `
           SELECT e.id, e.name, e.department,
@@ -1577,6 +1519,7 @@ Return JSON:
       }
 
       if (path === '/api/grievances' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         let q = 'SELECT * FROM grievances WHERE tenant_id=?'; const p = [user.tenantId];
         const claimId = url.searchParams.get('claim_id');
         if (claimId) { q += ' AND claim_id=?'; p.push(claimId); }
@@ -1586,6 +1529,7 @@ Return JSON:
       }
 
       if (path === '/api/grievances' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const d = await request.json();
         const id = generateUUID();
         const emp = await env.DB.prepare('SELECT id FROM employees WHERE user_id=?').bind(user.id).first();
@@ -1604,6 +1548,7 @@ Return JSON:
       // AI CHATBOT
       // ════════════════════════════════════════════════════════════════════
       if (path === '/api/chat' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const { message, platform, sessionId, claimId } = await request.json();
 
         let contextMsg = message;
@@ -1635,6 +1580,7 @@ Return JSON:
       }
 
       if (path === '/api/chat/history' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const sessionId = url.searchParams.get('sessionId');
         const platform  = url.searchParams.get('platform');
         const history = await env.DB.prepare(
@@ -1647,6 +1593,7 @@ Return JSON:
       // NOTIFICATIONS
       // ════════════════════════════════════════════════════════════════════
       if (path === '/api/notifications' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const rows = await env.DB.prepare(
           'SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50'
         ).bind(user.id).all();
@@ -1664,6 +1611,7 @@ Return JSON:
       // DASHBOARD STATS
       // ════════════════════════════════════════════════════════════════════
       if (path === '/api/dashboard/stats' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const platform = url.searchParams.get('platform');
         let stats = {};
         if (platform === 'surveyor') {
@@ -1741,6 +1689,8 @@ Return JSON:
       // ADMIN ROUTES
       // ════════════════════════════════════════════════════════════════════
       if (path.startsWith('/api/admin/')) {
+        if (!user) return errorResponse('Unauthorized', 401);
+        if (user.role !== 'super_admin' && user.role !== 'admin') return errorResponse('Forbidden', 403);
         if (user.role !== 'super_admin') return errorResponse('Super admin required', 403);
 
         if (path === '/api/admin/tenants' && method === 'GET') {
@@ -1970,6 +1920,7 @@ Return JSON:
       // ════════════════════════════════════════════════════════════════════
 
       if (path === '/api/surveyor-companies' && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
         if (!hasPermission(user.role, 'admin')) return errorResponse('Admin access required', 403);
         const d = await request.json();
         if (!d.name) return errorResponse('Company name is required', 400);
@@ -1989,6 +1940,7 @@ Return JSON:
       }
 
       if (path === '/api/surveyor-companies' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const isActive = url.searchParams.get('is_active');
         let q = 'SELECT * FROM surveyor_companies WHERE tenant_id=?';
         const p = [user.tenantId];
@@ -2073,6 +2025,7 @@ Return JSON:
       // ════════════════════════════════════════════════════════════════════
 
       if (path.match(/^\/api\/claims\/[^\/]+\/reports$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const claimId = path.split('/')[3];
         const claim   = await env.DB.prepare('SELECT id FROM claims WHERE id=? AND tenant_id=?').bind(claimId, user.tenantId).first();
         if (!claim) return errorResponse('Claim not found', 404);
@@ -2224,6 +2177,7 @@ Return ONLY valid JSON (no markdown):
       // ════════════════════════════════════════════════════════════════════
 
       if (path.match(/^\/api\/claims\/[^\/]+\/checklist$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const claimId = path.split('/')[3];
         const claim = await env.DB.prepare('SELECT id FROM claims WHERE id=? AND tenant_id=?').bind(claimId, user.tenantId).first();
         if (!claim) return errorResponse('Claim not found', 404);
@@ -2271,6 +2225,7 @@ Return ONLY valid JSON (no markdown):
       // ════════════════════════════════════════════════════════════════════
 
       if (path.match(/^\/api\/claims\/[^\/]+\/calculation$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const claimId = path.split('/')[3];
         const calc = await env.DB.prepare('SELECT * FROM fsr_calculations WHERE claim_id=?').bind(claimId).first();
         return jsonResponse({ success: true, calculation: calc || null });
@@ -2343,6 +2298,7 @@ Return ONLY valid JSON (no markdown):
       // ════════════════════════════════════════════════════════════════════
 
       if (path === '/api/vault' && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const q           = url.searchParams.get('q');
         const reportType  = url.searchParams.get('report_type');
         const status      = url.searchParams.get('status');
@@ -2378,6 +2334,7 @@ Return ONLY valid JSON (no markdown):
 
       // GET /api/claims/:id/deadlines — fetch all stage deadlines for a claim
       if (path.match(/^\/api\/claims\/[^\/]+\/deadlines$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const claimId = path.split('/')[3];
         const rows = await env.DB.prepare(
           'SELECT * FROM stage_deadlines WHERE claim_id=? AND tenant_id=? ORDER BY created_at ASC'
@@ -2441,6 +2398,7 @@ Return ONLY valid JSON (no markdown):
 
       // GET /api/claims/:id/snapshots/:stage — list all snapshots for a stage
       if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const parts = path.split('/');
         const claimId = parts[3];
         const stage   = parts[5];
@@ -2480,6 +2438,7 @@ Return ONLY valid JSON (no markdown):
 
       // GET /api/claims/:id/snapshots/:stage/latest — restore latest snapshot data
       if (path.match(/^\/api\/claims\/[^\/]+\/snapshots\/[^\/]+\/latest$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
         const parts = path.split('/');
         const claimId = parts[3];
         const stage   = parts[5];
