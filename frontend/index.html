@@ -189,6 +189,13 @@
     background: var(--amber-glow);
     border: 1px solid rgba(232,160,32,0.12);
     border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .demo-box:hover {
+    background: rgba(232,160,32,0.1);
+    border-color: rgba(232,160,32,0.25);
+    transform: translateY(-1px);
   }
   .demo-box-label {
     font-family: var(--mono);
@@ -197,6 +204,18 @@
     text-transform: uppercase;
     color: var(--text-ter);
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .demo-fill-hint {
+    font-size: 8px;
+    color: var(--amber);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .demo-box:hover .demo-fill-hint {
+    opacity: 1;
   }
   .demo-row {
     display: flex;
@@ -254,11 +273,11 @@
     <div class="error-box" id="errorBox"></div>
   </div>
 
-  <div class="demo-box">
-    <div class="demo-box-label">Demo Credentials</div>
+  <div class="demo-box" onclick="fillDemo()" title="Click to auto-fill credentials">
+    <div class="demo-box-label">Demo Credentials <span class="demo-fill-hint">— click to fill ↗</span></div>
     <div class="demo-row">
       <span class="demo-key">Email</span>
-      <span class="demo-val"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="80e1e4ede9eec0ede3ece1f2e5eef3aee3efed">[email&#160;protected]</a></span>
+      <span class="demo-val">surveyor@mclarens.com</span>
     </div>
     <div class="demo-row">
       <span class="demo-key">Password</span>
@@ -275,14 +294,10 @@
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
   const API_URL = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
 
-  // SW cleanup disabled — blanket unregister was triggering controllerchange
-  // in the dashboard, causing an infinite reload loop on Cloudflare Pages (HTTPS).
-  // Individual SW updates are handled gracefully by the dashboard itself.
-
-  // Already logged in → go to home screen (not directly to dashboard)
+  // Already logged in → go to home screen (Command Center) first
   (function() {
     if (localStorage.getItem('nexus_token')) {
       window.location.replace('home.html');
@@ -293,6 +308,17 @@
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') doLogin();
   });
+
+  // Click-to-fill demo credentials
+  function fillDemo() {
+    document.getElementById('email').value = 'surveyor@mclarens.com';
+    document.getElementById('password').value = 'Admin@123';
+    document.getElementById('email').focus();
+    // Flash the demo box
+    var box = document.querySelector('.demo-box');
+    box.style.background = 'rgba(232,160,32,0.2)';
+    setTimeout(function() { box.style.background = ''; }, 400);
+  }
 
   async function doLogin() {
     var email    = document.getElementById('email').value.trim();
@@ -321,12 +347,12 @@
       if (data.success) {
         localStorage.setItem('nexus_token', data.token);
         localStorage.setItem('nexus_user',  JSON.stringify(data.user));
-        // Route by role
+        // Route by role — always go to Command Center first for surveyors
         var role = data.user && data.user.role;
         if (role === 'hr_admin' || role === 'employee') {
           window.location.href = 'hrms-dashboard.html';
         } else {
-          // Surveyor/admin → go to home screen first (claim-centric flow)
+          // Surveyor/admin → Command Center (home.html) first
           window.location.href = 'home.html';
         }
       } else {
@@ -337,7 +363,7 @@
     } catch (err) {
       showError('Connection failed. Check your network and try again.');
       btn.disabled    = false;
-
+      btn.textContent = 'SIGN IN →';
     }
   }
 
