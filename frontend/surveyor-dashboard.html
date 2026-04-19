@@ -707,9 +707,9 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 .panel-toggle.left{left:0;}
 .panel-toggle.right{right:0;left:auto;border-radius:8px 0 0 8px;border:1px solid var(--border2);border-right:none;}
 .panel-toggle.active{background:var(--amber-dim);color:var(--amber);border-color:rgba(232,160,32,0.3);}
-/* Hide toggle buttons in pipeline mode (pipeline has its own nav) */
-.shell.pipeline-mode ~ .panel-toggle{display:none;}
-.shell.pipeline-mode .sidebar,.shell.pipeline-mode .right-panel{display:none !important;}
+/* Ensure toggle buttons remain available in all modes */
+.panel-toggle{ z-index: 220; }
+
 
 /* ══════════════════════════════════════════════════════════════════════════
    AI STEP-BY-STEP ASSISTANT — Floating panel
