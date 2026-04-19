@@ -238,23 +238,34 @@ export default {
     ];
 
     let user = null; let sessionToken = null;
-    if (!publicRoutes.includes(path) && !path.startsWith('/api/public/')) {
-      const authHeader = request.headers.get('Authorization');
-      if (!authHeader) return errorResponse('Unauthorized: No token', 401);
-      sessionToken = authHeader.split(' ')[1];
-      if (!sessionToken) return errorResponse('Unauthorized: Bad token format', 401);
-      user = await verifyToken(sessionToken, env.JWT_SECRET);
-      if (!user) return errorResponse('Unauthorized: Invalid or expired token', 401);
-      // Normalize: JWT stores tenant_id but code uses tenantId — fix both
-      user.tenantId = user.tenantId || user.tenant_id;
-      user.id       = user.id       || user.userId;
-      const session = await env.DB.prepare(
-        'SELECT * FROM sessions WHERE id = ? AND expires_at > ?'
-      ).bind(sessionToken, Date.now()).first();
-      if (!session) return errorResponse('Unauthorized: Session expired', 401);
-    }
 
     try {
+      // ── Authentication & Auth Guard ─────────────────────────────────────────
+      if (!publicRoutes.includes(path) && !path.startsWith('/api/public/')) {
+        const authHeader = request.headers.get('Authorization');
+        const queryToken = url.searchParams.get('token');
+
+        if (authHeader) {
+          sessionToken = authHeader.split(' ')[1];
+        } else if (queryToken) {
+          sessionToken = queryToken;
+        }
+
+        if (!sessionToken) return errorResponse('Unauthorized: No token', 401);
+
+        user = await verifyToken(sessionToken, env.JWT_SECRET);
+        if (!user) return errorResponse('Unauthorized: Invalid or expired token', 401);
+
+        // Normalize user fields
+        user.tenantId = user.tenantId || user.tenant_id;
+        user.id       = user.id       || user.userId;
+
+        const session = await env.DB.prepare(
+          'SELECT * FROM sessions WHERE id = ? AND expires_at > ?'
+        ).bind(sessionToken, Date.now()).first();
+        if (!session) return errorResponse('Unauthorized: Session expired', 401);
+      }
+
       // ────────── HEALTH ──────────────────────────────────────────────────
       if (path === '/api/health' && method === 'GET')
         return jsonResponse({ status: 'healthy', version: '5.0', timestamp: Date.now() });
