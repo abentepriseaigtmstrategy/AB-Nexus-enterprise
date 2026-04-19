@@ -1,4 +1,4 @@
-﻿// backend/auth.js — McLarens Nexus Enterprise v5.0
+// backend/auth.js — McLarens Nexus Enterprise v5.0
 // Cloudflare Worker auth helpers — Web Crypto API only (no Node.js)
 
 function b64url(buf) {
