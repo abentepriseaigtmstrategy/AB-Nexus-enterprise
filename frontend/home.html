@@ -377,6 +377,19 @@
   </div>
 
   <div class="action-grid">
+
+    <!-- Continue Where You Left Off (dynamic) -->
+    <div id="continueCard" class="action-card" style="display:none;grid-column:1/-1;background:linear-gradient(135deg,rgba(34,196,160,0.06),rgba(91,156,246,0.04));border:1px solid rgba(34,196,160,0.2);cursor:pointer;" onclick="continueLastClaim()">
+      <div class="card-icon">⤴️</div>
+      <div class="card-content">
+        <div class="card-title" style="color:var(--teal);">Continue Where You Left Off</div>
+        <div class="card-desc" id="continueDesc">Loading your most recent claim...</div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;" id="continuePills"></div>
+      </div>
+      <div class="card-badge" style="background:rgba(34,196,160,0.12);color:var(--teal);border-color:rgba(34,196,160,0.3);"><div class="dot" style="background:var(--teal);box-shadow:0 0 6px var(--teal);"></div>RESUME</div>
+      <div class="card-arrow" style="color:var(--teal);">→</div>
+    </div>
+
     <!-- New Claim -->
     <a class="action-card primary" href="surveyor-dashboard.html?new=1" id="btnNewClaim">
       <div class="card-icon">📋</div>
@@ -398,6 +411,18 @@
       <div class="card-badge"><div class="dot"></div>ALL CLAIMS</div>
       <div class="card-arrow">→</div>
     </a>
+
+    <!-- Upload JIR Quick Action -->
+    <div class="action-card" style="cursor:pointer;border-color:rgba(232,160,32,0.2);background:rgba(232,160,32,0.03);" onclick="homeUploadJIR()">
+      <div class="card-icon">📤</div>
+      <div class="card-content">
+        <div class="card-title" style="color:var(--amber);">Upload JIR</div>
+        <div class="card-desc">Quickly scan a handwritten Joint Inspection Report. AI-OCR extracts all data and pre-fills the JIR form automatically.</div>
+      </div>
+      <div class="card-badge" style="background:var(--amber-dim);color:var(--amber);border-color:rgba(232,160,32,0.3);"><div class="dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber);"></div>AI-OCR</div>
+      <div class="card-arrow">→</div>
+    </div>
+
   </div>
 
   <!-- Quick stats (populated live) -->
@@ -493,6 +518,58 @@
     localStorage.clear();
     sessionStorage.clear();
     window.location.href = 'index.html';
+  }
+
+  // Continue Where You Left Off Logic
+  var _lastClaim = null;
+  (function loadLastClaim() {
+    try {
+      const stored = localStorage.getItem('nexus_last_claim');
+      if (stored) {
+        _lastClaim = JSON.parse(stored);
+        
+        // If older than 24 hours (86400000 ms), ignore it
+        if (Date.now() - _lastClaim.timestamp > 86400000) return;
+        
+        if (_lastClaim.claimId) {
+          document.getElementById('continueCard').style.display = 'block';
+          
+          let desc = `Claim ${_lastClaim.claimNumber || '—'}`;
+          if (_lastClaim.insuredName) desc += ` · ${_lastClaim.insuredName}`;
+          document.getElementById('continueDesc').textContent = desc;
+
+          let pillsHTML = '';
+          if (_lastClaim.insurerName) {
+            pillsHTML += `<span class="ccc-pill insurer" style="background:#1e2330;border:1px solid rgba(255,255,255,0.12);padding:3px 8px;border-radius:4px;font-family:monospace;font-size:9px;">${_lastClaim.insurerName}</span>`;
+          }
+          if (_lastClaim.department) {
+            pillsHTML += `<span class="ccc-pill dept" style="background:#1e2330;border:1px solid rgba(255,255,255,0.12);padding:3px 8px;border-radius:4px;font-family:monospace;font-size:9px;">${_lastClaim.department.toUpperCase()}</span>`;
+          }
+          if (_lastClaim.stage) {
+            pillsHTML += `<span class="ccc-pill status" style="background:rgba(34,196,160,0.15);color:#22c4a0;border:1px solid rgba(34,196,160,0.3);padding:3px 8px;border-radius:4px;font-family:monospace;font-size:9px;">${_lastClaim.stage.toUpperCase()}${_lastClaim.module === 'pipeline' ? ' (PIPELINE)' : ''}</span>`;
+          }
+          if (_lastClaim.focusMode) {
+             pillsHTML += `<span class="ccc-pill status" style="background:rgba(232,160,32,0.15);color:#e8a020;border:1px solid rgba(232,160,32,0.3);padding:3px 8px;border-radius:4px;font-family:monospace;font-size:9px;">👁 FOCUS MODE</span>`;
+          }
+          document.getElementById('continuePills').innerHTML = pillsHTML;
+        }
+      }
+    } catch(e) { console.error('Failed to parse last claim', e); }
+  })();
+
+  function continueLastClaim() {
+    if (!_lastClaim || !_lastClaim.claimId) return;
+    let url = `surveyor-dashboard.html?claim=${_lastClaim.claimId}`;
+    if (_lastClaim.module) url += `&module=${_lastClaim.module}`;
+    if (_lastClaim.stage) url += `&stage=${_lastClaim.stage}`;
+    if (_lastClaim.focusMode) {
+      sessionStorage.setItem('nexus_focus_mode', 'true');
+    }
+    window.location.href = url;
+  }
+
+  function homeUploadJIR() {
+    window.location.href = `surveyor-dashboard.html?new=1&upload_jir=1`;
   }
 </script>
 
