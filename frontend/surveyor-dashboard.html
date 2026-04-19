@@ -2178,6 +2178,11 @@ body.focus-mode .focus-save-bar{display:flex !important;}
 // JIR = single source of truth. claimState drives all downstream.
 // ===================================================================
 const API  = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
+// ── Authentication Guard ─────────────────────────────────────────────
+if (!localStorage.getItem('nexus_token')) {
+  window.location.replace('index.html');
+}
+
 const auth = { token: localStorage.getItem('nexus_token') || '', user: null };
 
 let state = {
@@ -2402,11 +2407,21 @@ async function api(method, path, body, isForm) {
   }
 })();
 
-function doLogout() {
+async function doLogout() {
   if (!confirm('Sign out of SurveyorOS?')) return;
-  api('POST', '/api/auth/logout');
-  localStorage.clear(); sessionStorage.clear();
-  window.location.href = 'index.html';
+  try { 
+    // Dispatch server-side logout but don't wait for completion
+    api('POST', '/api/auth/logout').catch(function(){}); 
+  } catch(e) {}
+  
+  // Clear storage immediately to prevent re-auth loops
+  localStorage.removeItem('nexus_token');
+  localStorage.removeItem('nexus_user');
+  localStorage.clear(); 
+  sessionStorage.clear();
+
+  // Force redirect to login page
+  window.location.replace('index.html');
 }
 
 // ── Clock ─────────────────────────────────────────────────────────────
@@ -5570,7 +5585,7 @@ function renderCCC() {
     var dotLabel = stt === 'submitted' ? '✓' : stt === 'saved' ? '●' : (i+1);
     var connCls  = (i < stages.length - 1) ? (stt === 'submitted' ? ' done' : '') : '';
     pipelineHTML +=
-      '<div class="ccc-stage" data-ccc-stage="' + s.key + '" title="Open ' + s.label + '">' +
+      '<div class="ccc-stage" onclick="openStageFromCCC('' + s.key + '')" title="Open ' + s.label + '">' +
         '<div class="ccc-stage-inner">' +
           '<div class="ccc-stage-dot ' + cls + '">' + dotLabel + '</div>' +
           '<div class="ccc-stage-lbl ' + cls + '">' + s.label + '</div>' +
@@ -5579,11 +5594,6 @@ function renderCCC() {
       (i < stages.length - 1 ? '<div class="ccc-connector' + connCls + '"></div>' : '');
   });
   document.getElementById('ccc-pipeline').innerHTML = pipelineHTML;
-  // Event delegation - handles data-ccc-stage clicks cleanly
-  document.getElementById('ccc-pipeline').onclick = function(e) {
-    var el = e.target.closest('[data-ccc-stage]');
-    if (el) openStageFromCCC(el.getAttribute('data-ccc-stage'));
-  };
 
   // ── Next action logic ─────────────────────────────────────────────
   var title, desc, btns;
@@ -5598,7 +5608,7 @@ function renderCCC() {
     // Claim complete
     title = '🏆 Claim Complete';
     desc  = 'All reports submitted. Claim is ' + (stEl.textContent) + '.';
-    btns  = '<button class="btn-manual-fill" data-ccc-action="tab-reports">View Reports</button>' +
+    btns  = '<button class="btn-manual-fill" onclick="switchTab('reports',document.querySelector('.tab[onclick*=reports]'))">View Reports</button>' +
             '<button class="btn-manual-fill" onclick="generateReport()">📋 Export Final Report</button>';
   } else if (currentStage === 'jir' && claimState.jir.status === 'draft') {
     // JIR not started — most common first-visit state
@@ -5608,14 +5618,14 @@ function renderCCC() {
       '<button class="btn-extract-hero" onclick="cccToggleDropZone()">' +
         '<span class="extract-icon">📤</span> Upload Handwritten Notes' +
       '</button>' +
-      '<button class="btn-manual-fill" onclick="openStageFromCCC(&quot;jir&quot;)">' +
+      '<button class="btn-manual-fill" onclick="openStageFromCCC('jir')">' +
         '✏ Fill JIR Manually' +
       '</button>';
   } else if (claimState.jir.status === 'saved' && claimState.spot.status === 'draft') {
     title = '🔍 Proceed to Spot Report';
     desc  = 'JIR saved ✓. Next: complete the Spot Report with physical survey findings and loss quantification.';
     btns  =
-      '<button class="btn-extract-hero" onclick="openStageFromCCC(&quot;spot&quot;)">' +
+      '<button class="btn-extract-hero" onclick="openStageFromCCC('spot')">' +
         '<span class="extract-icon">🔍</span> Open Spot Report' +
       '</button>' +
       '<button class="btn-manual-fill" onclick="cccToggleDropZone()">' +
@@ -5626,7 +5636,7 @@ function renderCCC() {
     title = '📊 Continue — ' + stgName + ' Report';
     desc  = 'JIR submitted ✓. Complete the ' + stgName + ' to keep the claim moving.';
     btns  =
-      '<button class="btn-extract-hero" data-ccc-action="stage-' + currentStage + '">' +
+      '<button class="btn-extract-hero" onclick="openStageFromCCC('' + currentStage + '')">' +
         '<span class="extract-icon">→</span> Open ' + stgName + ' Report' +
       '</button>' +
       '<button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>';
@@ -5636,7 +5646,7 @@ function renderCCC() {
     title = '📊 Continue — ' + stageName + ' Report';
     desc  = savedCount + ' of 6 reports complete. Open the pipeline to continue where you left off.';
     btns  =
-      '<button class="btn-extract-hero" data-ccc-action="stage-' + currentStage + '">' +
+      '<button class="btn-extract-hero" onclick="openStageFromCCC('' + currentStage + '')">' +
         '<span class="extract-icon">→</span> Continue ' + stageName +
       '</button>' +
       '<button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>';
@@ -5674,7 +5684,7 @@ function renderCCClaimSummary() {
     </div>`;
   }
   return `
-    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'intake\\']')?.click()">
+    <div class="cc-card" onclick="navigateToTab('intake')">
       <div class="cc-card-header">
         <div class="cc-card-icon" style="color:var(--amber);">📑</div>
         <div class="cc-card-title">Claim Summary</div>
@@ -5709,7 +5719,7 @@ function renderCCSlaTat() {
   }
   
   return `
-    <div class="cc-card" onclick="if(document.getElementById('dlOverrideModal')) pip_closeModal('dlOverrideModal')">
+    <div class="cc-card">
       <div class="cc-card-header">
         <div class="cc-card-icon" style="color:var(--red);">⏱</div>
         <div class="cc-card-title">SLA & Deadlines</div>
@@ -5739,7 +5749,7 @@ function renderCCReports() {
   });
   let repPct = Math.round((compCount / stages.length) * 100);
   return `
-    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'reports\\']')?.click()">
+    <div class="cc-card" onclick="navigateToTab('reports')">
       <div class="cc-card-header">
         <div class="cc-card-icon" style="color:var(--purple);">📊</div>
         <div class="cc-card-title">Reports Progress</div>
@@ -5769,7 +5779,7 @@ function renderCCDocuments() {
   let ocrCount = docs.filter(d => d.ocr_status === 'completed').length;
   
   return `
-    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'vault\\']')?.click()">
+    <div class="cc-card" onclick="navigateToTab('vault')">
       <div class="cc-card-header">
         <div class="cc-card-icon" style="color:var(--teal);">📁</div>
         <div class="cc-card-title">Documents</div>
@@ -5801,7 +5811,7 @@ function renderCCActivity() {
   }
   
   return `
-    <div class="cc-card" onclick="document.querySelector('.tab[onclick*=\\'timeline\\']')?.click();loadClaimTimeline();">
+    <div class="cc-card" onclick="navigateToTab('timeline');">
       <div class="cc-card-header">
         <div class="cc-card-icon" style="color:var(--blue);">🕐</div>
         <div class="cc-card-title">Activity & Audit</div>
@@ -5812,6 +5822,15 @@ function renderCCActivity() {
         <div class="cc-stat-row"><span class="cc-stat-label">Timeline</span><span class="cc-stat-val blue">View Full Log →</span></div>
       </div>
     </div>`;
+}
+
+// ── Navigate to a tab by name ─────────────────────────────────────────
+function navigateToTab(tabName) {
+  var tab = document.querySelector('.tab[onclick*="' + tabName + '"]');
+  if (tab) tab.click();
+  if (tabName === 'timeline') {
+    setTimeout(function() { if (typeof loadClaimTimeline === 'function') loadClaimTimeline(); }, 50);
+  }
 }
 
 // ── Open a pipeline stage directly from command card ──────────────────
@@ -6935,6 +6954,7 @@ async function laWs_aiGenerate() {
     // Note: This direct call was replaced by the backend AI routing fix 
     // to ensure provider consistency and security. See fixLaWsAI() at bottom.
     var data = { content: [{ text: '{}' }] };
+    var parsed = { items: [], deductions: {}, basis: '' };
 
     _laWsItems = (parsed.items || []).map(function(item) {
       return {
