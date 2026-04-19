@@ -5584,14 +5584,15 @@ function renderCCC() {
     var cls = stt === 'submitted' ? 'done' : stt === 'saved' ? 'saved' : s.key === currentStage ? 'current' : '';
     var dotLabel = stt === 'submitted' ? '✓' : stt === 'saved' ? '●' : (i+1);
     var connCls  = (i < stages.length - 1) ? (stt === 'submitted' ? ' done' : '') : '';
-    pipelineHTML +=
-      '<div class="ccc-stage" onclick="openStageFromCCC('' + s.key + '')" title="Open ' + s.label + '">' +
-        '<div class="ccc-stage-inner">' +
-          '<div class="ccc-stage-dot ' + cls + '">' + dotLabel + '</div>' +
-          '<div class="ccc-stage-lbl ' + cls + '">' + s.label + '</div>' +
-        '</div>' +
-      '</div>' +
-      (i < stages.length - 1 ? '<div class="ccc-connector' + connCls + '"></div>' : '');
+    pipelineHTML += `
+      <div class="ccc-stage" onclick="openStageFromCCC('${s.key}')" title="Open ${s.label}">
+        <div class="ccc-stage-inner">
+          <div class="ccc-stage-dot ${cls}">${dotLabel}</div>
+          <div class="ccc-stage-lbl ${cls}">${s.label}</div>
+        </div>
+      </div>
+      ${i < stages.length - 1 ? `<div class="ccc-connector${connCls}"></div>` : ''}
+    `;
   });
   document.getElementById('ccc-pipeline').innerHTML = pipelineHTML;
 
@@ -5608,48 +5609,54 @@ function renderCCC() {
     // Claim complete
     title = '🏆 Claim Complete';
     desc  = 'All reports submitted. Claim is ' + (stEl.textContent) + '.';
-    btns  = '<button class="btn-manual-fill" onclick="switchTab('reports',document.querySelector('.tab[onclick*=reports]'))">View Reports</button>' +
-            '<button class="btn-manual-fill" onclick="generateReport()">📋 Export Final Report</button>';
+    btns  = `
+      <button class="btn-manual-fill" onclick="navigateToTab('reports')">View Reports</button>
+      <button class="btn-manual-fill" onclick="generateReport()">📋 Export Final Report</button>
+    `;
   } else if (currentStage === 'jir' && claimState.jir.status === 'draft') {
     // JIR not started — most common first-visit state
     title = '📋 Start JIR — Joint Inspection Report';
     desc  = 'Fill in your field observations from the survey visit. Upload your handwritten notes for instant AI extraction, or fill the form manually.';
-    btns  =
-      '<button class="btn-extract-hero" onclick="cccToggleDropZone()">' +
-        '<span class="extract-icon">📤</span> Upload Handwritten Notes' +
-      '</button>' +
-      '<button class="btn-manual-fill" onclick="openStageFromCCC('jir')">' +
-        '✏ Fill JIR Manually' +
-      '</button>';
+    btns  = `
+      <button class="btn-extract-hero" onclick="cccToggleDropZone()">
+        <span class="extract-icon">📤</span> Upload Handwritten Notes
+      </button>
+      <button class="btn-manual-fill" onclick="openStageFromCCC('jir')">
+        ✏ Fill JIR Manually
+      </button>
+    `;
   } else if (claimState.jir.status === 'saved' && claimState.spot.status === 'draft') {
     title = '🔍 Proceed to Spot Report';
     desc  = 'JIR saved ✓. Next: complete the Spot Report with physical survey findings and loss quantification.';
-    btns  =
-      '<button class="btn-extract-hero" onclick="openStageFromCCC('spot')">' +
-        '<span class="extract-icon">🔍</span> Open Spot Report' +
-      '</button>' +
-      '<button class="btn-manual-fill" onclick="cccToggleDropZone()">' +
-        '📤 Upload Spot Notes' +
-      '</button>';
+    btns  = `
+      <button class="btn-extract-hero" onclick="openStageFromCCC('spot')">
+        <span class="extract-icon">🔍</span> Open Spot Report
+      </button>
+      <button class="btn-manual-fill" onclick="cccToggleDropZone()">
+        📤 Upload Spot Notes
+      </button>
+    `;
   } else if (claimState.jir.status === 'submitted' && claimState.spot.status !== 'submitted') {
     var stgName = currentStage.toUpperCase();
     title = '📊 Continue — ' + stgName + ' Report';
     desc  = 'JIR submitted ✓. Complete the ' + stgName + ' to keep the claim moving.';
-    btns  =
-      '<button class="btn-extract-hero" onclick="openStageFromCCC('' + currentStage + '')">' +
-        '<span class="extract-icon">→</span> Open ' + stgName + ' Report' +
-      '</button>' +
-      '<button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>';
+    btns  = `
+      <button class="btn-extract-hero" onclick="openStageFromCCC('${currentStage}')">
+        <span class="extract-icon">→</span> Open ${stgName} Report
+      </button>
+      <button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>
+    `;
   } else {
     // Generic: in-progress state
     var stageName = (firstPending ? firstPending.label : 'FSR');
     title = '📊 Continue — ' + stageName + ' Report';
     desc  = savedCount + ' of 6 reports complete. Open the pipeline to continue where you left off.';
-    btns  =
-      '<button class="btn-extract-hero" onclick="openStageFromCCC('' + currentStage + '')">' +
-        '<span class="extract-icon">→</span> Continue ' + stageName +
-      '</button>' +
-      '<button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>';
+    btns  = `
+      <button class="btn-extract-hero" onclick="openStageFromCCC('${currentStage}')">
+        <span class="extract-icon">→</span> Continue ${stageName}
+      </button>
+      <button class="btn-manual-fill" onclick="cccToggleDropZone()">📤 Extract from Notes</button>
+    `;
   }
 
   document.getElementById('ccc-nextTitle').innerHTML = title;
