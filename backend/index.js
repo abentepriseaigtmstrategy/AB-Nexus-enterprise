@@ -1697,6 +1697,47 @@ Return JSON:
       }
 
       // ════════════════════════════════════════════════════════════════════
+      // ════ SYSTEM STATUS / DIAGNOSTICS ══════════════════════════════════
+      if (path === '/api/system/status' && method === 'GET') {
+        const status = {
+          timestamp: new Date().toISOString(),
+          environment: env.ENVIRONMENT || 'unknown',
+          bindings: {
+            db: !!env.DB,
+            realtime_hub: !!env.REALTIME_HUB,
+            docs: !!env.DOCS,
+            ai: !!env.AI,
+            openai_key: !!env.OPENAI_API_KEY
+          },
+          database: { initialized: false, error: null },
+          realtime: { status: 'unknown' }
+        };
+
+        if (env.DB) {
+          try {
+            const result = await env.DB.prepare('SELECT count(*) as count FROM users').first();
+            status.database.initialized = true;
+            status.database.userCount = result.count;
+          } catch (e) {
+            status.database.error = e.message;
+          }
+        }
+
+        if (env.REALTIME_HUB) {
+          try {
+            const doId = env.REALTIME_HUB.idFromName('system-test');
+            status.realtime.status = 'ready';
+          } catch (e) {
+            status.realtime.status = 'error';
+            status.realtime.error = e.message;
+          }
+        } else {
+          status.realtime.status = 'missing_binding';
+        }
+
+        return jsonResponse(status);
+      }
+
       // ADMIN ROUTES
       // ════════════════════════════════════════════════════════════════════
       if (path.startsWith('/api/admin/')) {
@@ -1726,14 +1767,18 @@ Return JSON:
       // ════ WEBSOCKET UPGRADE ═══════════════════════════════════════════
       if (path === '/api/realtime' && request.headers.get('Upgrade') === 'websocket') {
         if (!user) return errorResponse('Unauthorized', 401);
-        if (!env.REALTIME_HUB) return errorResponse('Real-time not configured', 503);
-        const doId = env.REALTIME_HUB.idFromName(user.tenantId);
-        const stub = env.REALTIME_HUB.get(doId);
-        const wsUrl = new URL(request.url);
-        wsUrl.searchParams.set('userId', user.id);
-        wsUrl.searchParams.set('tenantId', user.tenantId);
-        wsUrl.searchParams.set('role', user.role);
-        return stub.fetch(new Request(wsUrl.toString(), request));
+        if (!env.REALTIME_HUB) return errorResponse('Durable Object REALTIME_HUB not bound. Paid plan required for WebSockets.', 503);
+        try {
+          const doId = env.REALTIME_HUB.idFromName(user.tenantId);
+          const stub = env.REALTIME_HUB.get(doId);
+          const wsUrl = new URL(request.url);
+          wsUrl.searchParams.set('userId', user.id);
+          wsUrl.searchParams.set('tenantId', user.tenantId);
+          wsUrl.searchParams.set('role', user.role);
+          return stub.fetch(new Request(wsUrl.toString(), request));
+        } catch (e) {
+          return errorResponse(`WebSocket Upgrade Failed: ${e.message}`, 500);
+        }
       }
 
       // ── Unified Document intelligence ─────────────────────────────────
@@ -2512,13 +2557,27 @@ Return ONLY valid JSON (no markdown):
     } catch (error) {
       console.error('API Error:', error);
       let detail = error.message;
-      // Binding checks for easier user debugging
-      if (!env.DB) detail = 'D1 Database "DB" binding missing in Cloudflare.';
-      else if (!env.REALTIME_HUB) detail = 'Durable Object "REALTIME_HUB" binding missing in Cloudflare.';
-      else if (!env.DOCS) detail = 'R2 Bucket "DOCS" binding missing in Cloudflare.';
-      else if (!env.OPENAI_API_KEY) detail = 'Environment variable "OPENAI_API_KEY" missing in Cloudflare.';
       
-      return errorResponse('Internal server error: ' + detail, 500);
+      // Proactive Binding Resolution logic
+      const missing = [];
+      if (!env.DB) missing.push('D1 Database "DB"');
+      if (!env.REALTIME_HUB) missing.push('Durable Object "REALTIME_HUB"');
+      if (!env.DOCS) missing.push('R2 Bucket "DOCS"');
+      if (!env.OPENAI_API_KEY) missing.push('Secret "OPENAI_API_KEY"');
+      
+      if (missing.length > 0) {
+        detail = `REQUIRED BINDINGS MISSING: ${missing.join(', ')}. Please check your Cloudflare Dashboard or wrangler.toml.`;
+      } else if (error.message.includes('no such table')) {
+        detail = `DATABASE NOT INITIALIZED: Table missing. Run "npx wrangler d1 execute ab-nexus-db --remote --file=./schema.sql" to setup tables. Original: ${error.message}`;
+      }
+
+      return jsonResponse({
+        error: 'Internal Server Error',
+        detail: detail,
+        timestamp: new Date().toISOString(),
+        path: path,
+        status: 500
+      }, 500);
     }
   },
 
