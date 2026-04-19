@@ -1,4 +1,4 @@
-﻿// backend/openai-chat.js — McLarens Nexus Enterprise v5.0
+// backend/openai-chat.js — McLarens Nexus Enterprise v5.0
 // GPT-4o Vision OCR + Insurer-aware AI + Structured breach detection
 
 const OPENAI_BASE = 'https://api.openai.com/v1';
