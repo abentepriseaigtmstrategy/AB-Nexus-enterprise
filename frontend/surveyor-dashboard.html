@@ -413,7 +413,7 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
   background:var(--bg1);
   border:1px solid var(--border2);
   border-radius:14px;
-  overflow:hidden;
+  overflow:visible;  /* FIX: was hidden — blocked button clicks */
   margin-bottom:18px;
   animation: cardIn 0.3s ease;
 }
@@ -428,6 +428,8 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
   padding:16px 20px;
   background:linear-gradient(135deg,rgba(232,160,32,0.07),rgba(34,196,160,0.04));
   border-bottom:1px solid var(--border);
+  border-radius:13px 13px 0 0;
+  overflow:hidden;
 }
 .ccc-avatar {
   width:44px;height:44px;border-radius:11px;
@@ -570,6 +572,55 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 }
 .ccc-extract-progress.show { display:block; }
 
+
+/* ── Collapsible Sidebars ─────────────────────────────────────────── */
+.sidebar-toggle, .rpanel-toggle {
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:20px;height:48px;
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  z-index:10;
+  transition:all 0.15s;
+  font-size:10px;color:var(--text-ter);
+}
+.sidebar-toggle { right:-10px; border-radius:0 6px 6px 0; }
+.rpanel-toggle  { left:-10px;  border-radius:6px 0 0 6px; }
+.sidebar-toggle:hover,.rpanel-toggle:hover { background:var(--bg3);color:var(--amber); }
+
+.sidebar   { position:relative; transition:width 0.25s ease, min-width 0.25s ease; }
+.right-panel { position:relative; transition:width 0.25s ease, min-width 0.25s ease; }
+
+.sidebar.collapsed   { width:0 !important; min-width:0; overflow:hidden; border:none; }
+.right-panel.collapsed { width:0 !important; min-width:0; overflow:hidden; border:none; }
+
+.shell.left-collapsed  { grid-template-columns:0 1fr 290px; }
+.shell.right-collapsed { grid-template-columns:230px 1fr 0; }
+.shell.both-collapsed  { grid-template-columns:0 1fr 0; }
+.shell.left-collapsed.right-collapsed { grid-template-columns:0 1fr 0; }
+
+.sidebar-collapsed-btn, .rpanel-collapsed-btn {
+  position:fixed;
+  top:50%;
+  transform:translateY(-50%);
+  width:18px;height:52px;
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  display:none;
+  align-items:center;justify-content:center;
+  cursor:pointer;z-index:50;
+  font-size:10px;color:var(--text-ter);
+  transition:all 0.15s;
+}
+.sidebar-collapsed-btn  { left:0; border-radius:0 6px 6px 0; }
+.rpanel-collapsed-btn   { right:0; border-radius:6px 0 0 6px; }
+.sidebar.collapsed + .sidebar-collapsed-btn,
+.sidebar-collapsed-btn.show { display:flex; }
+.rpanel-collapsed-btn.show  { display:flex; }
+.sidebar-collapsed-btn:hover,.rpanel-collapsed-btn:hover { background:var(--amber-dim);color:var(--amber);border-color:rgba(232,160,32,0.4); }
 </style>
 </head>
 <body>
@@ -628,7 +679,8 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 <!-- ════════════════════════════════════════════════════════════════
      SIDEBAR
 ════════════════════════════════════════════════════════════════ -->
-<div class="sidebar">
+<div class="sidebar" id="mainSidebar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">◀</button>
   <div class="sidebar-section">
     <div class="sidebar-label">② Department</div>
     <div class="dept-btn" id="d-fire" onclick="switchDept('fire')"><div class="dept-icon">🔥</div><span>Fire</span><span class="dept-count" id="dc-fire">—</span></div>
@@ -1402,7 +1454,8 @@ canvas.sig-canvas{display:block;width:100%;height:120px;cursor:crosshair;border-
 </div><!-- end view-myclaims -->
 
 <!-- RIGHT PANEL (workbench) -->
-<div class="right-panel">
+<div class="right-panel" id="mainRPanel">
+  <button class="rpanel-toggle" onclick="toggleRPanel()" title="Collapse panel">▶</button>
   <div class="rp-section">
     <div class="rp-title">Claim Snapshot</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -1974,6 +2027,244 @@ async function api(method, path, body, isForm) {
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════════════
+// COLLAPSIBLE SIDEBARS
+// ══════════════════════════════════════════════════════════════════════
+var _leftCollapsed  = false;
+var _rightCollapsed = false;
+
+function toggleSidebar() {
+  _leftCollapsed = !_leftCollapsed;
+  var sb   = document.getElementById('mainSidebar');
+  var btn  = document.querySelector('.sidebar-toggle');
+  var rbtn = document.getElementById('sidebarRestoreBtn');
+  var shell= document.querySelector('.shell');
+  if (!sb || !shell) return;
+
+  sb.classList.toggle('collapsed', _leftCollapsed);
+  if (btn) btn.textContent = _leftCollapsed ? '▶' : '◀';
+  if (rbtn) rbtn.style.display = _leftCollapsed ? 'flex' : 'none';
+
+  // Update grid
+  updateShellGrid();
+  // Store preference
+  try { localStorage.setItem('nexus_sidebar_left', _leftCollapsed ? '1' : '0'); } catch{}
+}
+
+function toggleRPanel() {
+  _rightCollapsed = !_rightCollapsed;
+  var rp   = document.getElementById('mainRPanel');
+  var btn  = document.querySelector('.rpanel-toggle');
+  var rbtn = document.getElementById('rpanelRestoreBtn');
+  if (!rp) return;
+
+  rp.classList.toggle('collapsed', _rightCollapsed);
+  if (btn) btn.textContent = _rightCollapsed ? '◀' : '▶';
+  if (rbtn) rbtn.style.display = _rightCollapsed ? 'flex' : 'none';
+
+  updateShellGrid();
+  try { localStorage.setItem('nexus_sidebar_right', _rightCollapsed ? '1' : '0'); } catch{}
+}
+
+function updateShellGrid() {
+  var shell = document.querySelector('.shell');
+  if (!shell) return;
+  var lw = _leftCollapsed  ? '0' : '230px';
+  var rw = _rightCollapsed ? '0' : '290px';
+  shell.style.gridTemplateColumns = lw + ' 1fr ' + rw;
+}
+
+function restoreSidebarPrefs() {
+  try {
+    if (localStorage.getItem('nexus_sidebar_left')  === '1') toggleSidebar();
+    if (localStorage.getItem('nexus_sidebar_right') === '1') toggleRPanel();
+  } catch {}
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// AI STEP GUIDE
+// ══════════════════════════════════════════════════════════════════════
+var _guideOpen = false;
+
+// Steps definition — driven by real Bridgestone-style claim workflow
+var GUIDE_STEPS = [
+  {
+    id:'intake',
+    title:'1. Claim Intake — Basic Details',
+    desc:'Fill in Insured Name, Policy Number, Insurer, and department. These are the minimum required fields.',
+    action:'Go to Overview',
+    fn: function() { switchTab('intake', document.querySelector('.tab[onclick*=intake]')); toggleAIGuide(); }
+  },
+  {
+    id:'insurer',
+    title:'2. Select Insurer & Load Rules',
+    desc:'Choose the insurance company from the top bar. This auto-loads deductibles, SLA, penalties and document requirements.',
+    action:'Select Insurer',
+    fn: function() { document.getElementById('insurerSel').focus(); toggleAIGuide(); }
+  },
+  {
+    id:'jir',
+    title:'3. Upload Notes → Fill JIR',
+    desc:'Back from site visit? Upload your handwritten notes or photos. AI extracts and fills the JIR form automatically.',
+    action:'Upload & Fill JIR',
+    fn: function() { cccToggleDropZone(); toggleAIGuide(); }
+  },
+  {
+    id:'documents',
+    title:'4. Upload Supporting Documents',
+    desc:'Add Policy copy, FIR, invoices, stock registers, survey photos. Each document improves your claim quality score.',
+    action:'Go to Documents',
+    fn: function() { switchTab('vault', document.querySelector('.tab[onclick*=vault]')); toggleAIGuide(); }
+  },
+  {
+    id:'spot',
+    title:'5. Spot Report — Physical Findings',
+    desc:'Record your on-site observations: entry point, damage extent, stock affected, photographs taken.',
+    action:'Open Spot Report',
+    fn: function() { openStageFromCCC('spot'); toggleAIGuide(); }
+  },
+  {
+    id:'lor',
+    title:'6. LOR — List of Requirements',
+    desc:'Generate and send the LOR to the insured. Sets deadlines for pending documents.',
+    action:'Open LOR',
+    fn: function() { openStageFromCCC('lor'); toggleAIGuide(); }
+  },
+  {
+    id:'assessment',
+    title:'7. Financial Assessment',
+    desc:'Enter claimed amounts, apply depreciation, deductibles, and penalties. Use AI Assist for calculation support.',
+    action:'Open Assessment',
+    fn: function() { switchTab('assessment', document.querySelector('.tab[onclick*=assessment]')); toggleAIGuide(); }
+  },
+  {
+    id:'fsr',
+    title:'8. Final Survey Report (FSR)',
+    desc:'Complete the FSR with gross assessed loss, settlement computation, and surveyor recommendation. Use AI Assist.',
+    action:'Open FSR',
+    fn: function() { openStageFromCCC('fsr'); toggleAIGuide(); }
+  },
+  {
+    id:'submit',
+    title:'9. Submit & Close',
+    desc:'Submit the FSR to the insurer. Mark the claim settled once insurer confirms.',
+    action:'Go to Reports',
+    fn: function() { switchTab('reports', document.querySelector('.tab[onclick*=reports]')); toggleAIGuide(); }
+  }
+];
+
+function toggleAIGuide() {
+  _guideOpen = !_guideOpen;
+  var btn   = document.getElementById('aiGuideBtn');
+  var panel = document.getElementById('aiGuidePanel');
+  if (!btn || !panel) return;
+  btn.classList.toggle('open', _guideOpen);
+  panel.classList.toggle('open', _guideOpen);
+  if (_guideOpen) renderGuide();
+}
+
+function renderGuide() {
+  var steps = document.getElementById('guideSteps');
+  var prog  = document.getElementById('guideProgressTxt');
+  if (!steps) return;
+
+  // Determine completion state for each step
+  var c = state.claimData || {};
+  var stageMap = {
+    jir:     claimState.jir  && claimState.jir.status  !== 'draft',
+    spot:    claimState.spot && claimState.spot.status !== 'draft',
+    lor:     claimState.lor  && claimState.lor.status  !== 'draft',
+    fsr:     claimState.fsr  && claimState.fsr.status  !== 'draft',
+    intake:  !!(c.insured_name || c.policy_number),
+    insurer: !!state.insurerId,
+    documents: !!(c.documents && c.documents.length > 0),
+    assessment: !!(c.sum_insured || c.loss_amount),
+    submit: c.claim_status === 'submitted' || c.claim_status === 'settled'
+  };
+
+  // Find current step (first incomplete)
+  var currentIdx = 0;
+  for (var i = 0; i < GUIDE_STEPS.length; i++) {
+    if (!stageMap[GUIDE_STEPS[i].id]) { currentIdx = i; break; }
+    if (i === GUIDE_STEPS.length - 1) currentIdx = i;
+  }
+
+  var done = GUIDE_STEPS.filter(function(s){ return stageMap[s.id]; }).length;
+  if (prog) prog.textContent = done + ' of ' + GUIDE_STEPS.length + ' steps complete';
+
+  steps.innerHTML = GUIDE_STEPS.map(function(s, i) {
+    var isDone    = stageMap[s.id];
+    var isCurrent = !isDone && i === currentIdx;
+    var cls = isDone ? 'guide-step done' : isCurrent ? 'guide-step current' : 'guide-step';
+    var numLabel = isDone ? '✓' : (i + 1);
+    return '<div class="' + cls + '" onclick="guideStepClick(' + i + ')">' +
+      '<div class="guide-step-num">' + numLabel + '</div>' +
+      '<div class="guide-step-body">' +
+        '<div class="guide-step-title">' + s.title + '</div>' +
+        '<div class="guide-step-desc">'  + s.desc  + '</div>' +
+        '<div class="guide-step-action">' +
+          '<button class="guide-action-btn" onclick="event.stopPropagation();guideStepClick(' + i + ')">' +
+            '→ ' + s.action +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function guideStepClick(idx) {
+  var step = GUIDE_STEPS[idx];
+  if (step && step.fn) step.fn();
+}
+
+async function guideAsk() {
+  var inp = document.getElementById('guideAskInput');
+  if (!inp || !inp.value.trim()) return;
+  var q = inp.value.trim();
+  inp.value = '';
+
+  if (!state.claimId) {
+    showGuideReply('Load a claim first, then I can answer specific questions about it.');
+    return;
+  }
+
+  showGuideReply('⏳ Thinking…');
+  try {
+    var context = 'Claim: ' + (state.claimData && state.claimData.claim_number || 'Unknown') +
+      ' | Insurer: ' + (state.insurerName || 'Unknown') +
+      ' | Dept: ' + (state.dept || 'Unknown') +
+      ' | Status: ' + (state.claimData && state.claimData.claim_status || 'draft') +
+      ' | Current stage: ' + pip_currentReport;
+    var r = await api('POST', '/api/chat', {
+      message: q,
+      context: context,
+      insurerId: state.insurerId,
+      dept: state.dept,
+      claimId: state.claimId
+    });
+    var reply = (r && (r.reply || r.message || r.content)) || 'I could not get a response. Check your OpenAI API key.';
+    showGuideReply(reply);
+  } catch(err) {
+    showGuideReply('Error: ' + err.message);
+  }
+}
+
+function showGuideReply(msg) {
+  var steps = document.getElementById('guideSteps');
+  if (!steps) return;
+  // Remove previous reply bubble
+  var prev = document.getElementById('guideReplyBubble');
+  if (prev) prev.remove();
+  var bubble = document.createElement('div');
+  bubble.id = 'guideReplyBubble';
+  bubble.style.cssText = 'background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-sec);line-height:1.6;margin-top:4px;';
+  bubble.innerHTML = '<span style="font-family:var(--mono);font-size:9px;color:var(--purple);display:block;margin-bottom:5px;">🤖 AI GUIDE</span>' + msg;
+  steps.appendChild(bubble);
+  bubble.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+
 // ── Init ──────────────────────────────────────────────────────────────
 (async function init() {
   if (!auth.token) { window.location.replace('index.html'); return; }
@@ -1991,6 +2282,7 @@ async function api(method, path, body, isForm) {
   connectWebSocket();
   await loadInsurers();
   loadClaimsSidebar();
+  restoreSidebarPrefs();  // restore sidebar collapse state
   (function checkURLClaim() {
     const p      = new URLSearchParams(window.location.search);
     const id     = p.get('claimId');
@@ -5298,6 +5590,8 @@ function renderCCC() {
   document.getElementById('ccc-nextTitle').innerHTML = title;
   document.getElementById('ccc-nextDesc').textContent  = desc;
   document.getElementById('ccc-nextBtns').innerHTML    = btns;
+  // Refresh guide if open
+  if (_guideOpen) renderGuide();
 }
 
 // ── Open a pipeline stage directly from command card ──────────────────
@@ -6667,7 +6961,136 @@ function pip_printReport() {
     '.rp-section-head{font-weight:700;font-size:12px;color:#e8a020;border-bottom:1px solid #e8a020;padding-bottom:4px;margin:14px 0 8px;}' +
     '.rp-sig-box{border:1px solid #ccc;height:60px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;font-size:10px;}' +
     '.report-preview{background:#fff;color:#1a1a1a;}p{font-size:11px;line-height:1.6;margin-bottom:8px;}' +
-    '</style></head><body>' + content + '</body></html>'
+    '
+/* ── AI Step Guide ────────────────────────────────────────────────── */
+#aiGuideBtn {
+  position:fixed;
+  bottom:28px;right:28px;
+  width:52px;height:52px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),rgba(167,139,250,0.7));
+  border:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;cursor:pointer;
+  box-shadow:0 4px 20px rgba(167,139,250,0.4);
+  z-index:1500;
+  transition:all 0.2s;
+  animation:guidePulse 3s ease-in-out infinite;
+}
+@keyframes guidePulse {
+  0%,100% { box-shadow:0 4px 20px rgba(167,139,250,0.4); }
+  50%      { box-shadow:0 4px 28px rgba(167,139,250,0.7); transform:scale(1.05); }
+}
+#aiGuideBtn:hover { transform:scale(1.12); }
+#aiGuideBtn.open  { animation:none; background:var(--bg3); border:1px solid var(--purple); }
+
+#aiGuidePanel {
+  position:fixed;
+  bottom:92px;right:24px;
+  width:320px;
+  background:var(--bg1);
+  border:1px solid rgba(167,139,250,0.35);
+  border-radius:14px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.5);
+  z-index:1499;
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+  animation:guideIn 0.2s ease;
+}
+@keyframes guideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+#aiGuidePanel.open { display:flex; }
+
+.guide-header {
+  padding:14px 16px 10px;
+  background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(167,139,250,0.04));
+  border-bottom:1px solid rgba(167,139,250,0.2);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.guide-header-title {
+  font-family:var(--display);font-size:13px;font-weight:700;color:var(--purple);
+  display:flex;align-items:center;gap:7px;
+}
+.guide-close { background:none;border:none;color:var(--text-ter);cursor:pointer;font-size:16px;line-height:1;padding:2px; }
+.guide-close:hover { color:var(--text-pri); }
+
+.guide-steps { padding:12px;display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto; }
+
+.guide-step {
+  display:flex;gap:10px;padding:10px 12px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;cursor:pointer;transition:all 0.15s;
+  align-items:flex-start;
+}
+.guide-step:hover { border-color:rgba(167,139,250,0.4);background:rgba(167,139,250,0.06); }
+.guide-step.done  { border-color:rgba(94,198,122,0.3);background:rgba(94,198,122,0.04); }
+.guide-step.current { border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.08); box-shadow:0 0 8px rgba(167,139,250,0.15); }
+.guide-step-num {
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  background:var(--bg3);border:1px solid var(--border2);color:var(--text-ter);
+}
+.guide-step.done .guide-step-num    { background:var(--green-dim);border-color:var(--green);color:var(--green); }
+.guide-step.current .guide-step-num { background:var(--purple-dim);border-color:var(--purple);color:var(--purple); }
+.guide-step-body { flex:1;min-width:0; }
+.guide-step-title { font-size:12px;color:var(--text-pri);font-weight:600;margin-bottom:2px; }
+.guide-step.done .guide-step-title  { color:var(--green); }
+.guide-step.current .guide-step-title { color:var(--purple); }
+.guide-step-desc  { font-size:11px;color:var(--text-ter);line-height:1.5; }
+.guide-step-action { display:none;margin-top:8px; }
+.guide-step.current .guide-step-action { display:block; }
+.guide-action-btn {
+  font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:5px;
+  background:var(--purple-dim);border:1px solid rgba(167,139,250,0.4);color:var(--purple);
+  cursor:pointer;font-weight:700;transition:all 0.15s;
+}
+.guide-action-btn:hover { background:rgba(167,139,250,0.2); }
+
+.guide-footer {
+  padding:10px 12px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.guide-progress-txt { font-family:var(--mono);font-size:9px;color:var(--text-ter); }
+.guide-ask-input {
+  display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border);
+}
+.guide-ask-input input {
+  flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text-pri);font-family:var(--body);font-size:12px;padding:6px 10px;outline:none;
+}
+.guide-ask-input input:focus { border-color:rgba(167,139,250,0.4); }
+.guide-send { font-family:var(--mono);font-size:10px;padding:6px 10px;border-radius:5px;
+  background:var(--purple-dim);border:1px solid rgba(167,139,250,0.4);color:var(--purple);cursor:pointer;font-weight:700; }
+</style></head><body>' + content + '
+<!-- ═══════════════════════════════════════════════════════════
+     AI STEP GUIDE — Floating assistant
+═══════════════════════════════════════════════════════════ -->
+<button id="aiGuideBtn" onclick="toggleAIGuide()" title="AI Step Guide">🤖</button>
+
+<div id="aiGuidePanel">
+  <div class="guide-header">
+    <div class="guide-header-title">🤖 AI Step Guide</div>
+    <button class="guide-close" onclick="toggleAIGuide()">✕</button>
+  </div>
+  <div class="guide-steps" id="guideSteps">
+    <!-- Rendered by renderGuide() -->
+  </div>
+  <div class="guide-footer">
+    <span class="guide-progress-txt" id="guideProgressTxt">—</span>
+    <span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Click any step to jump</span>
+  </div>
+  <div class="guide-ask-input">
+    <input type="text" id="guideAskInput" placeholder="Ask about this claim or step…" onkeydown="if(event.key==='Enter')guideAsk()">
+    <button class="guide-send" onclick="guideAsk()">ASK</button>
+  </div>
+</div>
+
+<!-- Collapsed sidebar restore buttons -->
+<button class="sidebar-collapsed-btn" id="sidebarRestoreBtn" onclick="toggleSidebar()" style="display:none;" title="Show sidebar">▶</button>
+<button class="rpanel-collapsed-btn"  id="rpanelRestoreBtn"  onclick="toggleRPanel()"  style="display:none;" title="Show panel">◀</button>
+
+</body></html>'
   );
   w.document.close();
   w.print();
@@ -7002,5 +7425,33 @@ async function repo_doRestore(stage, version) {
 }
 
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     AI STEP GUIDE — Floating assistant
+═══════════════════════════════════════════════════════════ -->
+<button id="aiGuideBtn" onclick="toggleAIGuide()" title="AI Step Guide">🤖</button>
+
+<div id="aiGuidePanel">
+  <div class="guide-header">
+    <div class="guide-header-title">🤖 AI Step Guide</div>
+    <button class="guide-close" onclick="toggleAIGuide()">✕</button>
+  </div>
+  <div class="guide-steps" id="guideSteps">
+    <!-- Rendered by renderGuide() -->
+  </div>
+  <div class="guide-footer">
+    <span class="guide-progress-txt" id="guideProgressTxt">—</span>
+    <span style="font-family:var(--mono);font-size:9px;color:var(--text-ter);">Click any step to jump</span>
+  </div>
+  <div class="guide-ask-input">
+    <input type="text" id="guideAskInput" placeholder="Ask about this claim or step…" onkeydown="if(event.key==='Enter')guideAsk()">
+    <button class="guide-send" onclick="guideAsk()">ASK</button>
+  </div>
+</div>
+
+<!-- Collapsed sidebar restore buttons -->
+<button class="sidebar-collapsed-btn" id="sidebarRestoreBtn" onclick="toggleSidebar()" style="display:none;" title="Show sidebar">▶</button>
+<button class="rpanel-collapsed-btn"  id="rpanelRestoreBtn"  onclick="toggleRPanel()"  style="display:none;" title="Show panel">◀</button>
+
 </body>
 </html>
