@@ -2314,8 +2314,13 @@ async function api(method, path, body, isForm) {
     }
     if (isForm) opts.body = body;
     const r = await fetch(API + path, opts);
+    if (r.status === 401) {
+      console.warn('API 401 — Token expired or invalid. Redirecting to login.');
+      localStorage.removeItem('nexus_token');
+      window.location.replace('index.html');
+      return { error: 'Unauthorized' };
+    }
     const d = await r.json().catch(() => ({}));
-    if (r.status === 401) window.location.href = 'index.html';
     return d;
   } catch (err) {
     await queueOffline(method, path, body);
@@ -8110,21 +8115,21 @@ async function globalJirFileSelected(event) {
   }, 5000);
 })();
 
-// ══════════════════════════════════════════════════════════════════════
-// SYSTEM DIAGNOSTICS & HEALTH CHECK
-// ══════════════════════════════════════════════════════════════════════
+// ════ SYSTEM DIAGNOSTICS & HEALTH CHECK ══════════════════════════════
 async function checkSystemStatus() {
   const dot = document.getElementById('systemStatusDot');
   const pill = document.getElementById('systemStatusPill');
   
   try {
-    const res = await fetch(API + '/api/system/status');
+    const res = await fetch(API + '/api/system/status', {
+      headers: { 'Authorization': 'Bearer ' + (auth.token || '') }
+    });
     const data = await res.json();
     
     if (res.ok) {
       dot.className = 'status-dot online';
       let msg = "✅ SYSTEM HEALTHY\n\n";
-      msg += `D1 Database: ${data.database.initialized ? "OK (" + data.database.userCount + " users)" : "❌ FAILED"}\n`;
+      msg += `D1 Database: ${data.database.initialized ? "OK (" + (data.database.userCount || 0) + " users)" : "❌ FAILED"}\n`;
       msg += `R2 Storage: ${data.bindings.docs ? "OK" : "❌ MISSING"}\n`;
       msg += `WebSockets (DO): ${data.realtime.status === 'ready' ? "OK" : "❌ " + data.realtime.status}\n`;
       msg += `AI Pipeline: ${data.bindings.openai_key ? "OK" : "❌ KEY MISSING"}\n`;
@@ -8132,15 +8137,36 @@ async function checkSystemStatus() {
       if (data.database.error) msg += `\nDB Error: ${data.database.error}`;
       if (data.realtime.error) msg += `\nWS Error: ${data.realtime.error}`;
       
-      alert(msg);
+      console.log('[SystemStatus]', data);
+      // alert(msg); // Only alert if manually clicked? For now, keep it silent unless error
     } else {
       dot.className = 'status-dot offline';
-      alert(`❌ INFRASTRUCTURE ERROR\n\nDetail: ${data.detail || data.error || "Unknown Error"}`);
+      console.error('[Infrastructure Error]', data);
     }
   } catch (err) {
     dot.className = 'status-dot offline';
-    alert("❌ CONNECTION FAILED\n\nThe SurveyorOS backend is not responding. Please check your Cloudflare Worker URL.");
+    console.warn('[Connection Failed] Backend unreachable.');
   }
+}
+
+// ════ UI PANEL TOGGLES ════════════════════════════════════════════════
+function togglePanel(side) {
+  const shell = document.querySelector('.shell');
+  if (side === 'left') {
+    shell.classList.toggle('hide-left');
+    document.getElementById('leftPanelToggle').textContent = shell.classList.contains('hide-left') ? '≫' : '☰';
+  } else {
+    shell.classList.toggle('hide-right');
+    document.getElementById('rightPanelToggle').textContent = shell.classList.contains('hide-right') ? '📊' : '✕';
+  }
+}
+
+function closeAllPanels() {
+  const shell = document.querySelector('.shell');
+  shell.classList.add('hide-left');
+  shell.classList.add('hide-right');
+  document.getElementById('leftPanelToggle').textContent = '≫';
+  document.getElementById('rightPanelToggle').textContent = '📊';
 }
 
 // Auto-check on load
