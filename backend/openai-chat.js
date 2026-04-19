@@ -20,31 +20,66 @@ async function openAIFetch(env, endpoint, body) {
   return res.json();
 }
 
-// ── GPT-4 Vision OCR ─────────────────────────────────────────────────────
-export async function extractTextFromImage(env, { imageBase64, mimeType, context }) {
-  const systemPrompt = context === 'handwritten_report'
+// ── Unified Document Intelligence (Vision + Text) ────────────────────────
+export async function analyzeDocumentContent(env, { imageBase64, textContent, mimeType, context, isTruncated = false }) {
+  const isImage = !!imageBase64;
+  const truncateNotice = isTruncated ? "\n(NOTE: Content was truncated due to size limits. Extract based on available context.)" : "";
+  
+  const systemPrompt = (context === 'handwritten_report'
     ? `Extract all text from this handwritten insurance survey note (Indian field surveyor). 
-Return ONLY valid JSON — no markdown:
-{"raw_text":"...","structured":{"date":null,"location":null,"contact_person":null,"fir_number":null,"police_station":null,"loss_description":null,"observations":[],"amounts":[],"surveyor_name":null,"signature_present":false},"confidence":85,"language":"en"}`
-    : `Extract all text from this insurance document image.
-Return ONLY valid JSON:
-{"raw_text":"...","document_type":"fir|invoice|stock_register|certificate|photo|other","key_fields":{"amount":null,"date":null,"reference_number":null,"parties":[]},"confidence":85}`;
+Detect the input language automatically.
+Return ONLY valid JSON.
+{
+  "raw_text": "...",
+  "structured": {"date":null,"location":null,"contact_person":null,"fir_number":null,"police_station":null,"loss_description":null,"observations":[],"amounts":[],"surveyor_name":null,"signature_present":false},
+  "confidence": 85,
+  "language_detected": "...",
+  "truncated": ${isTruncated}
+}`
+    : `Extract all text from this insurance document.
+Detect the input language automatically.
+Return ONLY valid JSON.
+{
+  "raw_text": "...",
+  "document_type": "fir|invoice|stock_register|certificate|photo|other",
+  "key_fields": {"amount":null,"date":null,"reference_number":null,"parties":[]},
+  "confidence": 85,
+  "language_detected": "...",
+  "truncated": ${isTruncated}
+}`) + truncateNotice;
 
-  const data = await openAIFetch(env, '/chat/completions', {
-    model: 'gpt-4o',
-    max_tokens: 2000,
-    messages: [{
-      role: 'user',
-      content: [
+  const userContent = isImage 
+    ? [
         { type: 'image_url', image_url: { url: `data:${mimeType||'image/jpeg'};base64,${imageBase64}`, detail: 'high' } },
         { type: 'text', text: systemPrompt }
       ]
-    }]
-  });
+    : `DOCUMENT CONTENT:\n${textContent}\n\n${systemPrompt}`;
 
-  const raw = data.choices[0]?.message?.content || '{}';
-  try { return JSON.parse(raw.replace(/```json|```/g, '').trim()); }
-  catch { return { raw_text: raw, confidence: 50, structured: {} }; }
+  async function callAI() {
+    return await openAIFetch(env, '/chat/completions', {
+      model: 'gpt-4o',
+      max_tokens: 3000,
+      response_format: { type: 'json_object' },
+      messages: [{ role: 'user', content: userContent }]
+    });
+  }
+
+  let data, raw;
+  try {
+    data = await callAI();
+    raw  = data.choices[0]?.message?.content || '{}';
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn('[AI Analysis] First attempt failed, retrying...', err.message);
+    try {
+      data = await callAI();
+      raw  = data.choices[0]?.message?.content || '{}';
+      return JSON.parse(raw);
+    } catch (retryErr) {
+      console.error('[AI Analysis] Critical failure after retry:', retryErr.message);
+      return { raw_text: raw || "Extraction failed.", confidence: 0, structured: {}, language_detected: 'unknown', truncated: isTruncated, error: true };
+    }
+  }
 }
 
 // ── Main chat handler (insurer-aware) ─────────────────────────────────────
