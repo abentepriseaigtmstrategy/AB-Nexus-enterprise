@@ -835,15 +835,18 @@ body.focus-mode .focus-save-bar{display:flex !important;}
 /* ══════════════════════════════════════════════════════════════════════════
    GLOBAL UPLOAD JIR FAB
 ══════════════════════════════════════════════════════════════════════════ */
-.upload-jir-fab{
-  position:fixed;bottom:24px;left:24px;z-index:250;height:42px;border-radius:21px;
-  background:linear-gradient(135deg,rgba(232,160,32,0.9),rgba(232,130,32,0.8));
-  border:2px solid rgba(232,160,32,0.5);display:flex;align-items:center;gap:7px;padding:0 16px;
-  cursor:pointer;box-shadow:0 4px 16px rgba(232,160,32,0.3);transition:all 0.25s;
-  font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;letter-spacing:0.06em;
-}
-.upload-jir-fab:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(232,160,32,0.4);}
 .upload-jir-fab .fab-icon{font-size:16px;}
+
+/* System Status Pill */
+.system-status-pill {
+  position:fixed;bottom:24px;left:180px;z-index:250;height:32px;border-radius:16px;
+  background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;
+  cursor:pointer;transition:all 0.2s;font-family:var(--mono);font-size:9px;color:var(--text-sec);
+}
+.system-status-pill:hover {border-color:var(--teal);color:var(--teal);}
+.status-dot {width:6px;height:6px;border-radius:50%;background:var(--text-ter);}
+.status-dot.online {background:var(--green);box-shadow:0 0 6px var(--green);}
+.status-dot.offline {background:var(--red);box-shadow:0 0 6px var(--red);}
 
 </style>
 </head>
@@ -1778,6 +1781,10 @@ body.focus-mode .focus-save-bar{display:flex !important;}
 <!-- Global Upload JIR FAB -->
 <div class="upload-jir-fab" id="uploadJirFab" onclick="globalUploadJIR()" title="Quick upload: scan a handwritten JIR">
   <span class="fab-icon">📤</span> Upload JIR
+</div>
+<div class="system-status-pill" id="systemStatusPill" onclick="checkSystemStatus()" title="Click to check infrastructure health">
+  <div class="status-dot" id="systemStatusDot"></div>
+  <span>System Health</span>
 </div>
 <input type="file" id="globalJirFileInput" accept="image/*,.pdf" style="display:none;" onchange="globalJirFileSelected(event)">
 
@@ -8102,6 +8109,42 @@ async function globalJirFileSelected(event) {
     }
   }, 5000);
 })();
+
+// ══════════════════════════════════════════════════════════════════════
+// SYSTEM DIAGNOSTICS & HEALTH CHECK
+// ══════════════════════════════════════════════════════════════════════
+async function checkSystemStatus() {
+  const dot = document.getElementById('systemStatusDot');
+  const pill = document.getElementById('systemStatusPill');
+  
+  try {
+    const res = await fetch('/api/system/status');
+    const data = await res.json();
+    
+    if (res.ok) {
+      dot.className = 'status-dot online';
+      let msg = "✅ SYSTEM HEALTHY\n\n";
+      msg += `D1 Database: ${data.database.initialized ? "OK (" + data.database.userCount + " users)" : "❌ FAILED"}\n`;
+      msg += `R2 Storage: ${data.bindings.docs ? "OK" : "❌ MISSING"}\n`;
+      msg += `WebSockets (DO): ${data.realtime.status === 'ready' ? "OK" : "❌ " + data.realtime.status}\n`;
+      msg += `AI Pipeline: ${data.bindings.openai_key ? "OK" : "❌ KEY MISSING"}\n`;
+      
+      if (data.database.error) msg += `\nDB Error: ${data.database.error}`;
+      if (data.realtime.error) msg += `\nWS Error: ${data.realtime.error}`;
+      
+      alert(msg);
+    } else {
+      dot.className = 'status-dot offline';
+      alert(`❌ INFRASTRUCTURE ERROR\n\nDetail: ${data.detail || data.error || "Unknown Error"}`);
+    }
+  } catch (err) {
+    dot.className = 'status-dot offline';
+    alert("❌ CONNECTION FAILED\n\nThe SurveyorOS backend is not responding. Please check your Cloudflare Worker URL.");
+  }
+}
+
+// Auto-check on load
+setTimeout(checkSystemStatus, 2000);
 
 </script>
 </body>
