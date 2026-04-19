@@ -2445,7 +2445,14 @@ Return ONLY valid JSON (no markdown):
 
     } catch (error) {
       console.error('API Error:', error);
-      return errorResponse('Internal server error: ' + error.message, 500);
+      let detail = error.message;
+      // Binding checks for easier user debugging
+      if (!env.DB) detail = 'D1 Database "DB" binding missing in Cloudflare.';
+      else if (!env.REALTIME_HUB) detail = 'Durable Object "REALTIME_HUB" binding missing in Cloudflare.';
+      else if (!env.DOCS) detail = 'R2 Bucket "DOCS" binding missing in Cloudflare.';
+      else if (!env.OPENAI_API_KEY) detail = 'Environment variable "OPENAI_API_KEY" missing in Cloudflare.';
+      
+      return errorResponse('Internal server error: ' + detail, 500);
     }
   },
 
