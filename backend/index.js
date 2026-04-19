@@ -250,7 +250,8 @@ export default {
     const publicRoutes = [
       '/api/auth/login','/api/auth/signup','/api/auth/google',
       '/api/auth/magic-link','/api/auth/verify-magic','/api/health',
-      '/api/auth/forgot-password','/api/auth/reset-password'
+      '/api/auth/forgot-password','/api/auth/reset-password',
+      '/api/system/status'
     ];
 
     let user = null; let sessionToken = null;
@@ -269,7 +270,8 @@ export default {
 
         if (!sessionToken) return errorResponse('Unauthorized: No token', 401);
 
-        user = await verifyToken(sessionToken, env.JWT_SECRET);
+        const secret = env.JWT_SECRET || 'surveyor-os-secret-2026';
+        user = await verifyToken(sessionToken, secret);
         if (!user) return errorResponse('Unauthorized: Invalid or expired token', 401);
 
         // Normalize user fields
@@ -282,9 +284,31 @@ export default {
         if (!session) return errorResponse('Unauthorized: Session expired', 401);
       }
 
-      // ────────── HEALTH ──────────────────────────────────────────────────
+      // ────────── HEALTH & SYSTEM STATUS ──────────────────────────────────
       if (path === '/api/health' && method === 'GET')
         return jsonResponse({ status: 'healthy', version: '5.0', timestamp: Date.now() });
+
+      if ((path === '/api/system/status' || path === '/api/system/status/') && method === 'GET') {
+        const diagnostics = {
+          timestamp: new Date().toISOString(),
+          environment: env.ENVIRONMENT || 'unknown',
+          bindings: {
+            db: !!env.DB,
+            realtime_hub: !!env.REALTIME_HUB,
+            docs: !!env.DOCS,
+            openai_key: !!env.OPENAI_API_KEY
+          },
+          database: { status: 'checking' }
+        };
+        if (env.DB) {
+          try {
+            const result = await env.DB.prepare('SELECT count(*) as count FROM users').first();
+            diagnostics.database.status = 'connected';
+            diagnostics.database.userCount = result.count;
+          } catch (e) { diagnostics.database.status = 'error'; diagnostics.database.error = e.message; }
+        }
+        return jsonResponse(diagnostics);
+      }
 
       // ════════════════════════════════════════════════════════════════════
       // AUTH ROUTES
@@ -995,6 +1019,33 @@ export default {
 
         return jsonResponse({ claim });
       }
+      
+      // ── REPORT PIPELINE (RESTORED) ────────────────────────────────────
+      if (path.match(/^\/api\/claims\/[^\/]+\/reports$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
+        const claimId = path.split('/')[3];
+        const rows = await env.DB.prepare(
+          'SELECT * FROM survey_reports_pipeline WHERE claim_id = ? ORDER BY created_at DESC'
+        ).bind(claimId).all();
+        return jsonResponse({ reports: rows.results || [] });
+      }
+
+      if (path.match(/^\/api\/claims\/[^\/]+\/reports$/) && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
+        const claimId = path.split('/')[3];
+        const d = await request.json();
+        const id = d.id || generateUUID();
+        await env.DB.prepare(
+          `INSERT INTO survey_reports_pipeline (id, claim_id, tenant_id, report_type, report_data, status, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(claim_id, report_type) DO UPDATE SET
+           report_data = excluded.report_data,
+           status = excluded.status,
+           updated_at = excluded.updated_at,
+           version = version + 1`
+        ).bind(id, claimId, user.tenantId, d.report_type, JSON.stringify(d.report_data || {}), d.status || 'saved', Date.now()).run();
+        return jsonResponse({ success: true, id });
+      }
 
       if (path === '/api/claims' && method === 'POST') {
         const d = await request.json();
@@ -1644,47 +1695,7 @@ Return JSON:
         return jsonResponse({ stats });
       }
 
-      // ════════════════════════════════════════════════════════════════════
-      // ════ SYSTEM STATUS / DIAGNOSTICS ══════════════════════════════════
-      if (path === '/api/system/status' && method === 'GET') {
-        const status = {
-          timestamp: new Date().toISOString(),
-          environment: env.ENVIRONMENT || 'unknown',
-          bindings: {
-            db: !!env.DB,
-            realtime_hub: !!env.REALTIME_HUB,
-            docs: !!env.DOCS,
-            ai: !!env.AI,
-            openai_key: !!env.OPENAI_API_KEY
-          },
-          database: { initialized: false, error: null },
-          realtime: { status: 'unknown' }
-        };
-
-        if (env.DB) {
-          try {
-            const result = await env.DB.prepare('SELECT count(*) as count FROM users').first();
-            status.database.initialized = true;
-            status.database.userCount = result.count;
-          } catch (e) {
-            status.database.error = e.message;
-          }
-        }
-
-        if (env.REALTIME_HUB) {
-          try {
-            const doId = env.REALTIME_HUB.idFromName('system-test');
-            status.realtime.status = 'ready';
-          } catch (e) {
-            status.realtime.status = 'error';
-            status.realtime.error = e.message;
-          }
-        } else {
-          status.realtime.status = 'missing_binding';
-        }
-
-        return jsonResponse(status);
-      }
+      // (Redundant block removed)
 
       // ADMIN ROUTES
       // ════════════════════════════════════════════════════════════════════
