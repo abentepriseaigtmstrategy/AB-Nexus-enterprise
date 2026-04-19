@@ -1,8 +1,35 @@
+# SurveyorOS - Standard Exclusions
+
+# Node
 node_modules/
-.env
-.dev.vars
-.DS_Store
-*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Cloudflare Workers / Wrangler
 .wrangler/
 dist/
+.dev.vars
+
+# Local Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary/Cache
 .cache/
+tmp/
+*.log
+SurveyorOS_Project_Backup.zip
+SurveyorOS_Professional_Export.zip
