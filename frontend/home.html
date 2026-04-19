@@ -511,13 +511,18 @@
 
   function doLogout() {
     if (!confirm('Sign out of AB Nexus?')) return;
-    fetch(API_URL + '/api/auth/logout', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('nexus_token') || '') }
-    }).catch(() => {});
+    try {
+      fetch(API_URL + '/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('nexus_token') || '') }
+      }).catch(function(){});
+    } catch(e) {}
+    
+    localStorage.removeItem('nexus_token');
+    localStorage.removeItem('nexus_user');
     localStorage.clear();
     sessionStorage.clear();
-    window.location.href = 'index.html';
+    window.location.replace('index.html');
   }
 
   // Continue Where You Left Off Logic
