@@ -10,22 +10,20 @@
 AB-Nexus-enterprise/
 ├── frontend/                    ← Cloudflare Pages (deploy this folder)
 │   ├── index.html               ← Login (password, magic link, Google SSO)
-│   ├── surveyor-dashboard.html  ← Surveyor command centre
-│   ├── hrms-dashboard.html      ← HR management
-│   ├── sw.js                    ← PWA service worker (v7 — SW bug fixed)
-│   ├── manifest.json            ← PWA manifest
+│   ├── home.html                ← Dashboard Entry / Quick Links
+│   ├── surveyor-dashboard.html  ← Surveyor Command Center (Monolithic)
+│   ├── hrms-dashboard.html      ← HR Management (Monolithic)
+│   ├── my-claims.html           ← Claims Listing
+│   ├── sw.js                    ← PWA Service Worker
+│   ├── manifest.json            ← PWA Manifest
 │   ├── _redirects               ← Cloudflare Pages SPA routing
-│   ├── _headers                 ← Cloudflare Pages response headers
-│   └── src/js/
-│       ├── utils.js             ← Shared utilities (API, formatting, toast)
-│       ├── surveyor.js          ← Surveyor API layer + offline queue
-│       └── hrms.js              ← HRMS API layer
+│   └── _headers                 ← Cloudflare Pages response headers
 │
 ├── backend/                     ← Cloudflare Worker (deploy this folder)
 │   ├── index.js                 ← Main Worker (all API routes)
-│   ├── auth.js                  ← JWT, magic link, Google OAuth, password hashing
+│   ├── auth.js                  ← JWT, magic link, Google OAuth, hashing
 │   ├── rbac.js                  ← Role-based access control
-│   ├── openai-chat.js           ← Claude + GPT-4o AI engine
+│   ├── openai-chat.js           ← GPT-4o Vision AI engine
 │   ├── notifications.js         ← Email (Resend) + SMS (Twilio)
 │   ├── seed-insurers.js         ← 32 insurers + IRDAI fallback rules
 │   ├── seed.js                  ← Initial data seeder
@@ -33,7 +31,10 @@ AB-Nexus-enterprise/
 │   ├── schema.sql               ← Complete D1 database schema
 │   ├── wrangler.toml            ← Cloudflare Worker config
 │   └── package.json
-└── README.md
+│
+├── README.md
+├── .gitignore
+└── .env.example
 ```
 
 ---
@@ -48,14 +49,14 @@ AB-Nexus-enterprise/
 - **Cloudflare Pages headers** — `sw.js` served with correct MIME type and `Service-Worker-Allowed: /`.
 
 ### New Features
-- **AI document pipeline** — every upload triggers GPT-4o (images) or Claude (PDFs): classify → extract → merge into claim → conflict-detect
+- **AI document pipeline** — every upload triggers OpenAI (GPT-4o / Vision): classify → extract → merge into claim → conflict-detect
 - **Auto claim creation** — claim fields auto-populated from uploaded documents
 - **Document checklist engine** — auto-generated from insurer rules; blocks FSR when mandatory docs missing
 - **Auto report drafting** — Spot Report and LOR auto-drafted when checklist ≥ 50% complete
 - **Financial calculation engine** — AI-calculated with transparent formula steps; override logging
 - **Vault** — all submitted reports auto-saved with full metadata; searchable and filterable
 - **Conflict detection** — cross-document AI analysis flags FIR vs JIR mismatches, amount discrepancies
-- **Claude API support** — `openai-chat.js` now uses Claude Sonnet as primary + GPT-4o as fallback
+- **OpenAI AI engine** — GPT-based document processing, classification, and report assistance
 - **Merged schema** — `schema.sql` + `schema_additions.sql` merged into single clean file; new tables: `document_checklist`, `vault_entries`, `fsr_calculations` enhanced
 
 ---
@@ -71,7 +72,6 @@ npm install
 # Set secrets
 wrangler secret put JWT_SECRET
 wrangler secret put OPENAI_API_KEY
-wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put GOOGLE_CLIENT_ID
 wrangler secret put RESEND_API_KEY
 
@@ -127,7 +127,7 @@ node seed.js
 ```
 Document Upload
     ↓
-AI Classification (GPT-4o / Claude)
+AI Classification (OpenAI)
     ↓
 Structured Extraction → Merge into Claim
     ↓
@@ -150,8 +150,7 @@ Human Review → Approve → Submit → Vault
 |----------------------|----------|----------------------------|
 | `JWT_SECRET`         | ✅       | 32+ char random string     |
 | `MAGIC_LINK_SECRET`  | ✅       | 32+ char random string     |
-| `OPENAI_API_KEY`     | ✅       | GPT-4o Vision for OCR      |
-| `ANTHROPIC_API_KEY`  | ✅       | Claude for reports + chat  |
+| `OPENAI_API_KEY`     | ✅       | OpenAI (GPT-4o / Vision)   |
 | `GOOGLE_CLIENT_ID`   | Optional | Google SSO                 |
 | `RESEND_API_KEY`     | Optional | Transactional email        |
 | `TWILIO_ACCOUNT_SID` | Optional | SMS reminders              |
