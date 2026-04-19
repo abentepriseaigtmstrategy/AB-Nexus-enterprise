@@ -8118,7 +8118,7 @@ async function checkSystemStatus() {
   const pill = document.getElementById('systemStatusPill');
   
   try {
-    const res = await fetch('/api/system/status');
+    const res = await fetch(API + '/api/system/status');
     const data = await res.json();
     
     if (res.ok) {
