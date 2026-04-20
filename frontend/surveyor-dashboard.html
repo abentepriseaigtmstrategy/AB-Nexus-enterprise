@@ -6595,6 +6595,33 @@ async function ncCreateClaim() {
     btn.textContent = 'Create Claim & Upload Photos \u2192';
   }
 }
+
+function ncSetUploadType(type) {
+  var acceptMap = {
+    'all':   'image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt',
+    'image': 'image/*',
+    'pdf':   '.pdf,application/pdf',
+    'word':  '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'excel': '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  };
+  document.getElementById('ncFileInput').accept = acceptMap[type] || acceptMap['all'];
+  ['All','Img','Pdf','Doc','Xls'].forEach(function(t) {
+    var btn = document.getElementById('ncUpl' + t);
+    if (!btn) return;
+    btn.style.background   = 'var(--bg3)';
+    btn.style.color        = 'var(--text-sec)';
+    btn.style.borderColor  = 'var(--border2)';
+    btn.style.fontWeight   = '400';
+  });
+  var activeId = { all:'All', image:'Img', pdf:'Pdf', word:'Doc', excel:'Xls' }[type];
+  var activeBtn = document.getElementById('ncUpl' + activeId);
+  if (activeBtn) {
+    activeBtn.style.background  = 'var(--amber-dim)';
+    activeBtn.style.color       = 'var(--amber)';
+    activeBtn.style.borderColor = 'rgba(232,160,32,0.4)';
+    activeBtn.style.fontWeight  = '600';
+  }
+}
   // ── Phase 2: Only Insurer + Insured Name + Department are required ──
   if (!insId || !name) {
     errBox.textContent = '\u26a0 Insurer and Insured Name are required to create a claim.';
