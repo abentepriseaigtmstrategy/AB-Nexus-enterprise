@@ -6605,99 +6605,6 @@ function ncSetUploadType(type) {
     'excel': '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   };
   document.getElementById('ncFileInput').accept = acceptMap[type] || acceptMap['all'];
-  ['All','Img','Pdf','Doc','Xls'].forEach(function(t) {
-    var btn = document.getElementById('ncUpl' + t);
-    if (!btn) return;
-    btn.style.background   = 'var(--bg3)';
-    btn.style.color        = 'var(--text-sec)';
-    btn.style.borderColor  = 'var(--border2)';
-    btn.style.fontWeight   = '400';
-  });
-  var activeId = { all:'All', image:'Img', pdf:'Pdf', word:'Doc', excel:'Xls' }[type];
-  var activeBtn = document.getElementById('ncUpl' + activeId);
-  if (activeBtn) {
-    activeBtn.style.background  = 'var(--amber-dim)';
-    activeBtn.style.color       = 'var(--amber)';
-    activeBtn.style.borderColor = 'rgba(232,160,32,0.4)';
-    activeBtn.style.fontWeight  = '600';
-  }
-}
-  // ── Phase 2: Only Insurer + Insured Name + Department are required ──
-  if (!insId || !name) {
-    errBox.textContent = '\u26a0 Insurer and Insured Name are required to create a claim.';
-    errBox.style.display = 'block';
-    return;
-  }
-  errBox.style.display = 'none';
-
-  var btn = document.getElementById('ncStep1Btn');
-  btn.disabled = true;
-  btn.textContent = 'Creating claim\u2026';
-
-  var insOption = document.getElementById('nc-insurer').selectedOptions[0];
-  var insName   = insOption ? insOption.text : '';
-  var circ      = document.getElementById('nc-circumstances').value.trim();
-  var addr      = document.getElementById('nc-address').value.trim();
-  var lossAmt   = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
-  var policyNo  = document.getElementById('nc-policyNo').value.trim();
-  var claimNo   = document.getElementById('nc-claimNo').value.trim();
-  var sumIns    = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
-
-  // Guard empty date — default to now so the API never receives NaN
-  var incidentTs = date ? new Date(date).getTime() : Date.now();
-
-  // Build payload — optional fields sent as null for consistent API schema
-  var payload = {
-    insurer_id:      insId,
-    insurer_name:    insName,
-    insured_name:    name,
-    department:      dept,
-    incident_date:   incidentTs,
-    claim_status:    'draft',
-    current_stage:   'intake',
-    circumstances:   circ     || null,
-    insured_address: addr     || null,
-    loss_amount:     lossAmt  || null,
-    policy_number:   policyNo || null,
-    claim_number:    claimNo  || null,
-    sum_insured:     sumIns   || null,
-    fsr_ready:       false
-  };
-
-  var r = await api('POST', '/api/claims', payload);
-
-  btn.disabled = false;
-  btn.textContent = 'Create Claim & Upload Photos \u2192';
-
-  if (!r || r.error) {
-    errBox.textContent = '\u26a0 ' + (r && r.error ? r.error : 'Failed to create claim. Check your connection.');
-    errBox.style.display = 'block';
-    return;
-  }
-
-  _ncClaimId = r.claim && r.claim.id ? r.claim.id : r.id;
-  var claimNum = r.claim && r.claim.claim_number ? r.claim.claim_number : r.claim_number || 'NEW';
-
-  // Refresh sidebar so the new claim appears immediately
-  loadClaimsSidebar();
-  toast('\u2713 Claim ' + claimNum + ' created \u2014 opening\u2026', 'success');
-
-  // ── Phase 2 + Phase 4: Load claim then let pushURL() set canonical URL ──
-  closeNewClaimModal();
-  await loadClaim(_ncClaimId);
-  if (state.claimData && state.claimData.department) await switchDept(state.claimData.department);
-  pushURL(); // writes ?claimId=&tab=workbench&stage=<dept>
-}
-
-function ncSetUploadType(type) {
-  var acceptMap = {
-    'all':   'image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt',
-    'image': 'image/*',
-    'pdf':   '.pdf,application/pdf',
-    'word':  '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'excel': '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  };
-  document.getElementById('ncFileInput').accept = acceptMap[type] || acceptMap['all'];
   // Update button styles
   ['All','Img','Pdf','Doc','Xls'].forEach(function(t) {
     var btn = document.getElementById('ncUpl' + t);
@@ -8243,27 +8150,6 @@ async function checkSystemStatus() {
   }
 }
 
-// ════ UI PANEL TOGGLES ════════════════════════════════════════════════
-function togglePanel(side) {
-  const shell = document.querySelector('.shell');
-  if (side === 'left') {
-    shell.classList.toggle('hide-left');
-    document.getElementById('leftPanelToggle').textContent = shell.classList.contains('hide-left') ? '≫' : '☰';
-  } else {
-    shell.classList.toggle('hide-right');
-    document.getElementById('rightPanelToggle').textContent = shell.classList.contains('hide-right') ? '📊' : '✕';
-  }
-}
-
-function closeAllPanels() {
-  const shell = document.querySelector('.shell');
-  shell.classList.add('hide-left');
-  shell.classList.add('hide-right');
-  document.getElementById('leftPanelToggle').textContent = '≫';
-  document.getElementById('rightPanelToggle').textContent = '📊';
-}
-
-// Auto-check on load
 setTimeout(checkSystemStatus, 2000);
 
 </script>
