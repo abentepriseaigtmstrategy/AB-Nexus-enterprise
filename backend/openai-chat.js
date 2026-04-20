@@ -20,121 +20,6 @@ async function openAIFetch(env, endpoint, body) {
   return res.json();
 }
 
-// ── Base64 encoder safe for large buffers (chunked to avoid stack overflow) ──
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  const CHUNK = 32768;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
-  }
-  return btoa(binary);
-}
-
-// ── Scanned PDF → GPT-4o Vision OCR ─────────────────────────────────────────
-// Uses OpenAI's native PDF file content type (gpt-4o, 2025).
-// Called when looksLikeReadableText() returns false for a PDF — replaces the
-// old "scanned_pdf_detected" dead-end with actual extraction.
-export async function analyzeScannedPDF(env, pdfBuffer, filename, context = 'document') {
-  const base64PDF = arrayBufferToBase64(pdfBuffer);
-
-  const isHandwritten = context === 'handwritten_report';
-
-  const extractionPrompt = isHandwritten
-    ? `You are processing a scanned handwritten insurance survey document from India (field surveyor notes, JIR, Panchnama, or statement).
-Extract ALL visible text from every page. Structure it precisely.
-Return ONLY valid JSON — no markdown, no preamble:
-{
-  "raw_text": "complete verbatim extracted text",
-  "structured": {
-    "date": null,
-    "survey_no": null,
-    "insured_name": null,
-    "policy_no": null,
-    "claim_no": null,
-    "date_of_loss": null,
-    "time_of_loss": null,
-    "cause_of_loss": null,
-    "loss_location": null,
-    "place_of_survey": null,
-    "items_observed": [],
-    "estimated_repair_cost": null,
-    "surveyor_name": null,
-    "surveyor_code": null,
-    "brief_note": null,
-    "observations": null,
-    "signature_present": false
-  },
-  "document_type": "jir|panchnama|statement|spot_note|fir|other",
-  "confidence": 85,
-  "language_detected": "english|hindi|marathi|gujarati|mixed",
-  "pages_processed": 1
-}`
-    : `You are processing a scanned insurance document from India.
-Extract ALL text from every page. Identify and structure key fields.
-Return ONLY valid JSON — no markdown, no preamble:
-{
-  "raw_text": "complete verbatim extracted text",
-  "document_type": "policy|invoice|stock_register|fire_report|drug_inspection|udyam|itr|balance_sheet|shop_act|aadhar|pan|quotation|survey_report|identity|financial|other",
-  "key_fields": {
-    "amount": null,
-    "date": null,
-    "reference_number": null,
-    "parties": [],
-    "policy_number": null,
-    "claim_number": null,
-    "insured_name": null,
-    "address": null
-  },
-  "confidence": 85,
-  "language_detected": "english|hindi|marathi|gujarati|mixed",
-  "pages_processed": 1
-}`;
-
-  try {
-    const data = await openAIFetch(env, '/chat/completions', {
-      model: 'gpt-4o',
-      max_tokens: 4000,
-      response_format: { type: 'json_object' },
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'file',
-            file: {
-              filename: filename || 'document.pdf',
-              file_data: `data:application/pdf;base64,${base64PDF}`
-            }
-          },
-          { type: 'text', text: extractionPrompt }
-        ]
-      }]
-    });
-
-    const raw = data.choices[0]?.message?.content || '{}';
-    const result = JSON.parse(raw);
-    result.source     = 'scanned_pdf_vision';
-    result.filename   = filename;
-    result.processed_at = Date.now();
-    console.log(`[Scanned PDF OCR] ${filename} → confidence:${result.confidence} type:${result.document_type}`);
-    return result;
-
-  } catch (err) {
-    console.error('[Scanned PDF OCR] Failed:', err.message);
-    return {
-      raw_text: '',
-      document_type: 'unknown',
-      key_fields: {},
-      structured: {},
-      confidence: 0,
-      source: 'scanned_pdf_vision_failed',
-      error: err.message,
-      filename,
-      processed_at: Date.now()
-    };
-  }
-}
-
 // ── Unified Document Intelligence (Vision + Text) ────────────────────────
 export async function analyzeDocumentContent(env, { imageBase64, textContent, mimeType, context, isTruncated = false }) {
   const isImage = !!imageBase64;
@@ -373,4 +258,26 @@ Return ONLY JSON: {"conflicts":[{"field":"","doc1_type":"","doc1_value":"","doc2
   } catch {
     return { conflicts: [] };
   }
+}
+
+
+
+// ── Scanned PDF → Vision OCR ─────────────────────────────────────────────
+// Converts scanned PDF buffer to base64 and sends to GPT-4o vision.
+// Exported and called from both /api/ocr and /api/upload in index.js.
+export async function analyzeScannedPDF(env, pdfBuffer, filename, context = 'document') {
+  const bytes = new Uint8Array(pdfBuffer);
+  const CHUNK = 32768;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+    for (let j = 0; j < slice.length; j++) binary += String.fromCharCode(slice[j]);
+  }
+  const imageBase64 = btoa(binary);
+  return await analyzeDocumentContent(env, {
+    imageBase64,
+    mimeType: 'application/pdf',
+    context,
+    isTruncated: false
+  });
 }
