@@ -6522,12 +6522,79 @@ function closeNewClaimModal() {
 }
 
 async function ncCreateClaim() {
-  var insId  = document.getElementById('nc-insurer').value;
-  var name   = document.getElementById('nc-insuredName').value.trim();
-  var date   = document.getElementById('nc-lossDate').value;
-  var dept   = document.getElementById('nc-dept').value;
+  var insId = document.getElementById('nc-insurer').value;
+  var name = document.getElementById('nc-insuredName').value.trim();
+  var date = document.getElementById('nc-lossDate').value;
+  var dept = document.getElementById('nc-dept').value;
   var errBox = document.getElementById('ncStep1Error');
 
+  // Validation: only Insurer + Insured Name are required
+  if (!insId || !name) {
+    errBox.textContent = '\u26a0 Insurer and Insured Name are required to create a claim.';
+    errBox.style.display = 'block';
+    return;
+  }
+  errBox.style.display = 'none';
+
+  var btn = document.getElementById('ncStep1Btn');
+  btn.disabled = true;
+  btn.textContent = 'Creating claim...';
+
+  // Gather optional fields
+  var insOption = document.getElementById('nc-insurer').selectedOptions[0];
+  var insName = insOption ? insOption.text : '';
+  var circ = document.getElementById('nc-circumstances').value.trim();
+  var addr = document.getElementById('nc-address').value.trim();
+  var lossAmt = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
+  var policyNo = document.getElementById('nc-policyNo').value.trim();
+  var claimNo = document.getElementById('nc-claimNo').value.trim();
+  var sumIns = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
+
+  // Use today's date if loss date not provided
+  var incidentTs = date ? new Date(date).getTime() : Date.now();
+
+  var payload = {
+    insurer_id: insId,
+    insurer_name: insName,
+    insured_name: name,
+    department: dept,
+    incident_date: incidentTs,
+    claim_status: 'draft',
+    current_stage: 'intake',
+    circumstances: circ || null,
+    insured_address: addr || null,
+    loss_amount: lossAmt || null,
+    policy_number: policyNo || null,
+    claim_number: claimNo || null,
+    sum_insured: sumIns || null,
+    fsr_ready: false
+  };
+
+  try {
+    var r = await api('POST', '/api/claims', payload);
+    
+    // Get the new claim ID from response
+    var newClaimId = r.claim ? r.claim.id : r.id;
+    if (!newClaimId) throw new Error('No claim ID returned');
+
+    // Store in global state
+    state.claimId = newClaimId;
+    
+    // Close modal and navigate to dashboard with claim loaded
+    closeNewClaimModal();
+    toast('Claim created successfully', 'success');
+    
+    // Navigate to the claim workspace
+    window.location.href = '/surveyor-dashboard.html?claimId=' + newClaimId;
+    
+  } catch (error) {
+    console.error('Claim creation failed:', error);
+    errBox.textContent = '\u26a0 Failed to create claim. Please try again.';
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Create Claim & Upload Photos \u2192';
+  }
+}
   // ── Phase 2: Only Insurer + Insured Name + Department are required ──
   if (!insId || !name) {
     errBox.textContent = '\u26a0 Insurer and Insured Name are required to create a claim.';
