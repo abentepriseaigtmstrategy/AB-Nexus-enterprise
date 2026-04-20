@@ -391,7 +391,7 @@
     </div>
 
     <!-- New Claim -->
-    <a class="action-card primary" href="surveyor-dashboard.html?new=1" id="btnNewClaim">
+    <a class="action-card primary" href="/surveyor-dashboard?new=1" id="btnNewClaim">
       <div class="card-icon">📋</div>
       <div class="card-content">
         <div class="card-title">New Claim</div>
@@ -402,7 +402,7 @@
     </a>
 
     <!-- My Claims -->
-    <a class="action-card secondary" href="my-claims.html" id="btnMyClaims">
+    <a class="action-card secondary" href="/my-claims" id="btnMyClaims">
       <div class="card-icon">🗂️</div>
       <div class="card-content">
         <div class="card-title">My Claims</div>
@@ -462,7 +462,7 @@
   // Guard — must be logged in
   (function() {
     if (!localStorage.getItem('nexus_token')) {
-      window.location.replace('index.html');
+      window.location.replace('/');
     }
   })();
 
@@ -522,7 +522,7 @@
     localStorage.removeItem('nexus_user');
     localStorage.clear();
     sessionStorage.clear();
-    window.location.replace('index.html');
+    window.location.replace('/');
   }
 
   // Continue Where You Left Off Logic
@@ -574,7 +574,7 @@
   }
 
   function homeUploadJIR() {
-    window.location.href = `surveyor-dashboard.html?new=1&upload_jir=1`;
+    window.location.href = `/surveyor-dashboard?new=1&upload_jir=1`;
   }
 </script>
 
