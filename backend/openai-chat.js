@@ -281,3 +281,173 @@ export async function analyzeScannedPDF(env, pdfBuffer, filename, context = 'doc
     isTruncated: false
   });
 }
+
+// ── XLSX → Structured Loss Assessment ────────────────────────────────────
+// Sends Excel buffer to GPT-4o as base64 file. Returns line items + totals.
+// Called from /api/upload when mime is xlsx/xls.
+export async function parseXLSXToLossAssessment(env, buffer, filename) {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 32768;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+    for (let j = 0; j < slice.length; j++) binary += String.fromCharCode(slice[j]);
+  }
+  const b64 = btoa(binary);
+
+  const prompt = `You are processing an insurance Loss Assessment Excel file from India (McLarens / IRDAI surveyor format).
+Extract ALL line items and financial totals precisely.
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "raw_text": "tab-separated representation of all sheet data",
+  "document_type": "loss_assessment",
+  "items": [
+    {
+      "sr_no": 1,
+      "description": "item name",
+      "unit": "nos/sqft/kg/etc",
+      "qty_claimed": 0,
+      "rate_claimed": 0,
+      "amount_claimed": 0,
+      "qty_allowed": 0,
+      "rate_allowed": 0,
+      "amount_allowed": 0,
+      "depreciation_pct": 0,
+      "net_allowed": 0,
+      "remarks": ""
+    }
+  ],
+  "totals": {
+    "gross_claimed": 0,
+    "gross_allowed": 0,
+    "total_depreciation": 0,
+    "salvage": 0,
+    "excess_deductible": 0,
+    "net_assessed": 0,
+    "average_clause_applied": false,
+    "sum_insured": 0
+  },
+  "sheet_names": [],
+  "confidence": 85
+}`;
+
+  try {
+    const data = await openAIFetch(env, '/chat/completions', {
+      model: 'gpt-4o',
+      max_tokens: 4000,
+      response_format: { type: 'json_object' },
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'file',
+            file: {
+              filename: filename || 'loss_assessment.xlsx',
+              file_data: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${b64}`
+            }
+          },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    });
+    const raw = data.choices[0]?.message?.content || '{}';
+    const result = JSON.parse(raw);
+    result.source      = 'xlsx_gpt4o';
+    result.filename    = filename;
+    result.processed_at = Date.now();
+    console.log(`[XLSX] ${filename} → ${result.items?.length || 0} items | net: ${result.totals?.net_assessed}`);
+    return result;
+  } catch (err) {
+    console.error('[XLSX Parse] Failed:', err.message);
+    return {
+      raw_text: '', document_type: 'loss_assessment',
+      items: [], totals: {},
+      confidence: 0, source: 'xlsx_gpt4o_failed',
+      error: err.message, filename, processed_at: Date.now()
+    };
+  }
+}
+
+// ── DOCX → Structured Field + Table Extraction ───────────────────────────
+// Sends Word document buffer to GPT-4o as base64 file.
+// Extracts key fields, tables (FSR/LOR/ILA format), and raw text.
+// Called from /api/upload when mime is docx/doc.
+export async function extractDOCXFields(env, buffer, filename) {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 32768;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+    for (let j = 0; j < slice.length; j++) binary += String.fromCharCode(slice[j]);
+  }
+  const b64 = btoa(binary);
+
+  const prompt = `You are processing an insurance survey Word document from India (McLarens format: FSR, LOR, ILA, PSR or similar).
+Extract all text, key fields, and table data precisely.
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "raw_text": "complete extracted text",
+  "document_type": "fsr|lor|ila|psr|interim|spot|jir|other",
+  "key_fields": {
+    "our_ref": null,
+    "claim_no": null,
+    "date": null,
+    "insurer_name": null,
+    "insured_name": null,
+    "policy_no": null,
+    "department": null,
+    "sum_insured": null,
+    "loss_amount": null,
+    "net_liability": null,
+    "surveyor_name": null,
+    "surveyor_licence": null,
+    "date_of_loss": null,
+    "cause_of_loss": null
+  },
+  "tables": [
+    {
+      "table_index": 0,
+      "headers": [],
+      "rows": []
+    }
+  ],
+  "requirements": [],
+  "confidence": 85
+}`;
+
+  try {
+    const data = await openAIFetch(env, '/chat/completions', {
+      model: 'gpt-4o',
+      max_tokens: 4000,
+      response_format: { type: 'json_object' },
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'file',
+            file: {
+              filename: filename || 'document.docx',
+              file_data: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${b64}`
+            }
+          },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    });
+    const raw = data.choices[0]?.message?.content || '{}';
+    const result = JSON.parse(raw);
+    result.source      = 'docx_gpt4o';
+    result.filename    = filename;
+    result.processed_at = Date.now();
+    console.log(`[DOCX] ${filename} → type:${result.document_type} | confidence:${result.confidence}`);
+    return result;
+  } catch (err) {
+    console.error('[DOCX Extract] Failed:', err.message);
+    return {
+      raw_text: '', document_type: 'other',
+      key_fields: {}, tables: [], requirements: [],
+      confidence: 0, source: 'docx_gpt4o_failed',
+      error: err.message, filename, processed_at: Date.now()
+    };
+  }
+}
