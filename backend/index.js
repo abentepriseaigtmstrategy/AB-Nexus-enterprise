@@ -8,8 +8,7 @@ import { hasPermission, canAccessResource, filterByTenant,
          getVisibleModules, getRestrictedModules } from './rbac.js';
 import { handleChatRequest, analyzeDocumentContent,
          detectWarrantyBreaches, crossVerifyDocuments,
-         computeSettlementFromRules, generateReportDraft,
-         analyzeScannedPDF } from './openai-chat.js';
+         computeSettlementFromRules, generateReportDraft } from './openai-chat.js';
 import { sendEmail, sendSMS,
          buildPendingDocReminderEmail, buildPendingDocReminderSMS,
          buildStatusChangeEmail, buildBreachAlertEmail } from './notifications.js';
@@ -1769,26 +1768,16 @@ Return JSON:
               textContent = textContent.slice(0, 12000);
               isTruncated = true;
             }
-            // Scanned PDF → Vision OCR pipeline (replaces dead-end error)
+            // Scanned PDF — switch to vision path
             if (mimeType === 'application/pdf' && !looksLikeReadableText(textContent)) {
-              console.log(`[OCR] Scanned PDF → Vision pipeline: ${filename}`);
-              const pdfBytes  = await file.arrayBuffer();
-              const result    = await analyzeScannedPDF(env, pdfBytes, filename, context);
-              const claimId   = url.searchParams.get('claimId');
-              if (claimId && result.raw_text) {
-                const docId  = generateUUID();
-                const r2Key  = `${user.tenantId}/ocr/${claimId}/${Date.now()}-scanned-ocr.json`;
-                await env.DOCS.put(r2Key, JSON.stringify(result), { httpMetadata: { contentType: 'application/json' } });
-                await env.DB.prepare(
-                  `INSERT INTO claim_documents (id,claim_id,tenant_id,filename,document_type,r2_key,ocr_extracted_data,verification_score,uploaded_by,is_handwritten_upload,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
-                ).bind(docId, claimId, user.tenantId, filename,
-                  result.document_type || 'scanned_document',
-                  r2Key, JSON.stringify(result), result.confidence || 70,
-                  user.id, context === 'handwritten_report' ? 1 : 0, Date.now()).run();
-                await broadcastUpdate(env, user.tenantId, 'ocr_complete', { claimId, docId, confidence: result.confidence, source: 'scanned_pdf' });
-                return jsonResponse({ ...result, docId, saved: true });
-              }
-              return jsonResponse(result);
+              console.log(`[OCR] Scanned PDF — switching to vision path: ${filename}`);
+              const pdfBytes = await file.arrayBuffer();
+              const uint8 = new Uint8Array(pdfBytes);
+              let binary = '';
+              for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+              imageBase64 = btoa(binary);
+              textContent = null;
+              mimeType = 'application/pdf';
             }
           }
         } else {
@@ -1859,14 +1848,14 @@ Return JSON:
                 text = text.slice(0, 12000);
                 isTruncated = true;
               }
-              // Scanned PDF → Vision OCR pipeline
+              // Scanned PDF — switch to vision path
               if (actualMime === 'application/pdf' && !looksLikeReadableText(text)) {
-                console.log(`[Upload] Scanned PDF → Vision pipeline: ${file.name}`);
+                console.log(`[Upload] Scanned PDF — switching to vision path: ${file.name}`);
                 const pdfBytes = await file.arrayBuffer();
-                ocrData = await analyzeScannedPDF(
-                  env, pdfBytes, file.name,
-                  isHandwritten ? 'handwritten_report' : 'document'
-                );
+                const uint8pdf = new Uint8Array(pdfBytes);
+                let binaryPdf = '';
+                for (let i = 0; i < uint8pdf.length; i++) binaryPdf += String.fromCharCode(uint8pdf[i]);
+                ocrData = await analyzeDocumentContent(env, { imageBase64: btoa(binaryPdf), mimeType: 'application/pdf', context: isHandwritten ? 'handwritten_report' : 'document' });
               } else {
                 console.log(`[Upload] Text path: ${file.name} | Len: ${text.length} | Truncated: ${isTruncated}`);
                 ocrData = await analyzeDocumentContent(env, { textContent: text, mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document', isTruncated });
