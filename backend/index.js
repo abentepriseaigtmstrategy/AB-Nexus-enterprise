@@ -9,7 +9,8 @@ import { hasPermission, canAccessResource, filterByTenant,
 import { handleChatRequest, analyzeDocumentContent,
          detectWarrantyBreaches, crossVerifyDocuments,
          computeSettlementFromRules, generateReportDraft,
-         analyzeScannedPDF } from './openai-chat.js';
+         analyzeScannedPDF, parseXLSXToLossAssessment,
+         extractDOCXFields } from './openai-chat.js';
 import { sendEmail, sendSMS,
          buildPendingDocReminderEmail, buildPendingDocReminderSMS,
          buildStatusChangeEmail, buildBreachAlertEmail } from './notifications.js';
@@ -45,8 +46,12 @@ function looksLikeReadableText(s) {
 
 function getMimeFromExtension(filename, defaultMime) {
   const ext = filename?.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf') return 'application/pdf';
-  if (ext === 'txt') return 'text/plain';
+  if (ext === 'pdf')  return 'application/pdf';
+  if (ext === 'txt')  return 'text/plain';
+  if (ext === 'xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (ext === 'xls')  return 'application/vnd.ms-excel';
+  if (ext === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (ext === 'doc')  return 'application/msword';
   if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext)) return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
   return defaultMime;
 }
@@ -1842,7 +1847,15 @@ Return JSON:
         const docId = generateUUID();
         let ocrData = null;
         const actualMime = getMimeFromExtension(file.name, file.type);
-        const canAnalyze = (runOCR || isHandwritten) && (actualMime.startsWith('image/') || actualMime === 'application/pdf' || actualMime === 'text/plain');
+        const canAnalyze = (runOCR || isHandwritten) && (
+          actualMime.startsWith('image/') ||
+          actualMime === 'application/pdf' ||
+          actualMime === 'text/plain' ||
+          actualMime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          actualMime === 'application/vnd.ms-excel' ||
+          actualMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          actualMime === 'application/msword'
+        );
         if (canAnalyze) {
           try {
             if (actualMime.startsWith('image/')) {
@@ -1852,6 +1865,16 @@ Return JSON:
               for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
               console.log(`[Upload] Vision path: ${file.name} (${actualMime})`);
               ocrData = await analyzeDocumentContent(env, { imageBase64: btoa(binary), mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document' });
+            } else if (actualMime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || actualMime === 'application/vnd.ms-excel') {
+              // XLSX / XLS → Loss Assessment parser
+              console.log(`[Upload] XLSX path: ${file.name}`);
+              const xlsxBytes = await file.arrayBuffer();
+              ocrData = await parseXLSXToLossAssessment(env, xlsxBytes, file.name);
+            } else if (actualMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || actualMime === 'application/msword') {
+              // DOCX / DOC → Field + table extractor
+              console.log(`[Upload] DOCX path: ${file.name}`);
+              const docxBytes = await file.arrayBuffer();
+              ocrData = await extractDOCXFields(env, docxBytes, file.name);
             } else {
               let text = await file.text();
               let isTruncated = false;
@@ -2243,6 +2266,23 @@ Return ONLY valid JSON (no markdown):
         const draft = await generateReportDraft(env, report_type, claim, docs.results || [], calc);
         await auditLog(env, user.tenantId, user.id, 'report_auto_drafted', 'survey_reports_pipeline', claimId, clientIP);
         return jsonResponse({ success: true, draft, report_type });
+      }
+
+      // ════ CROSS-DOCUMENT VERIFICATION ════════════════════════════════
+      if (path.match(/^\/api\/claims\/[^\/]+\/cross-verify$/) && method === 'POST') {
+        const claimId = path.split('/')[3];
+        const claim = await env.DB.prepare(
+          'SELECT id FROM claims WHERE id=? AND tenant_id=?'
+        ).bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+        const docs = await env.DB.prepare(
+          'SELECT document_type, filename, ocr_extracted_data FROM claim_documents WHERE claim_id=? AND ocr_extracted_data IS NOT NULL'
+        ).bind(claimId).all();
+        if (!docs.results || docs.results.length < 2)
+          return jsonResponse({ conflicts: [], message: 'Need at least 2 documents with extracted data to cross-verify.' });
+        const result = await crossVerifyDocuments(env, claimId, docs.results);
+        await auditLog(env, user.tenantId, user.id, 'cross_verify_run', 'claims', claimId, clientIP);
+        return jsonResponse({ success: true, ...result });
       }
 
       // ════════════════════════════════════════════════════════════════════
