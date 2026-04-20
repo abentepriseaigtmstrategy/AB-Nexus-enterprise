@@ -300,7 +300,7 @@
   // Already logged in → go to home screen (Command Center) first
   (function() {
     if (localStorage.getItem('nexus_token')) {
-      window.location.replace('home.html');
+      window.location.replace('/home');
     }
   })();
 
@@ -350,10 +350,10 @@
         // Route by role — always go to Command Center first for surveyors
         var role = data.user && data.user.role;
         if (role === 'hr_admin' || role === 'employee') {
-          window.location.href = 'hrms-dashboard.html';
+          window.location.href = '/hrms-dashboard';
         } else {
           // Surveyor/admin → Command Center (home.html) first
-          window.location.href = 'home.html';
+          window.location.href = '/home';
         }
       } else {
         showError(data.error || 'Invalid credentials. Please try again.');
