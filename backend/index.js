@@ -304,14 +304,27 @@ export default {
             docs: !!env.DOCS,
             openai_key: !!env.OPENAI_API_KEY
           },
-          database: { status: 'checking' }
+          database: { status: 'checking', initialized: false, userCount: 0 },
+          realtime: { status: 'unknown' }
         };
         if (env.DB) {
           try {
             const result = await env.DB.prepare('SELECT count(*) as count FROM users').first();
-            diagnostics.database.status = 'connected';
-            diagnostics.database.userCount = result.count;
-          } catch (e) { diagnostics.database.status = 'error'; diagnostics.database.error = e.message; }
+            diagnostics.database.status      = 'connected';
+            diagnostics.database.initialized = true;
+            diagnostics.database.userCount   = result?.count || 0;
+          } catch (e) {
+            diagnostics.database.status = 'error';
+            diagnostics.database.error  = e.message;
+          }
+        }
+        if (env.REALTIME_HUB) {
+          try {
+            diagnostics.realtime.status = 'ready';
+          } catch (e) {
+            diagnostics.realtime.status = 'error';
+            diagnostics.realtime.error  = e.message;
+          }
         }
         return jsonResponse(diagnostics);
       }
