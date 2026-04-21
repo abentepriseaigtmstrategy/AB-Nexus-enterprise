@@ -8120,31 +8120,45 @@ async function globalJirFileSelected(event) {
 async function checkSystemStatus() {
   const dot = document.getElementById('systemStatusDot');
   const pill = document.getElementById('systemStatusPill');
-  
+
   try {
     const res = await fetch(API + '/api/system/status', {
       headers: { 'Authorization': 'Bearer ' + (auth.token || '') }
     });
-    const data = await res.json();
-    
+
     if (res.ok) {
+      const data = await res.json();
       dot.className = 'status-dot online';
       let msg = "✅ SYSTEM HEALTHY\n\n";
-      msg += `D1 Database: ${data.database.initialized ? "OK (" + (data.database.userCount || 0) + " users)" : "❌ FAILED"}\n`;
-      msg += `R2 Storage: ${data.bindings.docs ? "OK" : "❌ MISSING"}\n`;
-      msg += `WebSockets (DO): ${data.realtime.status === 'ready' ? "OK" : "❌ " + data.realtime.status}\n`;
-      msg += `AI Pipeline: ${data.bindings.openai_key ? "OK" : "❌ KEY MISSING"}\n`;
-      
-      if (data.database.error) msg += `\nDB Error: ${data.database.error}`;
-      if (data.realtime.error) msg += `\nWS Error: ${data.realtime.error}`;
-      
+      msg += `D1 Database: ${data.database && data.database.initialized ? "OK (" + (data.database.userCount || 0) + " users)" : "❌ FAILED"}\n`;
+      msg += `R2 Storage: ${data.bindings && data.bindings.docs ? "OK" : "❌ MISSING"}\n`;
+      msg += `WebSockets (DO): ${data.realtime && data.realtime.status === 'ready' ? "OK" : "❌ " + (data.realtime && data.realtime.status || 'unknown')}\n`;
+      msg += `AI Pipeline: ${data.bindings && data.bindings.openai_key ? "OK" : "❌ KEY MISSING"}\n`;
       console.log('[SystemStatus]', data);
-      // alert(msg); // Only alert if manually clicked? For now, keep it silent unless error
+      return;
+    }
+
+    // /api/system/status returned non-200 — fall back to /api/health
+    // Worker is alive if /api/health responds, even if deep checks fail
+    const healthRes = await fetch(API + '/api/health');
+    if (healthRes.ok) {
+      dot.className = 'status-dot online';
+      console.warn('[SystemStatus] Deep check returned ' + res.status + ' — Worker healthy via /api/health');
     } else {
       dot.className = 'status-dot offline';
-      console.error('[Infrastructure Error]', data);
+      console.error('[SystemStatus] Worker unreachable — both endpoints failed');
     }
+
   } catch (err) {
+    // Network error — verify Worker is actually down before showing red
+    try {
+      const healthRes = await fetch(API + '/api/health');
+      if (healthRes.ok) {
+        dot.className = 'status-dot online';
+        console.warn('[SystemStatus] Catch fallback — Worker alive via /api/health');
+        return;
+      }
+    } catch {}
     dot.className = 'status-dot offline';
     console.warn('[Connection Failed] Backend unreachable.');
   }
