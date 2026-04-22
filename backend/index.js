@@ -992,18 +992,43 @@ export default {
         if (insId) { q += ' AND c.insurer_id=?'; p.push(insId); }
         q += ' ORDER BY c.created_at DESC';
         const rows = await env.DB.prepare(q).bind(...p).all();
-        for (const c of rows.results) {
-          if (c.surveyor_id) {
+
+        // summary=1 → lightweight response for Vault UI initial load
+        // strips heavy JSON fields, batches doc counts in one query
+        const isSummary = url.searchParams.get('summary') === '1';
+        const HEAVY_FIELDS = ['assessment_data','warranty_breaches','ai_suggestions','rules_snapshot'];
+
+        // Batch doc counts in a single query instead of N per-claim queries
+        const claimIds = (rows.results || []).map(c => c.id);
+        let docCounts = {};
+        if (claimIds.length > 0) {
+          const placeholders = claimIds.map(() => '?').join(',');
+          const dcRows = await env.DB.prepare(
+            `SELECT claim_id,
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending
+             FROM pending_documents WHERE claim_id IN (${placeholders}) GROUP BY claim_id`
+          ).bind(...claimIds).all();
+          for (const r of (dcRows.results || [])) {
+            docCounts[r.claim_id] = { total: r.total, pending: r.pending };
+          }
+        }
+
+        const results = [];
+        for (const c of (rows.results || [])) {
+          if (isSummary) {
+            for (const f of HEAVY_FIELDS) delete c[f];
+          }
+          if (!isSummary && c.surveyor_id) {
             const s = await env.DB.prepare('SELECT name FROM users WHERE id=?').bind(c.surveyor_id).first();
             c.surveyor_name = s?.name;
           }
-          const pds = await env.DB.prepare(
-            'SELECT COUNT(*) AS total, SUM(CASE WHEN status="pending" THEN 1 ELSE 0 END) AS pending FROM pending_documents WHERE claim_id=?'
-          ).bind(c.id).first();
-          c.docs_total   = pds?.total || 0;
-          c.docs_pending = pds?.pending || 0;
+          const dc = docCounts[c.id] || { total: 0, pending: 0 };
+          c.docs_total   = dc.total   || 0;
+          c.docs_pending = dc.pending || 0;
+          results.push(c);
         }
-        return jsonResponse({ claims: rows.results });
+        return jsonResponse({ claims: results });
       }
 
       if (path.match(/^\/api\/claims\/[^\/]+$/) && method === 'GET') {
@@ -1123,6 +1148,15 @@ export default {
         const existing = await env.DB.prepare('SELECT * FROM claims WHERE id=?').bind(claimId).first();
         if (!existing) return errorResponse('Claim not found', 404);
         if (!canAccessResource(user, existing.tenant_id)) return errorResponse('Access denied', 403);
+
+        // ── Status Lock — enforce at API level ─────────────────────────
+        const LOCKED_STATUSES = ['submitted','settled','closed','archived'];
+        if (LOCKED_STATUSES.includes(existing.claim_status)) {
+          return errorResponse(
+            `Claim is ${existing.claim_status} — modifications are locked. Only versioning is permitted.`,
+            423  // HTTP 423 Locked
+          );
+        }
 
         const allowed = ['policy_number','insured_name','department','sum_insured','loss_amount',
                          'claim_status','priority','surveyor_id','incident_date','survey_date',
@@ -1855,6 +1889,19 @@ Return JSON:
         const isHandwritten = formData.get('is_handwritten') === 'true';
         const runOCR  = formData.get('run_ocr') === 'true';
         if (!file) return errorResponse('No file uploaded', 400);
+        // ── Document Lock — block uploads for locked claims ─────────────
+        if (claimId) {
+          const claimCheck = await env.DB.prepare(
+            'SELECT claim_status FROM claims WHERE id=? AND tenant_id=?'
+          ).bind(claimId, user.tenantId).first();
+          const UPLOAD_LOCKED = ['submitted','settled','closed','archived'];
+          if (claimCheck && UPLOAD_LOCKED.includes(claimCheck.claim_status)) {
+            return errorResponse(
+              `Documents locked — claim is ${claimCheck.claim_status}. No new uploads permitted.`,
+              423
+            );
+          }
+        }
         const key = `${user.tenantId}/${claimId || 'general'}/${Date.now()}-${file.name}`;
         await env.DOCS.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
         const docId = generateUUID();
@@ -1928,7 +1975,21 @@ Return JSON:
         const { status } = await request.json();
         const existing = await env.DB.prepare('SELECT * FROM claims WHERE id=?').bind(claimId).first();
         if (!existing) return errorResponse('Claim not found', 404);
-        await env.DB.prepare('UPDATE claims SET claim_status=?,updated_at=? WHERE id=?').bind(status, Date.now(), claimId).run();
+        // Build lifecycle column update alongside status change
+        let extraCol = '', extraVals = [];
+        if (status === 'settled' || status === 'closed') {
+          extraCol = ', closed_at=?, closed_by=?';
+          extraVals = [Date.now(), user.id];
+        } else if (status === 'archived') {
+          extraCol = ', archived_at=?, archived_by=?';
+          extraVals = [Date.now(), user.id];
+        } else if (status === 'in_progress' && existing.claim_status === 'archived') {
+          extraCol = ', restored_at=?, restored_by=?';
+          extraVals = [Date.now(), user.id];
+        }
+        await env.DB.prepare(
+          `UPDATE claims SET claim_status=?,updated_at=?${extraCol} WHERE id=?`
+        ).bind(status, Date.now(), ...extraVals, claimId).run();
         let surveyorName = 'McLarens Survey Team';
         if (existing.surveyor_id) {
           const s = await env.DB.prepare('SELECT name FROM users WHERE id=?').bind(existing.surveyor_id).first();
@@ -1941,6 +2002,66 @@ Return JSON:
         }
         await broadcastUpdate(env, user.tenantId, 'claim_status_changed', { claimId, oldStatus: existing.claim_status, newStatus: status });
         await auditLog(env, user.tenantId, user.id, 'claim_status_updated', 'claims', claimId, clientIP, { status: existing.claim_status }, { status });
+
+        // ── Final Submission Snapshot ────────────────────────────────────
+        // Captures immutable state at moment of submission for legal/audit use
+        if (status === 'submitted' && existing.claim_status !== 'submitted') {
+          try {
+            const [snapDocs, snapReports, snapCalc] = await Promise.all([
+              env.DB.prepare(
+                'SELECT id,filename,document_type,r2_key,verification_score,ocr_extracted_data,created_at FROM claim_documents WHERE claim_id=?'
+              ).bind(claimId).all(),
+              env.DB.prepare(
+                'SELECT report_type,status,version,report_data,submitted_at FROM survey_reports_pipeline WHERE claim_id=?'
+              ).bind(claimId).all(),
+              env.DB.prepare(
+                'SELECT * FROM fsr_calculations WHERE claim_id=?'
+              ).bind(claimId).first()
+            ]);
+
+            const snapshot = {
+              snapshot_version: 1,
+              captured_at:      Date.now(),
+              captured_by:      user.id,
+              claim_data: {
+                id:             existing.id,
+                claim_number:   existing.claim_number,
+                insured_name:   existing.insured_name,
+                insurer_id:     existing.insurer_id,
+                department:     existing.department,
+                loss_amount:    existing.loss_amount,
+                sum_insured:    existing.sum_insured,
+                settlement_amount: existing.settlement_amount,
+                circumstances:  existing.circumstances
+              },
+              documents:    (snapDocs.results   || []).map(d => ({
+                id:        d.id, filename: d.filename,
+                type:      d.document_type, r2_key: d.r2_key,
+                ai_score:  d.verification_score,
+                has_ocr:   !!d.ocr_extracted_data,
+                uploaded:  d.created_at
+              })),
+              reports:      (snapReports.results || []).map(r => ({
+                type:    r.report_type, status: r.status,
+                version: r.version,    submitted_at: r.submitted_at,
+                has_data: !!r.report_data
+              })),
+              financials:   snapCalc || null
+            };
+
+            const snapId = generateUUID();
+            await env.DB.prepare(
+              `INSERT INTO claim_final_snapshots
+               (id,claim_id,tenant_id,snapshot_data,submitted_by,created_at)
+               VALUES (?,?,?,?,?,?)`
+            ).bind(snapId, claimId, user.tenantId, JSON.stringify(snapshot), user.id, Date.now()).run();
+            console.log(`[Snapshot] Created for claim ${claimId} → ${snapId}`);
+          } catch(snapErr) {
+            // Non-blocking — log but don't fail the status update
+            console.error('[Snapshot] Failed to create:', snapErr.message);
+          }
+        }
+
         return jsonResponse({ success: true });
       }
 
@@ -2296,6 +2417,167 @@ Return ONLY valid JSON (no markdown):
         const result = await crossVerifyDocuments(env, claimId, docs.results);
         await auditLog(env, user.tenantId, user.id, 'cross_verify_run', 'claims', claimId, clientIP);
         return jsonResponse({ success: true, ...result });
+      }
+
+      // ════ CLAIM TIMELINE ═════════════════════════════════════════════
+      // Returns full audit trail for a claim — used by Claim Intelligence Vault
+      if (path.match(/^\/api\/claims\/[^\/]+\/timeline$/) && method === 'GET') {
+        const claimId = path.split('/')[3];
+        const claim   = await env.DB.prepare(
+          'SELECT id,tenant_id FROM claims WHERE id=? AND tenant_id=?'
+        ).bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+
+        // Merge audit_logs + ai_audit_logs + document uploads into one timeline
+        const [auditRows, aiRows, docRows] = await Promise.all([
+          env.DB.prepare(
+            `SELECT al.id, al.action, al.old_data, al.new_data, al.created_at,
+                    u.name AS user_name
+             FROM audit_logs al
+             LEFT JOIN users u ON al.user_id = u.id
+             WHERE al.resource_id=? AND al.tenant_id=?
+             ORDER BY al.created_at DESC LIMIT 100`
+          ).bind(claimId, user.tenantId).all(),
+          env.DB.prepare(
+            `SELECT id, action_type AS action, created_at, 'AI System' AS user_name, NULL AS old_data, result AS new_data
+             FROM ai_audit_logs WHERE claim_id=?
+             ORDER BY created_at DESC LIMIT 50`
+          ).bind(claimId).all(),
+          env.DB.prepare(
+            `SELECT id, 'document_uploaded' AS action, created_at, uploaded_by AS user_id,
+                    NULL AS old_data,
+                    json_object('filename', filename, 'document_type', document_type) AS new_data
+             FROM claim_documents WHERE claim_id=?
+             ORDER BY created_at DESC LIMIT 50`
+          ).bind(claimId).all()
+        ]);
+
+        const timeline = [
+          ...(auditRows.results || []),
+          ...(aiRows.results   || []),
+          ...(docRows.results  || [])
+        ].sort((a, b) => (b.created_at || 0) - (a.created_at || 0)).slice(0, 150);
+
+        return jsonResponse({ success: true, timeline });
+      }
+
+      // ════ RESUME ENGINE ══════════════════════════════════════════════
+      // Returns exactly where work was left — stage + next action
+      // Frontend uses this to redirect to correct workbench tab
+      if (path.match(/^\/api\/claims\/[^\/]+\/resume$/) && method === 'GET') {
+        const claimId = path.split('/')[3];
+        const claim   = await env.DB.prepare(
+          `SELECT c.id, c.claim_status, c.current_stage, c.updated_at, c.insured_name,
+                  c.claim_number, c.department
+           FROM claims c WHERE c.id=? AND c.tenant_id=?`
+        ).bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+
+        // Blocked statuses — nothing to resume
+        const LOCKED = ['submitted','settled','closed','archived'];
+        if (LOCKED.includes(claim.claim_status)) {
+          return jsonResponse({
+            resumable: false,
+            reason: `Claim is ${claim.claim_status} — no active work to resume`,
+            claim_status: claim.claim_status
+          });
+        }
+
+        // Find the furthest non-empty pipeline report to determine stage
+        const STAGE_ORDER = ['fsr','interim','psr','lor','spot','jir'];
+        const reports = await env.DB.prepare(
+          `SELECT report_type, status, version, updated_at
+           FROM survey_reports_pipeline WHERE claim_id=? ORDER BY updated_at DESC`
+        ).bind(claimId).all();
+
+        const reportMap = {};
+        for (const r of (reports.results || [])) reportMap[r.report_type] = r;
+
+        let lastStage = claim.current_stage || 'jir';
+        let nextAction = 'Continue filling JIR';
+        let workbenchTab = 'pipeline';
+        let pipelineStage = 'jir';
+
+        // Find the most advanced report with actual data
+        for (const stage of STAGE_ORDER) {
+          if (reportMap[stage] && reportMap[stage].version > 0) {
+            pipelineStage = stage;
+            lastStage     = stage;
+            break;
+          }
+        }
+
+        // Determine next action based on stage + report status
+        const currentReport = reportMap[pipelineStage];
+        if (!currentReport || currentReport.status === 'draft') {
+          nextAction = `Complete ${pipelineStage.toUpperCase()} — currently in draft`;
+        } else if (currentReport.status === 'saved') {
+          // Find next stage in pipeline
+          const idx = ['jir','spot','lor','psr','interim','fsr'].indexOf(pipelineStage);
+          const next = ['jir','spot','lor','psr','interim','fsr'][idx + 1];
+          nextAction = next ? `Proceed to ${next.toUpperCase()}` : 'Review FSR before submission';
+        }
+
+        // Check pending documents
+        const pendingDocs = await env.DB.prepare(
+          `SELECT COUNT(*) AS c FROM pending_documents
+           WHERE claim_id=? AND status='pending' AND is_mandatory=1`
+        ).bind(claimId).first();
+
+        const pendingCount = pendingDocs?.c || 0;
+        if (pendingCount > 0) {
+          nextAction = `${pendingCount} mandatory document(s) pending — upload before proceeding`;
+          workbenchTab = 'documents';
+        }
+
+        // Last activity time
+        const lastActivity = claim.updated_at
+          ? new Date(claim.updated_at > 1e12 ? claim.updated_at : claim.updated_at * 1000).toISOString()
+          : null;
+
+        return jsonResponse({
+          resumable:      true,
+          claim_id:       claimId,
+          claim_number:   claim.claim_number,
+          claim_status:   claim.claim_status,
+          last_stage:     lastStage,
+          pipeline_stage: pipelineStage,
+          workbench_tab:  workbenchTab,
+          next_action:    nextAction,
+          last_activity:  lastActivity,
+          pending_docs:   pendingCount,
+          redirect_url:   `/surveyor-dashboard?claimId=${claimId}&tab=${workbenchTab}&stage=${pipelineStage}`
+        });
+      }
+
+      // ════ CLAIM EVIDENCE VAULT ═══════════════════════════════════════
+      // Returns documents organized by category — used by Evidence Vault panel
+      if (path.match(/^\/api\/claims\/[^\/]+\/evidence$/) && method === 'GET') {
+        const claimId = path.split('/')[3];
+        const claim   = await env.DB.prepare(
+          'SELECT id,tenant_id,claim_number,insured_name FROM claims WHERE id=? AND tenant_id=?'
+        ).bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+
+        const docs = await env.DB.prepare(
+          `SELECT id, filename, document_type, r2_key, file_size, mime_type,
+                  ocr_extracted_data, verification_score, uploaded_by, created_at,
+                  is_handwritten_upload, caption
+           FROM claim_documents WHERE claim_id=? ORDER BY created_at ASC`
+        ).bind(claimId).all();
+
+        const reports = await env.DB.prepare(
+          `SELECT id, report_type, status, version, created_at, updated_at
+           FROM survey_reports WHERE claim_id=? ORDER BY created_at ASC`
+        ).bind(claimId).all();
+
+        return jsonResponse({
+          success: true,
+          claimId,
+          documents: docs.results || [],
+          reports:   reports.results || [],
+          doc_count: (docs.results || []).length
+        });
       }
 
       // ════════════════════════════════════════════════════════════════════
