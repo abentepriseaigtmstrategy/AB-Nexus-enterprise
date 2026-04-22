@@ -219,6 +219,7 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
   </div>
   <div class="topbar-center">MCL-PUN-26 &nbsp;·&nbsp; v5.1</div>
   <div class="topbar-right">
+    <button class="tbtn" onclick="goBack()" style="font-family:var(--mono);font-size:11px;letter-spacing:0.04em;">← Back</button>
     <button class="tbtn" onclick="window.location.href='/surveyor-dashboard'">⚡ Workbench</button>
     <button class="tbtn primary" onclick="openNewClaimWorkbench()">+ New Claim</button>
     <div class="user-chip" id="userChip">
@@ -330,6 +331,21 @@ body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-si
 // ══════════════════════════════════════════════════════════════════════
 const API = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
 const TOKEN = localStorage.getItem('nexus_token');
+
+// ── Context-aware back navigation ────────────────────────────────────
+function goBack() {
+  var ref = document.referrer;
+  var last = localStorage.getItem('nexus_last_page') || '';
+  if (ref && ref !== window.location.href) {
+    window.history.back();
+  } else if (last && last !== window.location.href) {
+    window.location.href = last;
+  } else {
+    window.location.href = '/home';
+  }
+}
+// Store vault as last page so workbench back button returns here
+localStorage.setItem('nexus_last_page', window.location.href);
 // Auth guard — redirect to login if no token (runs after DOM ready)
 if (!TOKEN) {
   document.addEventListener('DOMContentLoaded', () => window.location.replace('/'));
