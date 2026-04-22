@@ -861,6 +861,7 @@ body.focus-mode .focus-save-bar{display:flex !important;}
     <div class="logo">SurveyorOS <span>v2026.1</span></div>
     <a href="home.html" id="homeBtn" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-sec);text-decoration:none;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;letter-spacing:0.06em;" onmouseover="this.style.color='var(--amber)';this.style.borderColor='rgba(232,160,32,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">⌂ HOME</a>
     <a href="my-claims.html" id="myClaimsBtn" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-sec);text-decoration:none;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;letter-spacing:0.06em;" onmouseover="this.style.color='var(--teal)';this.style.borderColor='rgba(34,196,160,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">🗂 MY CLAIMS</a>
+    <a href="/claim-vault" id="vaultBtn" onclick="localStorage.setItem('nexus_last_page',window.location.href)" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-sec);text-decoration:none;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;letter-spacing:0.06em;" onmouseover="this.style.color='var(--purple)';this.style.borderColor='rgba(167,139,250,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">🏛 VAULT</a>
     <div class="badge-pill">MCL-PUN-26</div>
     <span class="status-dot blink"></span>
     <span id="wsBadge" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--bg3);color:var(--text-ter);">WS CONNECTING</span>
@@ -2180,6 +2181,20 @@ body.focus-mode .focus-save-bar{display:flex !important;}
 </div>
 
 <script>
+// ── Context-aware back navigation ────────────────────────────────────
+function goBack() {
+  var ref = document.referrer;
+  var last = localStorage.getItem('nexus_last_page') || '';
+  if (ref && ref !== window.location.href) {
+    window.history.back();
+  } else if (last && last !== window.location.href) {
+    window.location.href = last;
+  } else {
+    window.location.href = '/home';
+  }
+}
+// Store current page so vault can return here
+localStorage.setItem('nexus_last_page', window.location.href);
 // ===================================================================
 // SURVEYOROS 2026 — INTEGRATED DASHBOARD + REPORT PIPELINE
 // JIR = single source of truth. claimState drives all downstream.
