@@ -297,11 +297,25 @@
 <script>
   const API_URL = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
 
-  // Already logged in → go to home screen (Command Center) first
+  // Already logged in → verify token then go to home
   (function() {
-    if (localStorage.getItem('nexus_token')) {
-      window.location.replace('/home');
-    }
+    var token = localStorage.getItem('nexus_token');
+    if (!token) return; // not logged in, show login form
+    // Verify token is still valid before redirecting
+    fetch('https://ab-nexus-api.amitbhavikmnm.workers.dev/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) {
+      if (r.ok) {
+        window.location.replace('/home');
+      } else {
+        // Token expired or invalid — clear it, stay on login page
+        localStorage.removeItem('nexus_token');
+        localStorage.removeItem('nexus_user');
+      }
+    }).catch(function() {
+      // Worker unreachable — don't redirect, show login form
+      // User can log in when Worker is back up
+    });
   })();
 
   // Enter key support
