@@ -7,248 +7,110 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg0: #0a0c0f;
-    --bg1: #111318;
-    --bg2: #181c24;
-    --bg3: #1e2330;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.12);
-    --amber: #e8a020;
-    --amber-dim: rgba(232,160,32,0.15);
-    --amber-glow: rgba(232,160,32,0.06);
-    --teal: #22c4a0;
-    --red: #e85555;
-    --green: #5ec67a;
-    --text-pri: #e8eaf0;
-    --text-sec: #8892aa;
-    --text-ter: #505870;
-    --mono: 'IBM Plex Mono', monospace;
-    --display: 'Syne', sans-serif;
-    --body: 'DM Sans', sans-serif;
+    --bg0:#0a0c0f;--bg1:#111318;--bg2:#181c24;--bg3:#1e2330;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+    --amber:#e8a020;--amber-dim:rgba(232,160,32,0.15);--amber-glow:rgba(232,160,32,0.06);
+    --teal:#22c4a0;--teal-dim:rgba(34,196,160,0.12);
+    --red:#e85555;--green:#5ec67a;--purple:#a78bfa;
+    --text-pri:#e8eaf0;--text-sec:#8892aa;--text-ter:#505870;
+    --mono:'IBM Plex Mono',monospace;--display:'Syne',sans-serif;--body:'DM Sans',sans-serif;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg0);
-    color: var(--text-pri);
-    font-family: var(--body);
-    font-size: 13px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 40px 16px;
-    overflow-y: auto;
-  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg0);color:var(--text-pri);font-family:var(--body);font-size:13px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 16px;overflow-y:auto;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,32,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,32,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+  body::after{content:'';position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(232,160,32,0.06) 0%,transparent 70%);pointer-events:none;}
 
-  /* Grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(232,160,32,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232,160,32,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-  }
+  .login-wrap{width:100%;max-width:400px;margin:auto;position:relative;z-index:1;}
 
-  /* Glow orb */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -200px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(232,160,32,0.06) 0%, transparent 70%);
-    pointer-events: none;
-  }
+  .brand{text-align:center;margin-bottom:28px;}
+  .brand-icon{width:52px;height:52px;border-radius:14px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px;}
+  .brand-name{font-family:var(--display);font-size:22px;font-weight:800;color:var(--amber);letter-spacing:0.02em;}
+  .brand-name span{color:var(--text-sec);font-weight:400;font-size:16px;margin-left:4px;}
+  .brand-sub{font-family:var(--mono);font-size:10px;color:var(--text-ter);letter-spacing:0.1em;text-transform:uppercase;margin-top:6px;}
 
-  .login-wrap {
-    width: 100%;
-    max-width: 400px;
-    padding: 24px;
-    margin: auto;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Logo */
-  .brand {
-    text-align: center;
-    margin-bottom: 36px;
-  }
-  .brand-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    background: var(--amber-dim);
-    border: 1px solid rgba(232,160,32,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 16px;
-    font-size: 24px;
-  }
-  .brand-name {
-    font-family: var(--display);
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--amber);
-    letter-spacing: 0.02em;
-  }
-  .brand-name span { color: var(--text-sec); font-weight: 400; font-size: 16px; margin-left: 4px; }
-  .brand-sub {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text-ter);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-top: 6px;
-  }
+  /* Tab switcher */
+  .auth-tabs{display:flex;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:4px;margin-bottom:16px;gap:4px;}
+  .auth-tab{flex:1;padding:8px;border-radius:7px;border:none;background:transparent;color:var(--text-ter);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em;}
+  .auth-tab:hover{color:var(--text-sec);}
+  .auth-tab.active{background:var(--bg3);color:var(--amber);border:1px solid rgba(232,160,32,0.2);}
 
   /* Card */
-  .card {
-    background: var(--bg1);
-    border: 1px solid var(--border2);
-    border-radius: 14px;
-    padding: 28px;
-  }
+  .card{background:var(--bg1);border:1px solid var(--border2);border-radius:14px;padding:24px;}
 
-  /* Form */
-  .field { margin-bottom: 16px; }
-  .field label {
-    display: block;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-ter);
-    margin-bottom: 6px;
-  }
-  .field input {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    border-radius: 7px;
-    color: var(--text-pri);
-    font-family: var(--body);
-    font-size: 13px;
-    padding: 10px 12px;
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .field input:focus {
-    border-color: rgba(232,160,32,0.4);
-    box-shadow: 0 0 0 3px rgba(232,160,32,0.06);
-  }
-  .field input::placeholder { color: var(--text-ter); }
+  /* Form views */
+  .auth-view{display:none;}
+  .auth-view.active{display:block;}
 
-  .btn-submit {
-    width: 100%;
-    padding: 11px;
-    background: var(--amber-dim);
-    border: 1px solid rgba(232,160,32,0.35);
-    border-radius: 8px;
-    color: var(--amber);
-    font-family: var(--display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    transition: all 0.15s;
-    margin-top: 4px;
-  }
-  .btn-submit:hover:not(:disabled) {
-    background: rgba(232,160,32,0.22);
-    box-shadow: 0 0 20px rgba(232,160,32,0.12);
-  }
-  .btn-submit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-ter);margin-bottom:6px;}
+  .field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:10px 12px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+  .field input:focus{border-color:rgba(232,160,32,0.4);box-shadow:0 0 0 3px rgba(232,160,32,0.06);}
+  .field input::placeholder{color:var(--text-ter);}
 
-  .error-box {
-    display: none;
-    background: rgba(232,85,85,0.1);
-    border: 1px solid rgba(232,85,85,0.25);
-    border-radius: 7px;
-    padding: 10px 12px;
-    color: var(--red);
-    font-size: 12px;
-    margin-top: 14px;
-    font-family: var(--mono);
-  }
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .btn-submit{width:100%;padding:11px;background:var(--amber-dim);border:1px solid rgba(232,160,32,0.35);border-radius:8px;color:var(--amber);font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:0.05em;cursor:pointer;transition:all 0.15s;margin-top:4px;}
+  .btn-submit:hover:not(:disabled){background:rgba(232,160,32,0.22);box-shadow:0 0 20px rgba(232,160,32,0.12);}
+  .btn-submit:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-submit.teal{background:var(--teal-dim);border-color:rgba(34,196,160,0.35);color:var(--teal);}
+  .btn-submit.teal:hover:not(:disabled){background:rgba(34,196,160,0.22);}
+
+  .error-box{display:none;background:rgba(232,85,85,0.1);border:1px solid rgba(232,85,85,0.25);border-radius:7px;padding:10px 12px;color:var(--red);font-size:12px;margin-top:12px;font-family:var(--mono);}
+  .success-box{display:none;background:rgba(34,196,160,0.08);border:1px solid rgba(34,196,160,0.25);border-radius:7px;padding:10px 12px;color:var(--teal);font-size:12px;margin-top:12px;font-family:var(--mono);line-height:1.6;}
+
+  /* Divider */
+  .divider{display:flex;align-items:center;gap:10px;margin:16px 0;}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+  .divider span{font-family:var(--mono);font-size:9px;color:var(--text-ter);letter-spacing:0.08em;}
+
+  /* Google button */
+  .btn-google{width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text-sec);font-family:var(--body);font-size:13px;font-weight:500;cursor:not-allowed;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:10px;opacity:0.5;}
+  .btn-google-note{font-family:var(--mono);font-size:9px;color:var(--text-ter);text-align:center;margin-top:6px;}
+
+  /* Forgot link */
+  .forgot-link{font-family:var(--mono);font-size:10px;color:var(--text-ter);cursor:pointer;text-align:right;margin-top:-8px;margin-bottom:12px;display:block;}
+  .forgot-link:hover{color:var(--amber);}
+
+  /* Terms */
+  .terms-text{font-size:11px;color:var(--text-ter);text-align:center;margin-top:12px;line-height:1.6;}
+  .terms-text a{color:var(--text-sec);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border2);}
+  .terms-text a:hover{color:var(--amber);}
 
   /* Demo creds */
-  .demo-box {
-    margin-top: 20px;
-    padding: 12px 14px;
-    background: var(--amber-glow);
-    border: 1px solid rgba(232,160,32,0.12);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .demo-box:hover {
-    background: rgba(232,160,32,0.1);
-    border-color: rgba(232,160,32,0.25);
-    transform: translateY(-1px);
-  }
-  .demo-box-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-ter);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .demo-fill-hint {
-    font-size: 8px;
-    color: var(--amber);
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  .demo-box:hover .demo-fill-hint {
-    opacity: 1;
-  }
-  .demo-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 0;
-  }
-  .demo-key { font-family: var(--mono); font-size: 10px; color: var(--text-ter); }
-  .demo-val { font-family: var(--mono); font-size: 10px; color: var(--amber); }
+  .demo-box{margin-top:14px;padding:12px 14px;background:var(--amber-glow);border:1px solid rgba(232,160,32,0.12);border-radius:8px;cursor:pointer;transition:all 0.2s;}
+  .demo-box:hover{background:rgba(232,160,32,0.1);border-color:rgba(232,160,32,0.25);transform:translateY(-1px);}
+  .demo-box-label{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-ter);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .demo-fill-hint{font-size:8px;color:var(--amber);opacity:0;transition:opacity 0.2s;}
+  .demo-box:hover .demo-fill-hint{opacity:1;}
+  .demo-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;}
+  .demo-key{font-family:var(--mono);font-size:10px;color:var(--text-ter);}
+  .demo-val{font-family:var(--mono);font-size:10px;color:var(--amber);}
+
+  /* Password strength */
+  .pw-strength{height:3px;border-radius:2px;margin-top:6px;transition:all 0.3s;background:var(--bg3);}
+  .pw-strength.weak{background:var(--red);width:30%;}
+  .pw-strength.fair{background:var(--amber);width:60%;}
+  .pw-strength.strong{background:var(--green);width:100%;}
+  .pw-hint{font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:4px;}
+
+  /* Terms Modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:600;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--bg1);border:1px solid var(--border2);border-radius:12px;padding:24px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;}
+  .modal-title{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:16px;color:var(--amber);}
+  .modal-body{font-size:12px;color:var(--text-sec);line-height:1.8;}
+  .modal-body h4{color:var(--text-pri);font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin:14px 0 6px;}
+  .modal-close{width:100%;margin-top:20px;padding:10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text-sec);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all 0.15s;}
+  .modal-close:hover{background:var(--bg4);color:var(--text-pri);}
 
   /* Footer */
-  .footer {
-    text-align: center;
-    margin-top: 20px;
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--text-ter);
-    letter-spacing: 0.06em;
-  }
-
-  /* Status dots */
-  .status-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 10px;
-  }
-  .s-item { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9px; color: var(--text-ter); }
-  .s-dot { width: 5px; height: 5px; border-radius: 50%; }
-  .s-dot.green { background: var(--green); box-shadow: 0 0 4px var(--green); animation: blink 2s ease-in-out infinite; }
-  .s-dot.amber { background: var(--amber); }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .footer{text-align:center;margin-top:18px;font-family:var(--mono);font-size:9px;color:var(--text-ter);}
+  .status-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px;}
+  .s-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--text-ter);}
+  .s-dot{width:5px;height:5px;border-radius:50%;}
+  .s-dot.green{background:var(--green);box-shadow:0 0 4px var(--green);animation:blink 2s ease-in-out infinite;}
+  .s-dot.amber{background:var(--amber);}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}}
 </style>
 </head>
 <body>
@@ -260,29 +122,143 @@
     <div class="brand-sub">Enterprise Command Center · 2026</div>
   </div>
 
-  <div class="card">
-    <div class="field">
-      <label>Email Address</label>
-      <input type="email" id="email" placeholder="surveyor@mclarens.com" autocomplete="email" autofocus>
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn-submit" id="loginBtn" onclick="doLogin()">SIGN IN →</button>
-    <div class="error-box" id="errorBox"></div>
+  <!-- Tab bar -->
+  <div class="auth-tabs">
+    <button class="auth-tab active" onclick="switchTab('signin')" id="tab-signin">SIGN IN</button>
+    <button class="auth-tab" onclick="switchTab('signup')" id="tab-signup">SIGN UP</button>
+    <button class="auth-tab" onclick="switchTab('magic')" id="tab-magic">MAGIC LINK</button>
   </div>
 
-  <div class="demo-box" onclick="fillDemo()" title="Click to auto-fill credentials">
+  <div class="card">
+
+    <!-- ── SIGN IN ── -->
+    <div class="auth-view active" id="view-signin">
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="si-email" placeholder="surveyor@mclarens.com" autocomplete="email" autofocus>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="si-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <span class="forgot-link" onclick="switchTab('forgot')">Forgot password?</span>
+      <button class="btn-submit" id="si-btn" onclick="doLogin()">SIGN IN →</button>
+      <div class="error-box" id="si-error"></div>
+
+      <div class="divider"><span>OR CONTINUE WITH</span></div>
+      <button class="btn-google" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Google Sign-In
+      </button>
+      <div class="btn-google-note">Google OAuth requires domain configuration — contact admin</div>
+    </div>
+
+    <!-- ── SIGN UP ── -->
+    <div class="auth-view" id="view-signup">
+      <div class="field-row">
+        <div class="field">
+          <label>Full Name *</label>
+          <input type="text" id="su-name" placeholder="Rajesh Patel" autocomplete="name">
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" id="su-phone" placeholder="+91 98765 43210">
+        </div>
+      </div>
+      <div class="field">
+        <label>Email Address *</label>
+        <input type="email" id="su-email" placeholder="surveyor@company.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Organization Name</label>
+        <input type="text" id="su-org" placeholder="McLarens India Pvt Ltd">
+      </div>
+      <div class="field">
+        <label>Department</label>
+        <select id="su-dept" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text-pri);font-family:var(--body);font-size:13px;padding:10px 12px;outline:none;-webkit-appearance:none;">
+          <option value="">Select department</option>
+          <option value="Survey">Survey</option>
+          <option value="Claims">Claims</option>
+          <option value="Administration">Administration</option>
+          <option value="Finance">Finance</option>
+          <option value="HR">HR</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Password *</label>
+        <input type="password" id="su-password" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkStrength(this.value)">
+        <div class="pw-strength" id="pw-bar"></div>
+        <div class="pw-hint" id="pw-hint">Use 8+ characters with letters and numbers</div>
+      </div>
+      <div class="field">
+        <label>Confirm Password *</label>
+        <input type="password" id="su-confirm" placeholder="Repeat password" autocomplete="new-password">
+      </div>
+      <button class="btn-submit" id="su-btn" onclick="doSignup()">CREATE ACCOUNT →</button>
+      <div class="error-box" id="su-error"></div>
+      <div class="success-box" id="su-success"></div>
+      <div class="terms-text">
+        By creating an account you agree to our
+        <a onclick="showTerms()">Terms of Service</a> and
+        <a onclick="showPrivacy()">Privacy Policy</a>.
+      </div>
+    </div>
+
+    <!-- ── MAGIC LINK ── -->
+    <div class="auth-view" id="view-magic">
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px;line-height:1.6;">
+        Enter your email and we'll send you a one-click sign-in link. No password needed.
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="ml-email" placeholder="surveyor@mclarens.com" autocomplete="email">
+      </div>
+      <button class="btn-submit teal" id="ml-btn" onclick="doMagicLink()">SEND MAGIC LINK →</button>
+      <div class="error-box" id="ml-error"></div>
+      <div class="success-box" id="ml-success"></div>
+    </div>
+
+    <!-- ── FORGOT PASSWORD ── -->
+    <div class="auth-view" id="view-forgot">
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px;line-height:1.6;">
+        Enter your registered email. We'll send a password reset link valid for 1 hour.
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="fp-email" placeholder="surveyor@mclarens.com" autocomplete="email">
+      </div>
+      <button class="btn-submit" id="fp-btn" onclick="doForgotPassword()">SEND RESET LINK →</button>
+      <div class="error-box" id="fp-error"></div>
+      <div class="success-box" id="fp-success"></div>
+      <span class="forgot-link" style="text-align:left;margin-top:12px;display:block;" onclick="switchTab('signin')">← Back to Sign In</span>
+    </div>
+
+    <!-- ── RESET PASSWORD ── -->
+    <div class="auth-view" id="view-reset">
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px;line-height:1.6;">
+        Choose a new password for your account.
+      </div>
+      <div class="field">
+        <label>New Password</label>
+        <input type="password" id="rp-password" placeholder="Min. 8 characters" autocomplete="new-password" oninput="checkStrength(this.value,'rp')">
+        <div class="pw-strength" id="pw-bar-rp"></div>
+      </div>
+      <div class="field">
+        <label>Confirm New Password</label>
+        <input type="password" id="rp-confirm" placeholder="Repeat new password" autocomplete="new-password">
+      </div>
+      <button class="btn-submit" id="rp-btn" onclick="doResetPassword()">SET NEW PASSWORD →</button>
+      <div class="error-box" id="rp-error"></div>
+      <div class="success-box" id="rp-success"></div>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- Demo credentials — shown only on sign in tab -->
+  <div class="demo-box" id="demoBox" onclick="fillDemo()">
     <div class="demo-box-label">Demo Credentials <span class="demo-fill-hint">— click to fill ↗</span></div>
-    <div class="demo-row">
-      <span class="demo-key">Email</span>
-      <span class="demo-val">surveyor@mclarens.com</span>
-    </div>
-    <div class="demo-row">
-      <span class="demo-key">Password</span>
-      <span class="demo-val">Admin@123</span>
-    </div>
+    <div class="demo-row"><span class="demo-key">Email</span><span class="demo-val">surveyor@mclarens.com</span></div>
+    <div class="demo-row"><span class="demo-key">Password</span><span class="demo-val">Admin@123</span></div>
   </div>
 
   <div class="footer">
@@ -291,101 +267,368 @@
       <div class="s-item"><div class="s-dot amber"></div>CF WORKERS</div>
       <div class="s-item">MCL-PUN-26</div>
     </div>
+    <div style="margin-top:10px;">
+      <a onclick="showTerms()" style="cursor:pointer;color:var(--text-ter);text-decoration:none;margin:0 8px;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-ter)'">Terms</a>
+      ·
+      <a onclick="showPrivacy()" style="cursor:pointer;color:var(--text-ter);text-decoration:none;margin:0 8px;" onmouseover="this.style.color='var(--amber)'" onmouseout="this.style.color='var(--text-ter)'">Privacy</a>
+      ·
+      <span style="margin:0 8px;">© 2026 AB Enterprise</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── TERMS MODAL ── -->
+<div class="modal-overlay" id="termsModal">
+  <div class="modal">
+    <div class="modal-title">📋 Terms of Service</div>
+    <div class="modal-body">
+      <h4>1. Acceptance</h4>
+      By accessing AB Nexus Enterprise, you agree to these terms. This platform is for licensed insurance surveyors and authorized personnel only.
+      <h4>2. Authorized Use</h4>
+      You may use this platform only for legitimate insurance survey and claims management activities. Unauthorized access or misuse is prohibited and may result in legal action.
+      <h4>3. Data & Confidentiality</h4>
+      All claim data, documents, and client information processed through this platform is confidential. You must not share, export, or disclose any data without authorization from your organization.
+      <h4>4. IRDAI Compliance</h4>
+      Users must comply with all applicable IRDAI regulations, Insurance Act 1938, and relevant Indian laws when using this platform for survey and assessment activities.
+      <h4>5. Account Security</h4>
+      You are responsible for maintaining the security of your credentials. Report any suspected unauthorized access immediately to your administrator.
+      <h4>6. Intellectual Property</h4>
+      AB Nexus Enterprise software, AI models, and interfaces are the intellectual property of AB Enterprise. No license is granted beyond authorized use of the platform.
+      <h4>7. Limitation of Liability</h4>
+      AB Enterprise is not liable for decisions made based on AI-generated outputs. All survey reports and assessments must be reviewed and verified by licensed surveyors.
+      <h4>8. Governing Law</h4>
+      These terms are governed by the laws of India. Disputes shall be subject to the jurisdiction of courts in Nagpur, Maharashtra.
+    </div>
+    <button class="modal-close" onclick="document.getElementById('termsModal').classList.remove('show')">Close</button>
+  </div>
+</div>
+
+<!-- ── PRIVACY MODAL ── -->
+<div class="modal-overlay" id="privacyModal">
+  <div class="modal">
+    <div class="modal-title">🔒 Privacy Policy</div>
+    <div class="modal-body">
+      <h4>Data We Collect</h4>
+      We collect your email, name, and usage data necessary to operate the platform. Claim data and documents are stored securely in Cloudflare infrastructure.
+      <h4>How We Use Your Data</h4>
+      Your data is used solely to provide the platform's insurance survey and claims management services. We do not sell or share data with third parties.
+      <h4>Data Storage</h4>
+      All data is stored in Cloudflare D1 (SQLite) and R2 object storage. Data is encrypted at rest and in transit.
+      <h4>AI Processing</h4>
+      Documents uploaded for OCR/AI processing are sent to OpenAI's API. OpenAI's data handling policies apply to this processing. Extracted data is stored in your organization's private database.
+      <h4>Data Retention</h4>
+      Claim data is retained for the period required by IRDAI regulations (minimum 7 years). You may request deletion of personal account data subject to regulatory requirements.
+      <h4>Your Rights</h4>
+      You have the right to access, correct, or request deletion of your personal data. Contact your organization administrator to exercise these rights.
+      <h4>Contact</h4>
+      For privacy concerns: contact@abenterprise.online
+    </div>
+    <button class="modal-close" onclick="document.getElementById('privacyModal').classList.remove('show')">Close</button>
   </div>
 </div>
 
 <script>
-  const API_URL = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
+const API_URL = 'https://ab-nexus-api.amitbhavikmnm.workers.dev';
 
-  // Already logged in → verify token then go to home
-  (function() {
-    var token = localStorage.getItem('nexus_token');
-    if (!token) return; // not logged in, show login form
-    // Verify token is still valid before redirecting
-    fetch('https://ab-nexus-api.amitbhavikmnm.workers.dev/api/auth/me', {
+// ── URL param handling (magic link + password reset) ──────────────────
+(function handleUrlParams() {
+  var params = new URLSearchParams(window.location.search);
+  var magic  = params.get('magic');
+  var reset  = params.get('reset');
+  var email  = params.get('email');
+
+  if (magic && email) {
+    // Auto-verify magic link
+    verifyMagicLink(magic, email);
+    return;
+  }
+
+  if (reset && email) {
+    // Show reset password form pre-filled
+    document.getElementById('rp-btn').dataset.token = reset;
+    document.getElementById('rp-btn').dataset.email = email;
+    showView('reset');
+    hideAllTabs();
+    return;
+  }
+
+  // Already logged in → verify token then redirect
+  var token = localStorage.getItem('nexus_token');
+  if (token) {
+    fetch(API_URL + '/api/auth/me', {
       headers: { 'Authorization': 'Bearer ' + token }
     }).then(function(r) {
-      if (r.ok) {
-        window.location.replace('/home');
-      } else {
-        // Token expired or invalid — clear it, stay on login page
-        localStorage.removeItem('nexus_token');
-        localStorage.removeItem('nexus_user');
-      }
-    }).catch(function() {
-      // Worker unreachable — don't redirect, show login form
-      // User can log in when Worker is back up
+      if (r.ok) window.location.replace('/home');
+      else { localStorage.removeItem('nexus_token'); localStorage.removeItem('nexus_user'); }
+    }).catch(function() {});
+  }
+})();
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var active = document.querySelector('.auth-view.active');
+    if (active && active.id === 'view-signin')  doLogin();
+    if (active && active.id === 'view-signup')  doSignup();
+    if (active && active.id === 'view-magic')   doMagicLink();
+    if (active && active.id === 'view-forgot')  doForgotPassword();
+    if (active && active.id === 'view-reset')   doResetPassword();
+  }
+});
+
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  var tab = document.getElementById('tab-' + name);
+  if (tab) tab.classList.add('active');
+  showView(name);
+  document.getElementById('demoBox').style.display = (name === 'signin') ? '' : 'none';
+}
+
+function showView(name) {
+  document.querySelectorAll('.auth-view').forEach(v => v.classList.remove('active'));
+  var v = document.getElementById('view-' + name);
+  if (v) v.classList.add('active');
+}
+
+function hideAllTabs() {
+  document.querySelector('.auth-tabs').style.display = 'none';
+}
+
+// ── SIGN IN ───────────────────────────────────────────────────────────
+async function doLogin() {
+  var email    = document.getElementById('si-email').value.trim();
+  var password = document.getElementById('si-password').value;
+  var btn      = document.getElementById('si-btn');
+  var errBox   = document.getElementById('si-error');
+  errBox.style.display = 'none';
+
+  if (!email || !password) { showErr('si-error', 'Email and password are required.'); return; }
+  btn.disabled = true; btn.textContent = 'AUTHENTICATING…';
+
+  try {
+    var res  = await fetch(API_URL + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
-  })();
-
-  // Enter key support
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') doLogin();
-  });
-
-  // Click-to-fill demo credentials
-  function fillDemo() {
-    document.getElementById('email').value = 'surveyor@mclarens.com';
-    document.getElementById('password').value = 'Admin@123';
-    document.getElementById('email').focus();
-    // Flash the demo box
-    var box = document.querySelector('.demo-box');
-    box.style.background = 'rgba(232,160,32,0.2)';
-    setTimeout(function() { box.style.background = ''; }, 400);
-  }
-
-  async function doLogin() {
-    var email    = document.getElementById('email').value.trim();
-    var password = document.getElementById('password').value;
-    var btn      = document.getElementById('loginBtn');
-    var errBox   = document.getElementById('errorBox');
-
-    errBox.style.display = 'none';
-
-    if (!email || !password) {
-      showError('Email and password are required.');
-      return;
+    var data = await res.json();
+    if (data.success) {
+      localStorage.setItem('nexus_token', data.token);
+      localStorage.setItem('nexus_user',  JSON.stringify(data.user));
+      var role = data.user && data.user.role;
+      window.location.href = (role === 'hr_admin' || role === 'employee') ? '/hrms-dashboard' : '/home';
+    } else {
+      showErr('si-error', data.error || 'Invalid credentials. Please try again.');
+      btn.disabled = false; btn.textContent = 'SIGN IN →';
     }
-
-    btn.disabled    = true;
-    btn.textContent = 'AUTHENTICATING…';
-
-    try {
-      var res  = await fetch(API_URL + '/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, password: password })
-      });
-      var data = await res.json();
-
-      if (data.success) {
-        localStorage.setItem('nexus_token', data.token);
-        localStorage.setItem('nexus_user',  JSON.stringify(data.user));
-        // Route by role — always go to Command Center first for surveyors
-        var role = data.user && data.user.role;
-        if (role === 'hr_admin' || role === 'employee') {
-          window.location.href = '/hrms-dashboard';
-        } else {
-          // Surveyor/admin → Command Center (home.html) first
-          window.location.href = '/home';
-        }
-      } else {
-        showError(data.error || 'Invalid credentials. Please try again.');
-        btn.disabled    = false;
-        btn.textContent = 'SIGN IN →';
-      }
-    } catch (err) {
-      showError('Connection failed. Check your network and try again.');
-      btn.disabled    = false;
-      btn.textContent = 'SIGN IN →';
-    }
+  } catch(err) {
+    showErr('si-error', 'Connection failed. Check your network and try again.');
+    btn.disabled = false; btn.textContent = 'SIGN IN →';
   }
+}
 
-  function showError(msg) {
-    var box = document.getElementById('errorBox');
-    box.textContent = '⚠ ' + msg;
+// ── SIGN UP ───────────────────────────────────────────────────────────
+async function doSignup() {
+  var name     = document.getElementById('su-name').value.trim();
+  var email    = document.getElementById('su-email').value.trim();
+  var password = document.getElementById('su-password').value;
+  var confirm  = document.getElementById('su-confirm').value;
+  var org      = document.getElementById('su-org').value.trim();
+  var dept     = document.getElementById('su-dept').value;
+  var phone    = document.getElementById('su-phone').value.trim();
+  var btn      = document.getElementById('su-btn');
+
+  document.getElementById('su-error').style.display = 'none';
+  document.getElementById('su-success').style.display = 'none';
+
+  if (!name || !email || !password) { showErr('su-error', 'Name, email and password are required.'); return; }
+  if (password.length < 8)          { showErr('su-error', 'Password must be at least 8 characters.'); return; }
+  if (password !== confirm)          { showErr('su-error', 'Passwords do not match.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('su-error', 'Please enter a valid email address.'); return; }
+
+  btn.disabled = true; btn.textContent = 'CREATING ACCOUNT…';
+
+  try {
+    var res  = await fetch(API_URL + '/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, tenantName: org || name + "'s Organization", phone: phone||undefined, department: dept||undefined, role: 'admin' })
+    });
+    var data = await res.json();
+    if (data.success) {
+      localStorage.setItem('nexus_token', data.token);
+      localStorage.setItem('nexus_user',  JSON.stringify(data.user));
+      document.getElementById('su-success').textContent = '✓ Account created! Redirecting…';
+      document.getElementById('su-success').style.display = 'block';
+      setTimeout(function() { window.location.href = '/home'; }, 1200);
+    } else {
+      showErr('su-error', data.error || 'Sign up failed. Please try again.');
+      btn.disabled = false; btn.textContent = 'CREATE ACCOUNT →';
+    }
+  } catch(err) {
+    showErr('su-error', 'Connection failed. Check your network and try again.');
+    btn.disabled = false; btn.textContent = 'CREATE ACCOUNT →';
+  }
+}
+
+// ── MAGIC LINK ────────────────────────────────────────────────────────
+async function doMagicLink() {
+  var email = document.getElementById('ml-email').value.trim();
+  var btn   = document.getElementById('ml-btn');
+  document.getElementById('ml-error').style.display   = 'none';
+  document.getElementById('ml-success').style.display = 'none';
+
+  if (!email) { showErr('ml-error', 'Please enter your email address.'); return; }
+  btn.disabled = true; btn.textContent = 'SENDING…';
+
+  try {
+    var res  = await fetch(API_URL + '/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    var data = await res.json();
+    var box  = document.getElementById('ml-success');
+    box.innerHTML = '✓ ' + (data.message || 'Magic link sent!') + (data.dev_link ? '<br><br><span style="font-size:9px;opacity:0.7;">DEV LINK (no email configured):</span><br><a href="' + data.dev_link + '" style="word-break:break-all;color:var(--teal);">' + data.dev_link + '</a>' : '');
     box.style.display = 'block';
+    btn.textContent = 'SENT ✓';
+    setTimeout(function() { btn.disabled = false; btn.textContent = 'SEND MAGIC LINK →'; }, 30000);
+  } catch(err) {
+    showErr('ml-error', 'Connection failed. Please try again.');
+    btn.disabled = false; btn.textContent = 'SEND MAGIC LINK →';
   }
+}
+
+async function verifyMagicLink(token, email) {
+  showView('signin');
+  document.getElementById('si-btn').disabled    = true;
+  document.getElementById('si-btn').textContent = 'VERIFYING LINK…';
+  try {
+    var res  = await fetch(API_URL + '/api/auth/verify-magic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, email })
+    });
+    var data = await res.json();
+    if (data.success) {
+      localStorage.setItem('nexus_token', data.token);
+      localStorage.setItem('nexus_user',  JSON.stringify(data.user));
+      window.history.replaceState({}, document.title, '/');
+      window.location.href = '/home';
+    } else {
+      showErr('si-error', data.error || 'Magic link expired or invalid. Request a new one.');
+      document.getElementById('si-btn').disabled    = false;
+      document.getElementById('si-btn').textContent = 'SIGN IN →';
+    }
+  } catch(err) {
+    showErr('si-error', 'Connection failed while verifying link.');
+    document.getElementById('si-btn').disabled    = false;
+    document.getElementById('si-btn').textContent = 'SIGN IN →';
+  }
+}
+
+// ── FORGOT PASSWORD ───────────────────────────────────────────────────
+async function doForgotPassword() {
+  var email = document.getElementById('fp-email').value.trim();
+  var btn   = document.getElementById('fp-btn');
+  document.getElementById('fp-error').style.display   = 'none';
+  document.getElementById('fp-success').style.display = 'none';
+
+  if (!email) { showErr('fp-error', 'Please enter your email address.'); return; }
+  btn.disabled = true; btn.textContent = 'SENDING…';
+
+  try {
+    var res  = await fetch(API_URL + '/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    var data = await res.json();
+    document.getElementById('fp-success').textContent = '✓ ' + (data.message || 'Reset link sent. Check your email.');
+    document.getElementById('fp-success').style.display = 'block';
+    btn.textContent = 'SENT ✓';
+    setTimeout(function() { btn.disabled = false; btn.textContent = 'SEND RESET LINK →'; }, 60000);
+  } catch(err) {
+    showErr('fp-error', 'Connection failed. Please try again.');
+    btn.disabled = false; btn.textContent = 'SEND RESET LINK →';
+  }
+}
+
+// ── RESET PASSWORD ────────────────────────────────────────────────────
+async function doResetPassword() {
+  var password = document.getElementById('rp-password').value;
+  var confirm  = document.getElementById('rp-confirm').value;
+  var btn      = document.getElementById('rp-btn');
+  var token    = btn.dataset.token;
+  var email    = btn.dataset.email;
+  document.getElementById('rp-error').style.display   = 'none';
+  document.getElementById('rp-success').style.display = 'none';
+
+  if (!password || password.length < 8) { showErr('rp-error', 'Password must be at least 8 characters.'); return; }
+  if (password !== confirm)              { showErr('rp-error', 'Passwords do not match.'); return; }
+  btn.disabled = true; btn.textContent = 'UPDATING…';
+
+  try {
+    var res  = await fetch(API_URL + '/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, email, new_password: password })
+    });
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById('rp-success').textContent = '✓ Password updated. Redirecting to sign in…';
+      document.getElementById('rp-success').style.display = 'block';
+      window.history.replaceState({}, document.title, '/');
+      setTimeout(function() { showView('signin'); hideAllTabs(); document.querySelector('.auth-tabs').style.display = 'flex'; switchTab('signin'); }, 2000);
+    } else {
+      showErr('rp-error', data.error || 'Reset link expired. Please request a new one.');
+      btn.disabled = false; btn.textContent = 'SET NEW PASSWORD →';
+    }
+  } catch(err) {
+    showErr('rp-error', 'Connection failed. Please try again.');
+    btn.disabled = false; btn.textContent = 'SET NEW PASSWORD →';
+  }
+}
+
+// ── Password strength ─────────────────────────────────────────────────
+function checkStrength(val, id) {
+  var bar  = document.getElementById('pw-bar' + (id ? '-' + id : ''));
+  var hint = document.getElementById('pw-hint');
+  if (!bar) return;
+  bar.className = 'pw-strength';
+  if (!val) return;
+  var score = 0;
+  if (val.length >= 8)  score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  if (score <= 1) { bar.classList.add('weak');   if(hint) hint.textContent = 'Weak — add numbers and capitals'; }
+  else if (score <= 2) { bar.classList.add('fair');   if(hint) hint.textContent = 'Fair — add special characters'; }
+  else { bar.classList.add('strong'); if(hint) hint.textContent = 'Strong password ✓'; }
+}
+
+// ── Demo fill ─────────────────────────────────────────────────────────
+function fillDemo() {
+  document.getElementById('si-email').value    = 'surveyor@mclarens.com';
+  document.getElementById('si-password').value = 'Admin@123';
+  var box = document.querySelector('.demo-box');
+  box.style.background = 'rgba(232,160,32,0.2)';
+  setTimeout(function() { box.style.background = ''; }, 400);
+}
+
+// ── Modals ────────────────────────────────────────────────────────────
+function showTerms()   { document.getElementById('termsModal').classList.add('show'); }
+function showPrivacy() { document.getElementById('privacyModal').classList.add('show'); }
+document.querySelectorAll('.modal-overlay').forEach(function(m) {
+  m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('show'); });
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function showErr(id, msg) {
+  var box = document.getElementById(id);
+  box.textContent = '⚠ ' + msg;
+  box.style.display = 'block';
+}
 </script>
 </body>
 </html>
