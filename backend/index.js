@@ -1799,7 +1799,6 @@ Return JSON:
               return jsonResponse(result);
             }
             }
-          }
         } else {
           const body = await request.json();
           imageBase64 = body.imageBase64;
