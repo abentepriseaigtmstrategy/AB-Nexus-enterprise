@@ -8,9 +8,7 @@ import { hasPermission, canAccessResource, filterByTenant,
          getVisibleModules, getRestrictedModules } from './rbac.js';
 import { handleChatRequest, analyzeDocumentContent,
          detectWarrantyBreaches, crossVerifyDocuments,
-         computeSettlementFromRules, generateReportDraft,
-         analyzeScannedPDF, parseXLSXToLossAssessment,
-         extractDOCXFields } from './openai-chat.js';
+         computeSettlementFromRules, generateReportDraft } from './openai-chat.js';
 import { sendEmail, sendSMS,
          buildPendingDocReminderEmail, buildPendingDocReminderSMS,
          buildStatusChangeEmail, buildBreachAlertEmail } from './notifications.js';
@@ -46,12 +44,8 @@ function looksLikeReadableText(s) {
 
 function getMimeFromExtension(filename, defaultMime) {
   const ext = filename?.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf')  return 'application/pdf';
-  if (ext === 'txt')  return 'text/plain';
-  if (ext === 'xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  if (ext === 'xls')  return 'application/vnd.ms-excel';
-  if (ext === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  if (ext === 'doc')  return 'application/msword';
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'txt') return 'text/plain';
   if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext)) return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
   return defaultMime;
 }
@@ -304,27 +298,14 @@ export default {
             docs: !!env.DOCS,
             openai_key: !!env.OPENAI_API_KEY
           },
-          database: { status: 'checking', initialized: false, userCount: 0 },
-          realtime: { status: 'unknown' }
+          database: { status: 'checking' }
         };
         if (env.DB) {
           try {
             const result = await env.DB.prepare('SELECT count(*) as count FROM users').first();
-            diagnostics.database.status      = 'connected';
-            diagnostics.database.initialized = true;
-            diagnostics.database.userCount   = result?.count || 0;
-          } catch (e) {
-            diagnostics.database.status = 'error';
-            diagnostics.database.error  = e.message;
-          }
-        }
-        if (env.REALTIME_HUB) {
-          try {
-            diagnostics.realtime.status = 'ready';
-          } catch (e) {
-            diagnostics.realtime.status = 'error';
-            diagnostics.realtime.error  = e.message;
-          }
+            diagnostics.database.status = 'connected';
+            diagnostics.database.userCount = result.count;
+          } catch (e) { diagnostics.database.status = 'error'; diagnostics.database.error = e.message; }
         }
         return jsonResponse(diagnostics);
       }
@@ -992,43 +973,18 @@ export default {
         if (insId) { q += ' AND c.insurer_id=?'; p.push(insId); }
         q += ' ORDER BY c.created_at DESC';
         const rows = await env.DB.prepare(q).bind(...p).all();
-
-        // summary=1 → lightweight response for Vault UI initial load
-        // strips heavy JSON fields, batches doc counts in one query
-        const isSummary = url.searchParams.get('summary') === '1';
-        const HEAVY_FIELDS = ['assessment_data','warranty_breaches','ai_suggestions','rules_snapshot'];
-
-        // Batch doc counts in a single query instead of N per-claim queries
-        const claimIds = (rows.results || []).map(c => c.id);
-        let docCounts = {};
-        if (claimIds.length > 0) {
-          const placeholders = claimIds.map(() => '?').join(',');
-          const dcRows = await env.DB.prepare(
-            `SELECT claim_id,
-                    COUNT(*) AS total,
-                    SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending
-             FROM pending_documents WHERE claim_id IN (${placeholders}) GROUP BY claim_id`
-          ).bind(...claimIds).all();
-          for (const r of (dcRows.results || [])) {
-            docCounts[r.claim_id] = { total: r.total, pending: r.pending };
-          }
-        }
-
-        const results = [];
-        for (const c of (rows.results || [])) {
-          if (isSummary) {
-            for (const f of HEAVY_FIELDS) delete c[f];
-          }
-          if (!isSummary && c.surveyor_id) {
+        for (const c of rows.results) {
+          if (c.surveyor_id) {
             const s = await env.DB.prepare('SELECT name FROM users WHERE id=?').bind(c.surveyor_id).first();
             c.surveyor_name = s?.name;
           }
-          const dc = docCounts[c.id] || { total: 0, pending: 0 };
-          c.docs_total   = dc.total   || 0;
-          c.docs_pending = dc.pending || 0;
-          results.push(c);
+          const pds = await env.DB.prepare(
+            'SELECT COUNT(*) AS total, SUM(CASE WHEN status="pending" THEN 1 ELSE 0 END) AS pending FROM pending_documents WHERE claim_id=?'
+          ).bind(c.id).first();
+          c.docs_total   = pds?.total || 0;
+          c.docs_pending = pds?.pending || 0;
         }
-        return jsonResponse({ claims: results });
+        return jsonResponse({ claims: rows.results });
       }
 
       if (path.match(/^\/api\/claims\/[^\/]+$/) && method === 'GET') {
@@ -1148,15 +1104,6 @@ export default {
         const existing = await env.DB.prepare('SELECT * FROM claims WHERE id=?').bind(claimId).first();
         if (!existing) return errorResponse('Claim not found', 404);
         if (!canAccessResource(user, existing.tenant_id)) return errorResponse('Access denied', 403);
-
-        // ── Status Lock — enforce at API level ─────────────────────────
-        const LOCKED_STATUSES = ['submitted','settled','closed','archived'];
-        if (LOCKED_STATUSES.includes(existing.claim_status)) {
-          return errorResponse(
-            `Claim is ${existing.claim_status} — modifications are locked. Only versioning is permitted.`,
-            423  // HTTP 423 Locked
-          );
-        }
 
         const allowed = ['policy_number','insured_name','department','sum_insured','loss_amount',
                          'claim_status','priority','surveyor_id','incident_date','survey_date',
@@ -1345,9 +1292,18 @@ Provide a JSON response with:
         ).bind(claim.insurer_id, claim.department).first();
 
         const warranties = JSON.parse(rules?.warranties || '[]');
+        // Merge policy-document warranties/exclusions if frontend sent them
+        const bodyData = await request.clone().json().catch(() => ({}));
+        const piContext = bodyData.policy_intel || null;
+        const piExclusions = piContext ? (piContext.exclusions || []).join('\n') : '';
+        const piWarranties = piContext ? (piContext.warranties || []).join('\n') : '';
+        const piFindings   = piContext ? (piContext.findings   || []).join('\n') : '';
         const docsUploaded = docs.results.map(d => d.document_type || d.filename);
 
         const prompt = `You are an insurance claims AI. Analyse for breaches and discrepancies.
+${piExclusions ? 'POLICY EXCLUSIONS FROM DOCUMENT:\n' + piExclusions : ''}
+${piWarranties ? 'POLICY WARRANTIES FROM DOCUMENT:\n' + piWarranties : ''}
+${piFindings   ? 'CRITICAL POLICY FINDINGS:\n' + piFindings : ''}
 Insurer: ${claim.insurer_name}
 Department: ${claim.department}
 Claim Number: ${claim.claim_number}
@@ -1821,26 +1777,14 @@ Return JSON:
               textContent = textContent.slice(0, 12000);
               isTruncated = true;
             }
-            // Scanned PDF → vision OCR pipeline
+            // PDF Reliability Check
             if (mimeType === 'application/pdf' && !looksLikeReadableText(textContent)) {
-              console.log(`[OCR] Scanned PDF — vision path: ${filename}`);
-              const pdfBytes = await file.arrayBuffer();
-              const result   = await analyzeScannedPDF(env, pdfBytes, filename, context);
-              const claimId  = url.searchParams.get('claimId');
-              if (claimId && result.raw_text) {
-                const docId = generateUUID();
-                const r2Key = `${user.tenantId}/ocr/${claimId}/${Date.now()}-scanned-ocr.json`;
-                await env.DOCS.put(r2Key, JSON.stringify(result), { httpMetadata: { contentType: 'application/json' } });
-                await env.DB.prepare(
-                  `INSERT INTO claim_documents (id,claim_id,tenant_id,filename,document_type,r2_key,ocr_extracted_data,verification_score,uploaded_by,is_handwritten_upload,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
-                ).bind(docId, claimId, user.tenantId, filename,
-                  result.document_type || 'scanned_document',
-                  r2Key, JSON.stringify(result), result.confidence || 70,
-                  user.id, context === 'handwritten_report' ? 1 : 0, Date.now()).run();
-                await broadcastUpdate(env, user.tenantId, 'ocr_complete', { claimId, docId, confidence: result.confidence, source: 'scanned_pdf' });
-                return jsonResponse({ ...result, docId, saved: true });
-              }
-              return jsonResponse(result);
+              console.log(`[OCR] Scanned PDF detected: ${filename}`);
+              return jsonResponse({ 
+                status: "scanned_pdf_detected", 
+                message: "This PDF contains no readable text. Please upload images or a text-based PDF.",
+                action: "convert_to_image_or_upload_images" 
+              });
             }
           }
         } else {
@@ -1889,33 +1833,12 @@ Return JSON:
         const isHandwritten = formData.get('is_handwritten') === 'true';
         const runOCR  = formData.get('run_ocr') === 'true';
         if (!file) return errorResponse('No file uploaded', 400);
-        // ── Document Lock — block uploads for locked claims ─────────────
-        if (claimId) {
-          const claimCheck = await env.DB.prepare(
-            'SELECT claim_status FROM claims WHERE id=? AND tenant_id=?'
-          ).bind(claimId, user.tenantId).first();
-          const UPLOAD_LOCKED = ['submitted','settled','closed','archived'];
-          if (claimCheck && UPLOAD_LOCKED.includes(claimCheck.claim_status)) {
-            return errorResponse(
-              `Documents locked — claim is ${claimCheck.claim_status}. No new uploads permitted.`,
-              423
-            );
-          }
-        }
         const key = `${user.tenantId}/${claimId || 'general'}/${Date.now()}-${file.name}`;
         await env.DOCS.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
         const docId = generateUUID();
         let ocrData = null;
         const actualMime = getMimeFromExtension(file.name, file.type);
-        const canAnalyze = (runOCR || isHandwritten) && (
-          actualMime.startsWith('image/') ||
-          actualMime === 'application/pdf' ||
-          actualMime === 'text/plain' ||
-          actualMime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-          actualMime === 'application/vnd.ms-excel' ||
-          actualMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-          actualMime === 'application/msword'
-        );
+        const canAnalyze = (runOCR || isHandwritten) && (actualMime.startsWith('image/') || actualMime === 'application/pdf' || actualMime === 'text/plain');
         if (canAnalyze) {
           try {
             if (actualMime.startsWith('image/')) {
@@ -1925,16 +1848,6 @@ Return JSON:
               for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
               console.log(`[Upload] Vision path: ${file.name} (${actualMime})`);
               ocrData = await analyzeDocumentContent(env, { imageBase64: btoa(binary), mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document' });
-            } else if (actualMime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || actualMime === 'application/vnd.ms-excel') {
-              // XLSX / XLS → Loss Assessment parser
-              console.log(`[Upload] XLSX path: ${file.name}`);
-              const xlsxBytes = await file.arrayBuffer();
-              ocrData = await parseXLSXToLossAssessment(env, xlsxBytes, file.name);
-            } else if (actualMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || actualMime === 'application/msword') {
-              // DOCX / DOC → Field + table extractor
-              console.log(`[Upload] DOCX path: ${file.name}`);
-              const docxBytes = await file.arrayBuffer();
-              ocrData = await extractDOCXFields(env, docxBytes, file.name);
             } else {
               let text = await file.text();
               let isTruncated = false;
@@ -1942,11 +1855,10 @@ Return JSON:
                 text = text.slice(0, 12000);
                 isTruncated = true;
               }
-              // Scanned PDF → vision OCR pipeline
+              // PDF Reliability Fallback
               if (actualMime === 'application/pdf' && !looksLikeReadableText(text)) {
-                console.log(`[Upload] Scanned PDF — vision path: ${file.name}`);
-                const pdfBytes = await file.arrayBuffer();
-                ocrData = await analyzeScannedPDF(env, pdfBytes, file.name, isHandwritten ? 'handwritten_report' : 'document');
+                console.log(`[Upload] Scanned PDF fallback triggered: ${file.name}`);
+                ocrData = { status: "scanned_pdf_detected", message: "Scanned PDF (No text layer)" };
               } else {
                 console.log(`[Upload] Text path: ${file.name} | Len: ${text.length} | Truncated: ${isTruncated}`);
                 ocrData = await analyzeDocumentContent(env, { textContent: text, mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document', isTruncated });
@@ -1975,21 +1887,7 @@ Return JSON:
         const { status } = await request.json();
         const existing = await env.DB.prepare('SELECT * FROM claims WHERE id=?').bind(claimId).first();
         if (!existing) return errorResponse('Claim not found', 404);
-        // Build lifecycle column update alongside status change
-        let extraCol = '', extraVals = [];
-        if (status === 'settled' || status === 'closed') {
-          extraCol = ', closed_at=?, closed_by=?';
-          extraVals = [Date.now(), user.id];
-        } else if (status === 'archived') {
-          extraCol = ', archived_at=?, archived_by=?';
-          extraVals = [Date.now(), user.id];
-        } else if (status === 'in_progress' && existing.claim_status === 'archived') {
-          extraCol = ', restored_at=?, restored_by=?';
-          extraVals = [Date.now(), user.id];
-        }
-        await env.DB.prepare(
-          `UPDATE claims SET claim_status=?,updated_at=?${extraCol} WHERE id=?`
-        ).bind(status, Date.now(), ...extraVals, claimId).run();
+        await env.DB.prepare('UPDATE claims SET claim_status=?,updated_at=? WHERE id=?').bind(status, Date.now(), claimId).run();
         let surveyorName = 'McLarens Survey Team';
         if (existing.surveyor_id) {
           const s = await env.DB.prepare('SELECT name FROM users WHERE id=?').bind(existing.surveyor_id).first();
@@ -2002,66 +1900,6 @@ Return JSON:
         }
         await broadcastUpdate(env, user.tenantId, 'claim_status_changed', { claimId, oldStatus: existing.claim_status, newStatus: status });
         await auditLog(env, user.tenantId, user.id, 'claim_status_updated', 'claims', claimId, clientIP, { status: existing.claim_status }, { status });
-
-        // ── Final Submission Snapshot ────────────────────────────────────
-        // Captures immutable state at moment of submission for legal/audit use
-        if (status === 'submitted' && existing.claim_status !== 'submitted') {
-          try {
-            const [snapDocs, snapReports, snapCalc] = await Promise.all([
-              env.DB.prepare(
-                'SELECT id,filename,document_type,r2_key,verification_score,ocr_extracted_data,created_at FROM claim_documents WHERE claim_id=?'
-              ).bind(claimId).all(),
-              env.DB.prepare(
-                'SELECT report_type,status,version,report_data,submitted_at FROM survey_reports_pipeline WHERE claim_id=?'
-              ).bind(claimId).all(),
-              env.DB.prepare(
-                'SELECT * FROM fsr_calculations WHERE claim_id=?'
-              ).bind(claimId).first()
-            ]);
-
-            const snapshot = {
-              snapshot_version: 1,
-              captured_at:      Date.now(),
-              captured_by:      user.id,
-              claim_data: {
-                id:             existing.id,
-                claim_number:   existing.claim_number,
-                insured_name:   existing.insured_name,
-                insurer_id:     existing.insurer_id,
-                department:     existing.department,
-                loss_amount:    existing.loss_amount,
-                sum_insured:    existing.sum_insured,
-                settlement_amount: existing.settlement_amount,
-                circumstances:  existing.circumstances
-              },
-              documents:    (snapDocs.results   || []).map(d => ({
-                id:        d.id, filename: d.filename,
-                type:      d.document_type, r2_key: d.r2_key,
-                ai_score:  d.verification_score,
-                has_ocr:   !!d.ocr_extracted_data,
-                uploaded:  d.created_at
-              })),
-              reports:      (snapReports.results || []).map(r => ({
-                type:    r.report_type, status: r.status,
-                version: r.version,    submitted_at: r.submitted_at,
-                has_data: !!r.report_data
-              })),
-              financials:   snapCalc || null
-            };
-
-            const snapId = generateUUID();
-            await env.DB.prepare(
-              `INSERT INTO claim_final_snapshots
-               (id,claim_id,tenant_id,snapshot_data,submitted_by,created_at)
-               VALUES (?,?,?,?,?,?)`
-            ).bind(snapId, claimId, user.tenantId, JSON.stringify(snapshot), user.id, Date.now()).run();
-            console.log(`[Snapshot] Created for claim ${claimId} → ${snapId}`);
-          } catch(snapErr) {
-            // Non-blocking — log but don't fail the status update
-            console.error('[Snapshot] Failed to create:', snapErr.message);
-          }
-        }
-
         return jsonResponse({ success: true });
       }
 
@@ -2402,184 +2240,6 @@ Return ONLY valid JSON (no markdown):
         return jsonResponse({ success: true, draft, report_type });
       }
 
-      // ════ CROSS-DOCUMENT VERIFICATION ════════════════════════════════
-      if (path.match(/^\/api\/claims\/[^\/]+\/cross-verify$/) && method === 'POST') {
-        const claimId = path.split('/')[3];
-        const claim = await env.DB.prepare(
-          'SELECT id FROM claims WHERE id=? AND tenant_id=?'
-        ).bind(claimId, user.tenantId).first();
-        if (!claim) return errorResponse('Claim not found', 404);
-        const docs = await env.DB.prepare(
-          'SELECT document_type, filename, ocr_extracted_data FROM claim_documents WHERE claim_id=? AND ocr_extracted_data IS NOT NULL'
-        ).bind(claimId).all();
-        if (!docs.results || docs.results.length < 2)
-          return jsonResponse({ conflicts: [], message: 'Need at least 2 documents with extracted data to cross-verify.' });
-        const result = await crossVerifyDocuments(env, claimId, docs.results);
-        await auditLog(env, user.tenantId, user.id, 'cross_verify_run', 'claims', claimId, clientIP);
-        return jsonResponse({ success: true, ...result });
-      }
-
-      // ════ CLAIM TIMELINE ═════════════════════════════════════════════
-      // Returns full audit trail for a claim — used by Claim Intelligence Vault
-      if (path.match(/^\/api\/claims\/[^\/]+\/timeline$/) && method === 'GET') {
-        const claimId = path.split('/')[3];
-        const claim   = await env.DB.prepare(
-          'SELECT id,tenant_id FROM claims WHERE id=? AND tenant_id=?'
-        ).bind(claimId, user.tenantId).first();
-        if (!claim) return errorResponse('Claim not found', 404);
-
-        // Merge audit_logs + ai_audit_logs + document uploads into one timeline
-        const [auditRows, aiRows, docRows] = await Promise.all([
-          env.DB.prepare(
-            `SELECT al.id, al.action, al.old_data, al.new_data, al.created_at,
-                    u.name AS user_name
-             FROM audit_logs al
-             LEFT JOIN users u ON al.user_id = u.id
-             WHERE al.resource_id=? AND al.tenant_id=?
-             ORDER BY al.created_at DESC LIMIT 100`
-          ).bind(claimId, user.tenantId).all(),
-          env.DB.prepare(
-            `SELECT id, action_type AS action, created_at, 'AI System' AS user_name, NULL AS old_data, result AS new_data
-             FROM ai_audit_logs WHERE claim_id=?
-             ORDER BY created_at DESC LIMIT 50`
-          ).bind(claimId).all(),
-          env.DB.prepare(
-            `SELECT id, 'document_uploaded' AS action, created_at, uploaded_by AS user_id,
-                    NULL AS old_data,
-                    json_object('filename', filename, 'document_type', document_type) AS new_data
-             FROM claim_documents WHERE claim_id=?
-             ORDER BY created_at DESC LIMIT 50`
-          ).bind(claimId).all()
-        ]);
-
-        const timeline = [
-          ...(auditRows.results || []),
-          ...(aiRows.results   || []),
-          ...(docRows.results  || [])
-        ].sort((a, b) => (b.created_at || 0) - (a.created_at || 0)).slice(0, 150);
-
-        return jsonResponse({ success: true, timeline });
-      }
-
-      // ════ RESUME ENGINE ══════════════════════════════════════════════
-      // Returns exactly where work was left — stage + next action
-      // Frontend uses this to redirect to correct workbench tab
-      if (path.match(/^\/api\/claims\/[^\/]+\/resume$/) && method === 'GET') {
-        const claimId = path.split('/')[3];
-        const claim   = await env.DB.prepare(
-          `SELECT c.id, c.claim_status, c.current_stage, c.updated_at, c.insured_name,
-                  c.claim_number, c.department
-           FROM claims c WHERE c.id=? AND c.tenant_id=?`
-        ).bind(claimId, user.tenantId).first();
-        if (!claim) return errorResponse('Claim not found', 404);
-
-        // Blocked statuses — nothing to resume
-        const LOCKED = ['submitted','settled','closed','archived'];
-        if (LOCKED.includes(claim.claim_status)) {
-          return jsonResponse({
-            resumable: false,
-            reason: `Claim is ${claim.claim_status} — no active work to resume`,
-            claim_status: claim.claim_status
-          });
-        }
-
-        // Find the furthest non-empty pipeline report to determine stage
-        const STAGE_ORDER = ['fsr','interim','psr','lor','spot','jir'];
-        const reports = await env.DB.prepare(
-          `SELECT report_type, status, version, updated_at
-           FROM survey_reports_pipeline WHERE claim_id=? ORDER BY updated_at DESC`
-        ).bind(claimId).all();
-
-        const reportMap = {};
-        for (const r of (reports.results || [])) reportMap[r.report_type] = r;
-
-        let lastStage = claim.current_stage || 'jir';
-        let nextAction = 'Continue filling JIR';
-        let workbenchTab = 'pipeline';
-        let pipelineStage = 'jir';
-
-        // Find the most advanced report with actual data
-        for (const stage of STAGE_ORDER) {
-          if (reportMap[stage] && reportMap[stage].version > 0) {
-            pipelineStage = stage;
-            lastStage     = stage;
-            break;
-          }
-        }
-
-        // Determine next action based on stage + report status
-        const currentReport = reportMap[pipelineStage];
-        if (!currentReport || currentReport.status === 'draft') {
-          nextAction = `Complete ${pipelineStage.toUpperCase()} — currently in draft`;
-        } else if (currentReport.status === 'saved') {
-          // Find next stage in pipeline
-          const idx = ['jir','spot','lor','psr','interim','fsr'].indexOf(pipelineStage);
-          const next = ['jir','spot','lor','psr','interim','fsr'][idx + 1];
-          nextAction = next ? `Proceed to ${next.toUpperCase()}` : 'Review FSR before submission';
-        }
-
-        // Check pending documents
-        const pendingDocs = await env.DB.prepare(
-          `SELECT COUNT(*) AS c FROM pending_documents
-           WHERE claim_id=? AND status='pending' AND is_mandatory=1`
-        ).bind(claimId).first();
-
-        const pendingCount = pendingDocs?.c || 0;
-        if (pendingCount > 0) {
-          nextAction = `${pendingCount} mandatory document(s) pending — upload before proceeding`;
-          workbenchTab = 'documents';
-        }
-
-        // Last activity time
-        const lastActivity = claim.updated_at
-          ? new Date(claim.updated_at > 1e12 ? claim.updated_at : claim.updated_at * 1000).toISOString()
-          : null;
-
-        return jsonResponse({
-          resumable:      true,
-          claim_id:       claimId,
-          claim_number:   claim.claim_number,
-          claim_status:   claim.claim_status,
-          last_stage:     lastStage,
-          pipeline_stage: pipelineStage,
-          workbench_tab:  workbenchTab,
-          next_action:    nextAction,
-          last_activity:  lastActivity,
-          pending_docs:   pendingCount,
-          redirect_url:   `/surveyor-dashboard?claimId=${claimId}&tab=${workbenchTab}&stage=${pipelineStage}`
-        });
-      }
-
-      // ════ CLAIM EVIDENCE VAULT ═══════════════════════════════════════
-      // Returns documents organized by category — used by Evidence Vault panel
-      if (path.match(/^\/api\/claims\/[^\/]+\/evidence$/) && method === 'GET') {
-        const claimId = path.split('/')[3];
-        const claim   = await env.DB.prepare(
-          'SELECT id,tenant_id,claim_number,insured_name FROM claims WHERE id=? AND tenant_id=?'
-        ).bind(claimId, user.tenantId).first();
-        if (!claim) return errorResponse('Claim not found', 404);
-
-        const docs = await env.DB.prepare(
-          `SELECT id, filename, document_type, r2_key, file_size, mime_type,
-                  ocr_extracted_data, verification_score, uploaded_by, created_at,
-                  is_handwritten_upload, caption
-           FROM claim_documents WHERE claim_id=? ORDER BY created_at ASC`
-        ).bind(claimId).all();
-
-        const reports = await env.DB.prepare(
-          `SELECT id, report_type, status, version, created_at, updated_at
-           FROM survey_reports WHERE claim_id=? ORDER BY created_at ASC`
-        ).bind(claimId).all();
-
-        return jsonResponse({
-          success: true,
-          claimId,
-          documents: docs.results || [],
-          reports:   reports.results || [],
-          doc_count: (docs.results || []).length
-        });
-      }
-
       // ════════════════════════════════════════════════════════════════════
       // v5.1 — FSR CALCULATION SAVE/GET
       // ════════════════════════════════════════════════════════════════════
@@ -2869,6 +2529,164 @@ Return ONLY valid JSON (no markdown):
           snapshot_data: snap.snapshot_data
         });
       }
+
+      // ════════════════════════════════════════════════════════════════════
+      // POLICY INTELLIGENCE — Read T&C, extract exclusions & warranties
+      // POST /api/claims/:id/analyze-policy
+      // ════════════════════════════════════════════════════════════════════
+
+      if (path.match(/^\/api\/claims\/[^\/]+\/analyze-policy$/) && method === 'POST') {
+        if (!user) return errorResponse('Unauthorized', 401);
+        const claimId = path.split('/')[3];
+        const body    = await request.json();
+        const { raw_text, doc_id, file_name } = body;
+
+        const claim = await env.DB.prepare(
+          `SELECT c.*, ic.name AS insurer_name, ic.code AS insurer_code
+           FROM claims c LEFT JOIN insurance_companies ic ON c.insurer_id=ic.id
+           WHERE c.id=? AND c.tenant_id=?`
+        ).bind(claimId, user.tenantId).first();
+        if (!claim) return errorResponse('Claim not found', 404);
+
+        // If no raw_text passed, try fetching from the uploaded document's OCR data
+        let policyText = raw_text || '';
+        if (!policyText && doc_id) {
+          const docRow = await env.DB.prepare(
+            'SELECT ocr_extracted_data FROM claim_documents WHERE id=? AND claim_id=?'
+          ).bind(doc_id, claimId).first();
+          if (docRow && docRow.ocr_extracted_data) {
+            try {
+              const ocrObj = JSON.parse(docRow.ocr_extracted_data);
+              policyText = ocrObj.raw_text || JSON.stringify(ocrObj);
+            } catch { policyText = docRow.ocr_extracted_data; }
+          }
+        }
+
+        if (!policyText || policyText.length < 50) {
+          return errorResponse('Policy text too short to analyze — upload a readable PDF', 400);
+        }
+
+        const prompt = `You are a senior IRDAI-licensed insurance claims surveyor AI.
+Analyze the following insurance policy document text for claim ${claim.claim_number || claimId}.
+Insurer: ${claim.insurer_name || 'Unknown'} | Department: ${claim.department || 'Unknown'}
+
+POLICY DOCUMENT TEXT:
+${policyText.slice(0, 9000)}
+
+Your job: Extract everything that affects claim settlement.
+Be precise. Quote exact clause text where possible.
+Focus on: exclusions, warranties, wear & tear, under-insurance, average clause, special conditions.
+
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "exclusions": [
+    {"name": "Short title of exclusion", "detail": "Exact or paraphrased clause text"}
+  ],
+  "warranties": [
+    {"name": "Short title", "detail": "Exact warranty condition text"}
+  ],
+  "special_conditions": [
+    {"name": "Short title", "detail": "Full condition text"}
+  ],
+  "coverage_notes": [
+    {"name": "Short title", "detail": "What is covered / included"}
+  ],
+  "critical_findings": [
+    {
+      "type": "exclusion|warranty|under_insurance|depreciation|average_clause|other",
+      "severity": "high|medium|low",
+      "text": "Plain English explanation of why this matters to the surveyor"
+    }
+  ],
+  "wear_tear_clause": "Exact text of wear and tear exclusion or null if not found",
+  "average_clause": "Exact text of average/under-insurance clause or null",
+  "under_insurance_clause": "Text about under-insurance consequences or null",
+  "sum_insured_basis": "Market Value|Reinstatement Value|Agreed Value|Book Value or null",
+  "policy_period": "Start to end date string or null",
+  "confidence": 85
+}`;
+
+        let intelligence = {};
+        try {
+          const aiResp = await handleChatRequest(prompt, 'surveyor_ai', user, env);
+          intelligence = JSON.parse(aiResp.replace(/```json|```/g, '').trim());
+        } catch(parseErr) {
+          // If JSON parse fails, return a structured fallback so frontend doesn't crash
+          intelligence = {
+            exclusions:          [],
+            warranties:          [],
+            special_conditions:  [],
+            coverage_notes:      [],
+            critical_findings:   [{
+              type: 'other', severity: 'medium',
+              text: 'AI could not fully parse this document. Try uploading a text-layer PDF or a clearer scan.'
+            }],
+            wear_tear_clause:     null,
+            average_clause:       null,
+            under_insurance_clause: null,
+            sum_insured_basis:    null,
+            policy_period:        null,
+            confidence:           0
+          };
+        }
+
+        // Tag uploaded document as policy type
+        if (doc_id) {
+          await env.DB.prepare(
+            'UPDATE claim_documents SET document_type=?, updated_at=? WHERE id=? AND claim_id=?'
+          ).bind('policy', Date.now(), doc_id, claimId).run();
+        }
+
+        // Cache result in ai_audit_logs so GET /policy-intel can retrieve it
+        await env.DB.prepare(
+          `INSERT INTO ai_audit_logs
+           (id,tenant_id,claim_id,action,ai_reasoning,proposed_changes,source_used,ip_address,created_at)
+           VALUES (?,?,?,?,?,?,?,?,?)`
+        ).bind(
+          generateUUID(), user.tenantId, claimId,
+          'policy_intelligence_analyzed',
+          'Policy T&C extracted: ' +
+            (intelligence.exclusions || []).length + ' exclusions, ' +
+            (intelligence.warranties || []).length + ' warranties, ' +
+            (intelligence.critical_findings || []).length + ' critical findings',
+          JSON.stringify(intelligence),
+          doc_id ? 'policy_document_upload' : 'policy_text_direct',
+          clientIP, Date.now()
+        ).run();
+
+        await auditLog(env, user.tenantId, user.id,
+          'policy_intel_analyzed', 'claims', claimId, clientIP,
+          null, { doc_id, exclusions: (intelligence.exclusions || []).length });
+
+        return jsonResponse({
+          success:      true,
+          intelligence,
+          claim_number: claim.claim_number,
+          analyzed_at:  new Date().toISOString()
+        });
+      }
+
+      // GET /api/claims/:id/policy-intel — retrieve cached policy intelligence
+      if (path.match(/^\/api\/claims\/[^\/]+\/policy-intel$/) && method === 'GET') {
+        if (!user) return errorResponse('Unauthorized', 401);
+        const claimId = path.split('/')[3];
+        const row = await env.DB.prepare(
+          `SELECT proposed_changes, created_at FROM ai_audit_logs
+           WHERE claim_id=? AND tenant_id=? AND action='policy_intelligence_analyzed'
+           ORDER BY created_at DESC LIMIT 1`
+        ).bind(claimId, user.tenantId).first();
+        if (!row) return jsonResponse({ intelligence: null, analyzed_at: null });
+        try {
+          return jsonResponse({
+            intelligence: JSON.parse(row.proposed_changes || '{}'),
+            analyzed_at:  new Date(row.created_at).toISOString()
+          });
+        } catch {
+          return jsonResponse({ intelligence: null, analyzed_at: null });
+        }
+      }
+
+
 
       // ════ DEFAULT 404 ══════════════════════════════════════════════════
       return errorResponse('API endpoint not found', 404);
