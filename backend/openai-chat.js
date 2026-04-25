@@ -20,20 +20,163 @@ async function openAIFetch(env, endpoint, body) {
   return res.json();
 }
 
+
+// ── Base64 encoder safe for large buffers (chunked to avoid stack overflow) ──
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 32768;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+  }
+  return btoa(binary);
+}
+
+// ── Scanned PDF → GPT-4o Vision OCR ─────────────────────────────────────────
+// Uses OpenAI's native PDF file content type (gpt-4o, 2025).
+// Called when looksLikeReadableText() returns false for a PDF.
+export async function analyzeScannedPDF(env, pdfBuffer, filename, context = 'document') {
+  const base64PDF = arrayBufferToBase64(pdfBuffer);
+  const isHandwritten = context === 'handwritten_report';
+
+  const extractionPrompt = isHandwritten
+    ? `You are processing a scanned handwritten insurance survey document from India (field surveyor notes, JIR, Panchnama, or statement).
+Document may be in Marathi, Hindi, Gujarati, English or mixed regional languages.
+Extract ALL visible text from every page. Translate key structured fields to English.
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "raw_text": "complete verbatim extracted text in original language",
+  "structured": {
+    "date": null,
+    "survey_date": null,
+    "insured_name": null,
+    "insured_representative": null,
+    "policy_no": null,
+    "claim_no": null,
+    "date_of_loss": null,
+    "time_of_loss": null,
+    "cause_of_loss": null,
+    "loss_location": null,
+    "loss_description": "insured narration translated to English",
+    "immediate_action": "what insured did immediately after incident (English)",
+    "place_of_survey": null,
+    "physical_condition": null,
+    "security_measures": null,
+    "entry_point": null,
+    "observations": ["surveyor observation 1 in English", "observation 2"],
+    "fir_number": null,
+    "police_station": null,
+    "amounts": [],
+    "surveyor_name": null,
+    "surveyor_license": null,
+    "surveyor_code": null,
+    "brief_note": null,
+    "signature_present": false
+  },
+  "document_type": "jir|panchnama|statement|spot_note|fir|other",
+  "confidence": 85,
+  "language_detected": "english|hindi|marathi|gujarati|mixed",
+  "pages_processed": 1
+}`
+    : `You are processing a scanned insurance document from India.
+Extract ALL text from every page. Identify and structure key fields.
+Return ONLY valid JSON — no markdown, no preamble:
+{
+  "raw_text": "complete verbatim extracted text",
+  "document_type": "policy|invoice|stock_register|fire_report|drug_inspection|udyam|itr|balance_sheet|shop_act|aadhar|pan|quotation|survey_report|identity|financial|other",
+  "key_fields": {
+    "amount": null,
+    "date": null,
+    "reference_number": null,
+    "parties": [],
+    "policy_number": null,
+    "claim_number": null,
+    "insured_name": null,
+    "address": null
+  },
+  "confidence": 85,
+  "language_detected": "english|hindi|marathi|gujarati|mixed",
+  "pages_processed": 1
+}`;
+
+  try {
+    const data = await openAIFetch(env, '/chat/completions', {
+      model: 'gpt-4o',
+      max_tokens: 4000,
+      response_format: { type: 'json_object' },
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'file',
+            file: {
+              filename: filename || 'document.pdf',
+              file_data: `data:application/pdf;base64,${base64PDF}`
+            }
+          },
+          { type: 'text', text: extractionPrompt }
+        ]
+      }]
+    });
+
+    const raw = data.choices[0]?.message?.content || '{}';
+    const result = JSON.parse(raw);
+    result.source      = 'scanned_pdf_vision';
+    result.filename    = filename;
+    result.processed_at = Date.now();
+    console.log(`[Scanned PDF OCR] ${filename} → confidence:${result.confidence} type:${result.document_type} lang:${result.language_detected}`);
+    return result;
+
+  } catch (err) {
+    console.error('[Scanned PDF OCR] Failed:', err.message);
+    return {
+      raw_text: '',
+      document_type: 'unknown',
+      key_fields: {},
+      structured: {},
+      confidence: 0,
+      source: 'scanned_pdf_vision_failed',
+      error: err.message,
+      filename,
+      processed_at: Date.now()
+    };
+  }
+}
+
 // ── Unified Document Intelligence (Vision + Text) ────────────────────────
 export async function analyzeDocumentContent(env, { imageBase64, textContent, mimeType, context, isTruncated = false }) {
   const isImage = !!imageBase64;
   const truncateNotice = isTruncated ? "\n(NOTE: Content was truncated due to size limits. Extract based on available context.)" : "";
   
   const systemPrompt = (context === 'handwritten_report'
-    ? `Extract all text from this handwritten insurance survey note (Indian field surveyor). 
-Detect the input language automatically.
-Return ONLY valid JSON.
+    ? `Extract all text from this handwritten insurance survey note (Indian field surveyor).
+Detect the input language automatically. Document may be in Marathi, Hindi, Gujarati, or English.
+Translate key structured fields to English even if source is regional language.
+Return ONLY valid JSON — no markdown, no preamble:
 {
-  "raw_text": "...",
-  "structured": {"date":null,"location":null,"contact_person":null,"fir_number":null,"police_station":null,"loss_description":null,"observations":[],"amounts":[],"surveyor_name":null,"signature_present":false},
+  "raw_text": "complete verbatim text in original language",
+  "structured": {
+    "date": null,
+    "survey_date": null,
+    "location": null,
+    "contact_person": null,
+    "fir_number": null,
+    "police_station": null,
+    "loss_description": "insured narration of how/when/where incident happened (translated to English)",
+    "immediate_action": "what insured did immediately after incident — called police, lodged FIR, shifted goods etc (translated to English)",
+    "observations": ["surveyor observation 1 (English)", "surveyor observation 2"],
+    "physical_condition": null,
+    "security_measures": null,
+    "entry_point": null,
+    "amounts": [],
+    "surveyor_name": null,
+    "surveyor_license": null,
+    "insured_name": null,
+    "insured_representative": null,
+    "signature_present": false
+  },
   "confidence": 85,
-  "language_detected": "...",
+  "language_detected": "english|hindi|marathi|gujarati|mixed",
   "truncated": ${isTruncated}
 }`
     : `Extract all text from this insurance document.
@@ -261,193 +404,3 @@ Return ONLY JSON: {"conflicts":[{"field":"","doc1_type":"","doc1_value":"","doc2
 }
 
 
-
-// ── Scanned PDF → Vision OCR ─────────────────────────────────────────────
-// Converts scanned PDF buffer to base64 and sends to GPT-4o vision.
-// Exported and called from both /api/ocr and /api/upload in index.js.
-export async function analyzeScannedPDF(env, pdfBuffer, filename, context = 'document') {
-  const bytes = new Uint8Array(pdfBuffer);
-  const CHUNK = 32768;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
-    for (let j = 0; j < slice.length; j++) binary += String.fromCharCode(slice[j]);
-  }
-  const imageBase64 = btoa(binary);
-  return await analyzeDocumentContent(env, {
-    imageBase64,
-    mimeType: 'application/pdf',
-    context,
-    isTruncated: false
-  });
-}
-
-// ── XLSX → Structured Loss Assessment ────────────────────────────────────
-// Sends Excel buffer to GPT-4o as base64 file. Returns line items + totals.
-// Called from /api/upload when mime is xlsx/xls.
-export async function parseXLSXToLossAssessment(env, buffer, filename) {
-  const bytes = new Uint8Array(buffer);
-  const CHUNK = 32768;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
-    for (let j = 0; j < slice.length; j++) binary += String.fromCharCode(slice[j]);
-  }
-  const b64 = btoa(binary);
-
-  const prompt = `You are processing an insurance Loss Assessment Excel file from India (McLarens / IRDAI surveyor format).
-Extract ALL line items and financial totals precisely.
-Return ONLY valid JSON — no markdown, no preamble:
-{
-  "raw_text": "tab-separated representation of all sheet data",
-  "document_type": "loss_assessment",
-  "items": [
-    {
-      "sr_no": 1,
-      "description": "item name",
-      "unit": "nos/sqft/kg/etc",
-      "qty_claimed": 0,
-      "rate_claimed": 0,
-      "amount_claimed": 0,
-      "qty_allowed": 0,
-      "rate_allowed": 0,
-      "amount_allowed": 0,
-      "depreciation_pct": 0,
-      "net_allowed": 0,
-      "remarks": ""
-    }
-  ],
-  "totals": {
-    "gross_claimed": 0,
-    "gross_allowed": 0,
-    "total_depreciation": 0,
-    "salvage": 0,
-    "excess_deductible": 0,
-    "net_assessed": 0,
-    "average_clause_applied": false,
-    "sum_insured": 0
-  },
-  "sheet_names": [],
-  "confidence": 85
-}`;
-
-  try {
-    const data = await openAIFetch(env, '/chat/completions', {
-      model: 'gpt-4o',
-      max_tokens: 4000,
-      response_format: { type: 'json_object' },
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'file',
-            file: {
-              filename: filename || 'loss_assessment.xlsx',
-              file_data: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${b64}`
-            }
-          },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    });
-    const raw = data.choices[0]?.message?.content || '{}';
-    const result = JSON.parse(raw);
-    result.source      = 'xlsx_gpt4o';
-    result.filename    = filename;
-    result.processed_at = Date.now();
-    console.log(`[XLSX] ${filename} → ${result.items?.length || 0} items | net: ${result.totals?.net_assessed}`);
-    return result;
-  } catch (err) {
-    console.error('[XLSX Parse] Failed:', err.message);
-    return {
-      raw_text: '', document_type: 'loss_assessment',
-      items: [], totals: {},
-      confidence: 0, source: 'xlsx_gpt4o_failed',
-      error: err.message, filename, processed_at: Date.now()
-    };
-  }
-}
-
-// ── DOCX → Structured Field + Table Extraction ───────────────────────────
-// Sends Word document buffer to GPT-4o as base64 file.
-// Extracts key fields, tables (FSR/LOR/ILA format), and raw text.
-// Called from /api/upload when mime is docx/doc.
-export async function extractDOCXFields(env, buffer, filename) {
-  const bytes = new Uint8Array(buffer);
-  const CHUNK = 32768;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
-    for (let j = 0; j < slice.length; j++) binary += String.fromCharCode(slice[j]);
-  }
-  const b64 = btoa(binary);
-
-  const prompt = `You are processing an insurance survey Word document from India (McLarens format: FSR, LOR, ILA, PSR or similar).
-Extract all text, key fields, and table data precisely.
-Return ONLY valid JSON — no markdown, no preamble:
-{
-  "raw_text": "complete extracted text",
-  "document_type": "fsr|lor|ila|psr|interim|spot|jir|other",
-  "key_fields": {
-    "our_ref": null,
-    "claim_no": null,
-    "date": null,
-    "insurer_name": null,
-    "insured_name": null,
-    "policy_no": null,
-    "department": null,
-    "sum_insured": null,
-    "loss_amount": null,
-    "net_liability": null,
-    "surveyor_name": null,
-    "surveyor_licence": null,
-    "date_of_loss": null,
-    "cause_of_loss": null
-  },
-  "tables": [
-    {
-      "table_index": 0,
-      "headers": [],
-      "rows": []
-    }
-  ],
-  "requirements": [],
-  "confidence": 85
-}`;
-
-  try {
-    const data = await openAIFetch(env, '/chat/completions', {
-      model: 'gpt-4o',
-      max_tokens: 4000,
-      response_format: { type: 'json_object' },
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'file',
-            file: {
-              filename: filename || 'document.docx',
-              file_data: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${b64}`
-            }
-          },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    });
-    const raw = data.choices[0]?.message?.content || '{}';
-    const result = JSON.parse(raw);
-    result.source      = 'docx_gpt4o';
-    result.filename    = filename;
-    result.processed_at = Date.now();
-    console.log(`[DOCX] ${filename} → type:${result.document_type} | confidence:${result.confidence}`);
-    return result;
-  } catch (err) {
-    console.error('[DOCX Extract] Failed:', err.message);
-    return {
-      raw_text: '', document_type: 'other',
-      key_fields: {}, tables: [], requirements: [],
-      confidence: 0, source: 'docx_gpt4o_failed',
-      error: err.message, filename, processed_at: Date.now()
-    };
-  }
-}
