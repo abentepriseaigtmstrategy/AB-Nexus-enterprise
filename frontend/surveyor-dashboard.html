@@ -848,6 +848,114 @@ body.focus-mode .focus-save-bar{display:flex !important;}
 .status-dot.online {background:var(--green);box-shadow:0 0 6px var(--green);}
 .status-dot.offline {background:var(--red);box-shadow:0 0 6px var(--red);}
 
+
+/* ── POLICY INTELLIGENCE PANEL ─────────────────────────────────────── */
+.pi-card {
+  background:var(--bg1);
+  border:1px solid rgba(167,139,250,0.3);
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:14px;
+  animation:cardIn 0.3s ease;
+}
+.pi-card-header {
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+  background:linear-gradient(135deg,rgba(167,139,250,0.1),rgba(167,139,250,0.03));
+  border-bottom:1px solid rgba(167,139,250,0.2);
+  cursor:pointer;
+}
+.pi-card-header:hover { background:rgba(167,139,250,0.12); }
+.pi-card-title {
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  color:var(--purple);letter-spacing:0.08em;flex:1;
+}
+.pi-card-badge {
+  font-family:var(--mono);font-size:9px;padding:2px 7px;
+  border-radius:3px;font-weight:700;letter-spacing:0.06em;
+}
+.pi-badge-ready   { background:var(--green-dim);color:var(--green);border:1px solid rgba(94,198,122,0.3); }
+.pi-badge-partial { background:var(--amber-dim);color:var(--amber);border:1px solid rgba(232,160,32,0.3); }
+.pi-badge-none    { background:var(--bg3);color:var(--text-ter);border:1px solid var(--border); }
+.pi-body { padding:12px 14px;display:flex;flex-direction:column;gap:10px; }
+
+/* Upload trigger */
+.pi-upload-row {
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  background:var(--bg2);border:1px dashed rgba(167,139,250,0.25);
+  border-radius:7px;cursor:pointer;transition:all 0.15s;
+}
+.pi-upload-row:hover { border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.06); }
+.pi-upload-label { font-family:var(--mono);font-size:10px;color:var(--purple);font-weight:600; }
+.pi-upload-sub   { font-family:var(--mono);font-size:9px;color:var(--text-ter);margin-top:1px; }
+
+/* Analyzing spinner */
+.pi-analyzing {
+  display:none;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.2);
+  border-radius:7px;font-family:var(--mono);font-size:10px;color:var(--purple);
+}
+.pi-analyzing.show { display:flex; }
+.pi-spinner { width:14px;height:14px;border:2px solid rgba(167,139,250,0.2);border-top-color:var(--purple);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Result sections */
+.pi-section { margin-bottom:8px; }
+.pi-section-title {
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--text-ter);margin-bottom:6px;
+  display:flex;align-items:center;gap:6px;
+}
+.pi-section-title::after { content:'';flex:1;height:1px;background:var(--border); }
+
+/* Exclusion / Warranty / Coverage tags */
+.pi-tag {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:10px;
+  font-weight:600;margin:2px;cursor:default;line-height:1.4;
+}
+.pi-tag.exclusion { background:var(--red-dim);color:var(--red);border:1px solid rgba(232,85,85,0.25); }
+.pi-tag.warranty  { background:var(--amber-dim);color:var(--amber);border:1px solid rgba(232,160,32,0.25); }
+.pi-tag.coverage  { background:var(--teal-dim);color:var(--teal);border:1px solid rgba(34,196,160,0.25); }
+.pi-tag.condition { background:var(--blue-dim);color:var(--blue);border:1px solid rgba(91,156,246,0.25); }
+
+/* Key findings */
+.pi-finding {
+  padding:7px 10px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;margin-bottom:4px;
+  font-size:12px;color:var(--text-sec);line-height:1.5;
+}
+.pi-finding.critical {
+  border-color:rgba(232,85,85,0.3);
+  background:rgba(232,85,85,0.05);
+  color:var(--text-pri);
+}
+.pi-finding .pi-find-label {
+  font-family:var(--mono);font-size:9px;font-weight:700;
+  letter-spacing:0.08em;text-transform:uppercase;
+  margin-bottom:3px;color:var(--red);
+}
+.pi-finding.warning .pi-find-label { color:var(--amber); }
+.pi-finding.info .pi-find-label    { color:var(--blue); }
+
+/* Summary bar */
+.pi-summary-bar {
+  display:flex;gap:6px;flex-wrap:wrap;
+  padding:8px 10px;
+  background:rgba(167,139,250,0.06);
+  border:1px solid rgba(167,139,250,0.15);
+  border-radius:7px;font-family:var(--mono);font-size:10px;
+}
+.pi-sum-item { display:flex;flex-direction:column;align-items:center;flex:1;min-width:60px; }
+.pi-sum-val  { font-size:14px;font-weight:700;color:var(--text-pri); }
+.pi-sum-val.red    { color:var(--red); }
+.pi-sum-val.amber  { color:var(--amber); }
+.pi-sum-val.green  { color:var(--green); }
+.pi-sum-lbl { font-size:9px;color:var(--text-ter);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px; }
+
 </style>
 </head>
 <body>
@@ -1093,6 +1201,37 @@ body.focus-mode .focus-save-bar{display:flex !important;}
         <div id="exclusionsTags" style="margin-top:8px;display:flex;flex-wrap:wrap;"></div>
       </div>
     </div>
+
+    <!-- ═══ POLICY INTELLIGENCE CARD ═══════════════════════════════ -->
+    <div class="pi-card" id="policyIntelCard">
+      <div class="pi-card-header" onclick="togglePICard()">
+        <span style="font-size:14px;">📋</span>
+        <span class="pi-card-title">🤖 POLICY INTELLIGENCE</span>
+        <span class="pi-card-badge pi-badge-none" id="pi-badge">NO POLICY LOADED</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-ter);margin-left:4px;" id="pi-chevron">▼</span>
+      </div>
+      <div id="pi-body" class="pi-body">
+        <!-- Upload trigger -->
+        <div class="pi-upload-row" onclick="document.getElementById(&quot;pi-fileInput&quot;).click()">
+          <span style="font-size:16px;">📄</span>
+          <div>
+            <div class="pi-upload-label">Upload Policy PDF → AI reads T&C</div>
+            <div class="pi-upload-sub">Exclusions · Warranties · Coverage limits · Special conditions</div>
+          </div>
+          <input type="file" id="pi-fileInput" accept=".pdf,.doc,.docx,application/pdf"
+            style="display:none;" onchange="analyzePolicyDoc(event)">
+        </div>
+        <!-- Analyzing spinner -->
+        <div class="pi-analyzing" id="pi-analyzing">
+          <div class="pi-spinner"></div>
+          <span id="pi-analyzing-text">AI is reading the policy Terms & Conditions…</span>
+        </div>
+        <!-- Results area -->
+        <div id="pi-results" style="display:none;"></div>
+      </div>
+    </div>
+    <!-- ═══ END POLICY INTELLIGENCE CARD ════════════════════════════ -->
+
     <div class="card">
       <div class="card-header">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="5" r="2.5" stroke="var(--blue)" stroke-width="1"/><path d="M6 10C6 10 2 7 2 5a4 4 0 018 0c0 2-4 5-4 5Z" stroke="var(--blue)" stroke-width="1" fill="none"/></svg>
@@ -2329,6 +2468,259 @@ async function api(method, path, body, isForm) {
   }
 }
 
+
+// ════════════════════════════════════════════════════════════════════
+// POLICY INTELLIGENCE ENGINE
+// Reads uploaded policy PDF → extracts T&C, exclusions, warranties,
+// coverage limits → displays in left panel → feeds AI Verify
+// ════════════════════════════════════════════════════════════════════
+
+var _piData     = null;   // last extracted policy intelligence
+var _piCardOpen = true;
+
+function togglePICard() {
+  _piCardOpen = !_piCardOpen;
+  var body    = document.getElementById('pi-body');
+  var chevron = document.getElementById('pi-chevron');
+  if (body)    body.style.display    = _piCardOpen ? '' : 'none';
+  if (chevron) chevron.textContent   = _piCardOpen ? '▼' : '▶';
+}
+
+// ── Main entry point: called when user uploads a policy document ──────
+async function analyzePolicyDoc(event) {
+  var file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!state.claimId) { toast('Load a claim first before uploading the policy', 'warning'); return; }
+
+  // Show analyzing state
+  var analyzing = document.getElementById('pi-analyzing');
+  var results   = document.getElementById('pi-results');
+  var badge     = document.getElementById('pi-badge');
+  var txt       = document.getElementById('pi-analyzing-text');
+
+  if (analyzing) analyzing.classList.add('show');
+  if (results)   results.style.display = 'none';
+  if (badge)     { badge.textContent = 'READING…'; badge.className = 'pi-card-badge pi-badge-partial'; }
+  if (txt)       txt.textContent = 'AI is reading the policy Terms & Conditions…';
+
+  toast('📋 Reading policy document…', 'info');
+
+  try {
+    // Step 1: Upload to /api/upload with document_type=policy
+    var form = new FormData();
+    form.append('file',          file);
+    form.append('claimId',       state.claimId);
+    form.append('documentType',  'policy');
+    form.append('run_ocr',       'true');
+    form.append('is_handwritten','false');
+
+    if (txt) txt.textContent = 'Uploading policy document…';
+    var uploadRes = await api('POST', '/api/upload', form, true);
+    var docId = uploadRes && uploadRes.documentId;
+    if (docId) toast('✓ Policy uploaded — now extracting terms…', 'info');
+
+    // Step 2: Run policy intelligence analysis via dedicated endpoint
+    if (txt) txt.textContent = 'Extracting exclusions, warranties, coverage limits…';
+    var r = await api('POST', '/api/claims/' + state.claimId + '/analyze-policy', {
+      doc_id:    docId || null,
+      file_name: file.name,
+      // Pass any OCR text we already have from upload
+      raw_text:  uploadRes && uploadRes.ocr_data && uploadRes.ocr_data.raw_text || null
+    });
+
+    if (!r || r.error) throw new Error(r && r.error || 'Policy analysis failed');
+
+    _piData = r.intelligence;
+    renderPolicyIntelligence(_piData);
+    toast('✓ Policy intelligence ready — exclusions and warranties loaded', 'success');
+
+  } catch (err) {
+    if (analyzing) analyzing.classList.remove('show');
+    if (badge) { badge.textContent = 'ERROR'; badge.className = 'pi-card-badge pi-badge-none'; }
+    toast('Policy analysis failed: ' + err.message, 'error');
+    console.error('[PolicyIntel]', err);
+  }
+
+  // Reset file input
+  if (event.target) event.target.value = '';
+}
+
+// ── Render the extracted policy intelligence into the card ─────────
+function renderPolicyIntelligence(intel) {
+  var analyzing = document.getElementById('pi-analyzing');
+  var results   = document.getElementById('pi-results');
+  var badge     = document.getElementById('pi-badge');
+  if (!intel || !results) return;
+
+  if (analyzing) analyzing.classList.remove('show');
+
+  var exclusions   = intel.exclusions         || [];
+  var warranties   = intel.warranties         || [];
+  var conditions   = intel.special_conditions || [];
+  var coverages    = intel.coverage_notes     || [];
+  var findings     = intel.critical_findings  || [];
+  var sumInsured   = intel.sum_insured_basis  || null;
+  var wearTear     = intel.wear_tear_clause   || null;
+  var underins     = intel.under_insurance_clause || null;
+  var avgClause    = intel.average_clause     || null;
+  var policyPeriod = intel.policy_period      || null;
+  var confidence   = intel.confidence         || 0;
+
+  // Update badge
+  var criticalCount = exclusions.length + findings.length;
+  if (badge) {
+    if (criticalCount > 3) {
+      badge.textContent = criticalCount + ' FLAGS';
+      badge.className   = 'pi-card-badge pi-badge-partial';
+    } else {
+      badge.textContent = 'ANALYZED ✓';
+      badge.className   = 'pi-card-badge pi-badge-ready';
+    }
+  }
+
+  // Also push critical exclusions into the existing exclusionsTags div
+  if (exclusions.length) {
+    var excEl = document.getElementById('exclusionsTags');
+    if (excEl) {
+      excEl.innerHTML = exclusions.map(function(e) {
+        return '<div class="tag" style="border-color:rgba(232,85,85,0.2);color:var(--red);" title="' + (e.detail||'') + '">' + e.name + '</div>';
+      }).join('');
+    }
+  }
+
+  // Also push warranties into warrantiesTags if not already loaded from insurer rules
+  if (warranties.length) {
+    var warEl = document.getElementById('warrantiesTags');
+    if (warEl && warEl.innerHTML.includes('Select insurer')) {
+      warEl.innerHTML = warranties.map(function(w) {
+        return '<div class="tag warranty-tag" style="background:rgba(232,160,32,0.1);border-color:rgba(232,160,32,0.25);color:var(--amber);" title="' + (w.detail||'') + '">' + w.name + '</div>';
+      }).join('');
+    }
+  }
+
+  // Build results HTML
+  var html = '';
+
+  // Summary bar — quick numbers
+  html += '<div class="pi-summary-bar">';
+  html += '<div class="pi-sum-item"><div class="pi-sum-val red">' + exclusions.length + '</div><div class="pi-sum-lbl">Exclusions</div></div>';
+  html += '<div class="pi-sum-item"><div class="pi-sum-val amber">' + warranties.length + '</div><div class="pi-sum-lbl">Warranties</div></div>';
+  html += '<div class="pi-sum-item"><div class="pi-sum-val">' + conditions.length + '</div><div class="pi-sum-lbl">Conditions</div></div>';
+  html += '<div class="pi-sum-item"><div class="pi-sum-val ' + (confidence > 80 ? 'green' : 'amber') + '">' + confidence + '%</div><div class="pi-sum-lbl">Confidence</div></div>';
+  html += '</div>';
+
+  // Critical findings — top of list, most important
+  if (findings.length) {
+    html += '<div class="pi-section"><div class="pi-section-title">⚠ Critical Findings</div>';
+    findings.forEach(function(f) {
+      var cls = f.severity === 'high' ? 'critical' : f.severity === 'medium' ? 'warning' : 'info';
+      html += '<div class="pi-finding ' + cls + '"><div class="pi-find-label">' + (f.type||'FINDING').toUpperCase() + '</div>' + piEscHtml(f.text) + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Wear & Tear — most commonly missed, show prominently
+  if (wearTear) {
+    html += '<div class="pi-finding critical"><div class="pi-find-label">WEAR &amp; TEAR CLAUSE</div>' + piEscHtml(wearTear) + '</div>';
+  }
+
+  // Average Clause / Under-Insurance
+  if (avgClause || underins) {
+    html += '<div class="pi-finding warning"><div class="pi-find-label">AVERAGE / UNDER-INSURANCE</div>' + piEscHtml(avgClause || underins) + '</div>';
+  }
+
+  // Exclusions
+  if (exclusions.length) {
+    html += '<div class="pi-section"><div class="pi-section-title">🚫 Policy Exclusions</div>';
+    html += exclusions.map(function(e) {
+      return '<span class="pi-tag exclusion" title="' + piEscHtml(e.detail||'') + '">🚫 ' + piEscHtml(e.name) + '</span>';
+    }).join('');
+    html += '</div>';
+  }
+
+  // Warranties
+  if (warranties.length) {
+    html += '<div class="pi-section"><div class="pi-section-title">⚡ Policy Warranties</div>';
+    html += warranties.map(function(w) {
+      return '<span class="pi-tag warranty" title="' + piEscHtml(w.detail||'') + '">⚡ ' + piEscHtml(w.name) + '</span>';
+    }).join('');
+    html += '</div>';
+  }
+
+  // Special Conditions
+  if (conditions.length) {
+    html += '<div class="pi-section"><div class="pi-section-title">📌 Special Conditions</div>';
+    html += conditions.map(function(c) {
+      return '<span class="pi-tag condition" title="' + piEscHtml(c.detail||'') + '">📌 ' + piEscHtml(c.name) + '</span>';
+    }).join('');
+    html += '</div>';
+  }
+
+  // Coverage notes
+  if (coverages.length) {
+    html += '<div class="pi-section"><div class="pi-section-title">✓ Coverage Notes</div>';
+    html += coverages.map(function(cv) {
+      return '<span class="pi-tag coverage" title="' + piEscHtml(cv.detail||'') + '">✓ ' + piEscHtml(cv.name) + '</span>';
+    }).join('');
+    html += '</div>';
+  }
+
+  // Policy period and SI basis
+  if (policyPeriod || sumInsured) {
+    html += '<div class="pi-section"><div class="pi-section-title">Policy Details</div>';
+    if (policyPeriod) html += '<div class="pi-finding info" style="margin-bottom:4px;"><div class="pi-find-label">POLICY PERIOD</div>' + piEscHtml(policyPeriod) + '</div>';
+    if (sumInsured)   html += '<div class="pi-finding info"><div class="pi-find-label">SUM INSURED BASIS</div>' + piEscHtml(sumInsured) + '</div>';
+    html += '</div>';
+  }
+
+  // Re-analyze button
+  html += '<div style="margin-top:4px;">' +
+    '<div class="pi-upload-row" data-pi-reupload="1" style="padding:6px 10px;">' +
+      '<span style="font-size:12px;">🔄</span>' +
+      '<div class="pi-upload-label" style="font-size:10px;">Upload a different policy document</div>' +
+    '</div></div>';
+
+  results.innerHTML = html;
+  results.style.display = '';
+  // Wire re-upload button via event delegation (no inline onclick needed)
+  var reupBtn = results.querySelector('[data-pi-reupload]');
+  if (reupBtn) reupBtn.onclick = function() { document.getElementById('pi-fileInput').click(); };
+}
+
+// piEscHtml — local alias to avoid conflict with existing escHtml
+function piEscHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Load policy intel when claim loads (if previously analyzed) ────
+async function loadPolicyIntelligence(claimId) {
+  if (!claimId) return;
+  try {
+    var r = await api('GET', '/api/claims/' + claimId + '/policy-intel');
+    if (r && r.intelligence) {
+      _piData = r.intelligence;
+      renderPolicyIntelligence(_piData);
+    }
+  } catch(e) {
+    // No policy intel yet — silent, not an error
+  }
+}
+
+// ── Expose piData to AI Verify so it uses real policy terms ─────────
+function getPolicyIntelForVerify() {
+  if (!_piData) return null;
+  return {
+    exclusions:  (_piData.exclusions         || []).map(function(e){ return e.name + (e.detail ? ': ' + e.detail : ''); }),
+    warranties:  (_piData.warranties         || []).map(function(w){ return w.name + (w.detail ? ': ' + w.detail : ''); }),
+    conditions:  (_piData.special_conditions || []).map(function(c){ return c.name + (c.detail ? ': ' + c.detail : ''); }),
+    wear_tear:   _piData.wear_tear_clause   || null,
+    avg_clause:  _piData.average_clause     || null,
+    findings:    (_piData.critical_findings || []).map(function(f){ return f.text; }),
+    confidence:  _piData.confidence         || 0
+  };
+}
+
+
 // ── Init ──────────────────────────────────────────────────────────────
 (async function init() {
   if (!auth.token) { window.location.replace('index.html'); return; }
@@ -2999,6 +3391,8 @@ async function loadClaim(claimId) {
   }
   // Render the Claim Command Card (smart next-action orientation layer)
   renderCCC();
+  // Load any previously analyzed policy intelligence for this claim
+  loadPolicyIntelligence(state.claimId);
   // If Repository tab is active, refresh it with the newly loaded claim
   var repoTab = document.getElementById('tab-repository');
   if (repoTab && repoTab.classList.contains('active')) repo_load();
@@ -3741,7 +4135,9 @@ async function runAIVerify() {
   document.getElementById('btnVerify').disabled    = true;
   document.getElementById('btnVerify').textContent = '\u27f3 Verifying...';
   addChatMsg('bot', '\u27f3 Running AI cross-verification against <strong>' + state.insurerName + '</strong> ' + state.dept + ' requirements...');
-  const r = await api('POST', '/api/claims/' + state.claimId + '/ai-verify');
+  // Include policy intelligence if available — makes AI Verify policy-aware
+  var piContext = getPolicyIntelForVerify ? getPolicyIntelForVerify() : null;
+  const r = await api('POST', '/api/claims/' + state.claimId + '/ai-verify', piContext ? { policy_intel: piContext } : {});
   document.getElementById('btnVerify').disabled    = false;
   document.getElementById('btnVerify').textContent = '\ud83d\udd0d AI Verify';
   if (r.error) { toast('AI verification failed: ' + r.error, 'error'); return; }
