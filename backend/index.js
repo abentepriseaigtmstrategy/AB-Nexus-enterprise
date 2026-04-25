@@ -6,7 +6,7 @@ import { generateToken, verifyToken, hashPassword, verifyPassword, generateSecur
          sendMagicLink, verifyGoogleToken, createSession, destroySession } from './auth.js';
 import { hasPermission, canAccessResource, filterByTenant,
          getVisibleModules, getRestrictedModules } from './rbac.js';
-import { handleChatRequest, analyzeDocumentContent,
+import { handleChatRequest, analyzeDocumentContent, analyzeScannedPDF,
          detectWarrantyBreaches, crossVerifyDocuments,
          computeSettlementFromRules, generateReportDraft } from './openai-chat.js';
 import { sendEmail, sendSMS,
@@ -1779,12 +1779,25 @@ Return JSON:
             }
             // PDF Reliability Check
             if (mimeType === 'application/pdf' && !looksLikeReadableText(textContent)) {
-              console.log(`[OCR] Scanned PDF detected: ${filename}`);
-              return jsonResponse({ 
-                status: "scanned_pdf_detected", 
-                message: "This PDF contains no readable text. Please upload images or a text-based PDF.",
-                action: "convert_to_image_or_upload_images" 
-              });
+              console.log(`[OCR] Scanned PDF → Vision pipeline: ${filename}`);
+              const pdfBytes  = await file.arrayBuffer();
+              const result    = await analyzeScannedPDF(env, pdfBytes, filename, context);
+              const cId       = url.searchParams.get('claimId');
+              if (cId && result.raw_text) {
+                const docId = generateUUID();
+                const r2Key = `${user.tenantId}/ocr/${cId}/${Date.now()}-scanned-ocr.json`;
+                await env.DOCS.put(r2Key, JSON.stringify(result), { httpMetadata: { contentType: 'application/json' } });
+                await env.DB.prepare(
+                  `INSERT INTO claim_documents (id,claim_id,tenant_id,filename,document_type,r2_key,ocr_extracted_data,verification_score,uploaded_by,is_handwritten_upload,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+                ).bind(docId, cId, user.tenantId, filename,
+                  result.document_type || 'scanned_document',
+                  r2Key, JSON.stringify(result), result.confidence || 70,
+                  user.id, context === 'handwritten_report' ? 1 : 0, Date.now()).run();
+                await broadcastUpdate(env, user.tenantId, 'ocr_complete', { claimId: cId, docId, confidence: result.confidence, source: 'scanned_pdf' });
+                return jsonResponse({ ...result, docId, saved: true });
+              }
+              return jsonResponse(result);
+            }
             }
           }
         } else {
@@ -1858,7 +1871,12 @@ Return JSON:
               // PDF Reliability Fallback
               if (actualMime === 'application/pdf' && !looksLikeReadableText(text)) {
                 console.log(`[Upload] Scanned PDF fallback triggered: ${file.name}`);
-                ocrData = { status: "scanned_pdf_detected", message: "Scanned PDF (No text layer)" };
+console.log(`[Upload] Scanned PDF → Vision pipeline: ${file.name}`);
+                const pdfBytes = await file.arrayBuffer();
+                ocrData = await analyzeScannedPDF(
+                  env, pdfBytes, file.name,
+                  isHandwritten ? 'handwritten_report' : 'document'
+                );
               } else {
                 console.log(`[Upload] Text path: ${file.name} | Len: ${text.length} | Truncated: ${isTruncated}`);
                 ocrData = await analyzeDocumentContent(env, { textContent: text, mimeType: actualMime, context: isHandwritten ? 'handwritten_report' : 'document', isTruncated });
