@@ -861,7 +861,6 @@ body.focus-mode .focus-save-bar{display:flex !important;}
     <div class="logo">SurveyorOS <span>v2026.1</span></div>
     <a href="home.html" id="homeBtn" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-sec);text-decoration:none;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;letter-spacing:0.06em;" onmouseover="this.style.color='var(--amber)';this.style.borderColor='rgba(232,160,32,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">⌂ HOME</a>
     <a href="my-claims.html" id="myClaimsBtn" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-sec);text-decoration:none;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;letter-spacing:0.06em;" onmouseover="this.style.color='var(--teal)';this.style.borderColor='rgba(34,196,160,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">🗂 MY CLAIMS</a>
-    <a href="/claim-vault" id="vaultBtn" onclick="localStorage.setItem('nexus_last_page',window.location.href)" style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-sec);text-decoration:none;padding:5px 11px;border:1px solid var(--border2);border-radius:6px;transition:all 0.15s;letter-spacing:0.06em;" onmouseover="this.style.color='var(--purple)';this.style.borderColor='rgba(167,139,250,0.4)'" onmouseout="this.style.color='var(--text-sec)';this.style.borderColor='var(--border2)'">🏛 VAULT</a>
     <div class="badge-pill">MCL-PUN-26</div>
     <span class="status-dot blink"></span>
     <span id="wsBadge" style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--bg3);color:var(--text-ter);">WS CONNECTING</span>
@@ -2181,20 +2180,6 @@ body.focus-mode .focus-save-bar{display:flex !important;}
 </div>
 
 <script>
-// ── Context-aware back navigation ────────────────────────────────────
-function goBack() {
-  var ref = document.referrer;
-  var last = localStorage.getItem('nexus_last_page') || '';
-  if (ref && ref !== window.location.href) {
-    window.history.back();
-  } else if (last && last !== window.location.href) {
-    window.location.href = last;
-  } else {
-    window.location.href = '/home';
-  }
-}
-// Store current page so vault can return here
-localStorage.setItem('nexus_last_page', window.location.href);
 // ===================================================================
 // SURVEYOROS 2026 — INTEGRATED DASHBOARD + REPORT PIPELINE
 // JIR = single source of truth. claimState drives all downstream.
@@ -6537,13 +6522,13 @@ function closeNewClaimModal() {
 }
 
 async function ncCreateClaim() {
-  var insId = document.getElementById('nc-insurer').value;
-  var name = document.getElementById('nc-insuredName').value.trim();
-  var date = document.getElementById('nc-lossDate').value;
-  var dept = document.getElementById('nc-dept').value;
+  var insId  = document.getElementById('nc-insurer').value;
+  var name   = document.getElementById('nc-insuredName').value.trim();
+  var date   = document.getElementById('nc-lossDate').value;
+  var dept   = document.getElementById('nc-dept').value;
   var errBox = document.getElementById('ncStep1Error');
 
-  // Validation: only Insurer + Insured Name are required
+  // ── Phase 2: Only Insurer + Insured Name + Department are required ──
   if (!insId || !name) {
     errBox.textContent = '\u26a0 Insurer and Insured Name are required to create a claim.';
     errBox.style.display = 'block';
@@ -6553,62 +6538,61 @@ async function ncCreateClaim() {
 
   var btn = document.getElementById('ncStep1Btn');
   btn.disabled = true;
-  btn.textContent = 'Creating claim...';
+  btn.textContent = 'Creating claim\u2026';
 
-  // Gather optional fields
   var insOption = document.getElementById('nc-insurer').selectedOptions[0];
-  var insName = insOption ? insOption.text : '';
-  var circ = document.getElementById('nc-circumstances').value.trim();
-  var addr = document.getElementById('nc-address').value.trim();
-  var lossAmt = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
-  var policyNo = document.getElementById('nc-policyNo').value.trim();
-  var claimNo = document.getElementById('nc-claimNo').value.trim();
-  var sumIns = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
+  var insName   = insOption ? insOption.text : '';
+  var circ      = document.getElementById('nc-circumstances').value.trim();
+  var addr      = document.getElementById('nc-address').value.trim();
+  var lossAmt   = parseFloat(document.getElementById('nc-lossAmt').value) || 0;
+  var policyNo  = document.getElementById('nc-policyNo').value.trim();
+  var claimNo   = document.getElementById('nc-claimNo').value.trim();
+  var sumIns    = parseFloat(document.getElementById('nc-sumInsured').value) || 0;
 
-  // Use today's date if loss date not provided
+  // Guard empty date — default to now so the API never receives NaN
   var incidentTs = date ? new Date(date).getTime() : Date.now();
 
+  // Build payload — optional fields sent as null for consistent API schema
   var payload = {
-    insurer_id: insId,
-    insurer_name: insName,
-    insured_name: name,
-    department: dept,
-    incident_date: incidentTs,
-    claim_status: 'draft',
-    current_stage: 'intake',
-    circumstances: circ || null,
-    insured_address: addr || null,
-    loss_amount: lossAmt || null,
-    policy_number: policyNo || null,
-    claim_number: claimNo || null,
-    sum_insured: sumIns || null,
-    fsr_ready: false
+    insurer_id:      insId,
+    insurer_name:    insName,
+    insured_name:    name,
+    department:      dept,
+    incident_date:   incidentTs,
+    claim_status:    'draft',
+    current_stage:   'intake',
+    circumstances:   circ     || null,
+    insured_address: addr     || null,
+    loss_amount:     lossAmt  || null,
+    policy_number:   policyNo || null,
+    claim_number:    claimNo  || null,
+    sum_insured:     sumIns   || null,
+    fsr_ready:       false
   };
 
-  try {
-    var r = await api('POST', '/api/claims', payload);
-    
-    // Get the new claim ID from response
-    var newClaimId = r.claim ? r.claim.id : r.id;
-    if (!newClaimId) throw new Error('No claim ID returned');
+  var r = await api('POST', '/api/claims', payload);
 
-    // Store in global state
-    state.claimId = newClaimId;
-    
-    // Close modal and navigate to dashboard with claim loaded
-    closeNewClaimModal();
-    toast('Claim created successfully', 'success');
-    
-    // Navigate to the claim workspace
-    window.location.href = '/surveyor-dashboard.html?claimId=' + newClaimId;
-    
-  } catch (error) {
-    console.error('Claim creation failed:', error);
-    errBox.textContent = '\u26a0 Failed to create claim. Please try again.';
+  btn.disabled = false;
+  btn.textContent = 'Create Claim & Upload Photos \u2192';
+
+  if (!r || r.error) {
+    errBox.textContent = '\u26a0 ' + (r && r.error ? r.error : 'Failed to create claim. Check your connection.');
     errBox.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Create Claim & Upload Photos \u2192';
+    return;
   }
+
+  _ncClaimId = r.claimId || (r.claim && r.claim.id) || r.id;  // FIX: backend returns r.claimId
+  var claimNum = r.claimNumber || (r.claim && r.claim.claim_number) || r.claim_number || 'NEW';  // FIX
+
+  // Refresh sidebar so the new claim appears immediately
+  loadClaimsSidebar();
+  toast('\u2713 Claim ' + claimNum + ' created \u2014 opening\u2026', 'success');
+
+  // ── Phase 2 + Phase 4: Load claim then let pushURL() set canonical URL ──
+  closeNewClaimModal();
+  await loadClaim(_ncClaimId);
+  if (state.claimData && state.claimData.department) await switchDept(state.claimData.department);
+  pushURL(); // writes ?claimId=&tab=workbench&stage=<dept>
 }
 
 function ncSetUploadType(type) {
@@ -8135,50 +8119,39 @@ async function globalJirFileSelected(event) {
 async function checkSystemStatus() {
   const dot = document.getElementById('systemStatusDot');
   const pill = document.getElementById('systemStatusPill');
-
+  
   try {
     const res = await fetch(API + '/api/system/status', {
       headers: { 'Authorization': 'Bearer ' + (auth.token || '') }
     });
-
+    const data = await res.json();
+    
     if (res.ok) {
-      const data = await res.json();
       dot.className = 'status-dot online';
       let msg = "✅ SYSTEM HEALTHY\n\n";
-      msg += `D1 Database: ${data.database && data.database.initialized ? "OK (" + (data.database.userCount || 0) + " users)" : "❌ FAILED"}\n`;
-      msg += `R2 Storage: ${data.bindings && data.bindings.docs ? "OK" : "❌ MISSING"}\n`;
-      msg += `WebSockets (DO): ${data.realtime && data.realtime.status === 'ready' ? "OK" : "❌ " + (data.realtime && data.realtime.status || 'unknown')}\n`;
-      msg += `AI Pipeline: ${data.bindings && data.bindings.openai_key ? "OK" : "❌ KEY MISSING"}\n`;
+      msg += `D1 Database: ${data.database.initialized ? "OK (" + (data.database.userCount || 0) + " users)" : "❌ FAILED"}\n`;
+      msg += `R2 Storage: ${data.bindings.docs ? "OK" : "❌ MISSING"}\n`;
+      msg += `WebSockets (DO): ${data.realtime.status === 'ready' ? "OK" : "❌ " + data.realtime.status}\n`;
+      msg += `AI Pipeline: ${data.bindings.openai_key ? "OK" : "❌ KEY MISSING"}\n`;
+      
+      if (data.database.error) msg += `\nDB Error: ${data.database.error}`;
+      if (data.realtime.error) msg += `\nWS Error: ${data.realtime.error}`;
+      
       console.log('[SystemStatus]', data);
-      return;
-    }
-
-    // /api/system/status returned non-200 — fall back to /api/health
-    // Worker is alive if /api/health responds, even if deep checks fail
-    const healthRes = await fetch(API + '/api/health');
-    if (healthRes.ok) {
-      dot.className = 'status-dot online';
-      console.warn('[SystemStatus] Deep check returned ' + res.status + ' — Worker healthy via /api/health');
+      // alert(msg); // Only alert if manually clicked? For now, keep it silent unless error
     } else {
       dot.className = 'status-dot offline';
-      console.error('[SystemStatus] Worker unreachable — both endpoints failed');
+      console.error('[Infrastructure Error]', data);
     }
-
   } catch (err) {
-    // Network error — verify Worker is actually down before showing red
-    try {
-      const healthRes = await fetch(API + '/api/health');
-      if (healthRes.ok) {
-        dot.className = 'status-dot online';
-        console.warn('[SystemStatus] Catch fallback — Worker alive via /api/health');
-        return;
-      }
-    } catch {}
     dot.className = 'status-dot offline';
     console.warn('[Connection Failed] Backend unreachable.');
   }
 }
 
+// closeAllPanels() merged into togglePanel above
+
+// Auto-check on load
 setTimeout(checkSystemStatus, 2000);
 
 </script>
